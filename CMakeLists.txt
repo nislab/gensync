@@ -14,12 +14,14 @@ set(AUX_DIR ${SRC_DIR}/Aux)
 set(DATA_DIR ${SRC_DIR}/Data)
 set(COMM_DIR ${SRC_DIR}/Communicants)
 set(SYNC_DIR ${SRC_DIR}/Syncs)
+set(BENCH_DIR ${SRC_DIR}/Benchmarks)
 
 set(INCLUDE include/CPISync)
 set(AUX_DIR_INC ${INCLUDE}/Aux)
 set(DATA_DIR_INC ${INCLUDE}/Data)
 set(COMM_DIR_INC ${INCLUDE}/Communicants)
 set(SYNC_DIR_INC ${INCLUDE}/Syncs)
+set(SYNC_BENCH_INC ${INCLUDE}/Benchmarks)
 
 # Test directory structure
 set(TEST_DIR tests)
@@ -58,6 +60,10 @@ set(SOURCE_FILES
         ${SYNC_DIR}/Cuckoo.cpp
         ${SYNC_DIR}/CuckooSync.cpp
         ${SYNC_DIR}/FullSync.cpp
+
+        ${BENCH_DIR}/Runner.cpp
+        ${BENCH_DIR}/BenchParams.cpp
+        ${BENCH_DIR}/BenchObserv.cpp
 
         ${SRC_DIR}/main.cpp)
 
@@ -101,7 +107,13 @@ set(HEADERS
         ${SYNC_DIR_INC}/CuckooSync.h
         ${SYNC_DIR_INC}/InterCPISync.h
         ${SYNC_DIR_INC}/PrioCPISync.h
-        ${SYNC_DIR_INC}/ProbCPISync.h)
+        ${SYNC_DIR_INC}/ProbCPISync.h
+
+        ${SYNC_BENCH_INC}/BenchObserv.h
+        ${SYNC_BENCH_INC}/BenchParams.h
+        ${SYNC_BENCH_INC}/DataObjectGenerator.h
+        ${SYNC_BENCH_INC}/RandGen.h
+        ${SYNC_BENCH_INC}/FromFileGen.h)
 
 include_directories(include)
 include_directories(tests)
@@ -126,6 +138,10 @@ install(DIRECTORY ${AUX_DIR_INC} ${DATA_DIR_INC} ${COMM_DIR_INC} ${SYNC_DIR_INC}
 # Add the TryMe executable
 add_executable(TryMe ${SRC_DIR}/TryMe.cpp)
 target_link_libraries(TryMe cpisync ntl cppunit pthread gmp)
+
+# Benchmarks
+add_executable(Benchmarks ${BENCH_DIR}/Runner.cpp)
+target_link_libraries(Benchmarks cpisync ntl cppunit pthread gmp)
 
 # Define a macro for adding executables testing multiple files
 # @param dir The relative path to the folder containing test files to add
