@@ -21,17 +21,40 @@ public:
     BenchObserv() = default;
     ~BenchObserv() = default;
 
-    BenchObserv(BenchParams params);
+    BenchObserv(BenchParams params, string serverStats, string clientStats,
+                bool serverSuccess, bool clientSuccess,
+                string serverException, string clientException) :
+        params (params),
+        clientStats (clientStats),
+        serverStats (serverStats),
+        serverSuccess (serverSuccess),
+        clientSuccess (clientSuccess),
+        serverException (serverException),
+        clientException (clientException) {}
 
-    // Only if all the syncs observed succeeded the object is considered to be true
-    operator bool() const {return all_of(success.begin(), success.end(), [](bool v) {return v;});};
+    friend ostream& operator<<(ostream& os, const BenchObserv& bo) {
+        os << "Parameters:\n" << bo.params
+           << BenchParams::PARAM_DELIM << "\n"
+           << "Server stats:\n"
+           << BenchParams::PARAM_DELIM << "\n"
+           << "Success: " << bo.serverSuccess << " [" << bo.serverException << "]" << "\n"
+           << bo.serverStats << "\n"
+           << BenchParams::PARAM_DELIM << "\n"
+           << "Client stats:\n"
+           << BenchParams::PARAM_DELIM << "\n"
+           << "Success: " << bo.clientSuccess << " [" << bo.clientException << "]" << "\n"
+           << bo.clientStats << "\n";
 
-    friend ostream& operator<<(ostream& os, const BenchObserv& bo);
+      return os;
+    }
 
     BenchParams params;   // the parameters used to run this benchmark
-    vector<bool> success; // whether client and the server hold exactly the same set at the end, for all syncs
-    vector<SyncMethod::SyncStats> stats; // statistics of all syncs performed
-    vector<bool> errors;  // whether an error occurred during the syncs
+    string clientStats;
+    string serverStats;
+    bool serverSuccess;
+    bool clientSuccess;
+    string serverException;
+    string clientException;
 };
 
 #endif // BENCHOBSERV_H

@@ -63,7 +63,6 @@ set(SOURCE_FILES
 
         ${BENCH_DIR}/Runner.cpp
         ${BENCH_DIR}/BenchParams.cpp
-        ${BENCH_DIR}/BenchObserv.cpp
 
         ${SRC_DIR}/main.cpp)
 

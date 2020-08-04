@@ -12,6 +12,7 @@
 #include <CPISync/Data/DataObject.h>
 
 /**
+ * Forward iterator over DataObjects.
  * All the generators that produce DataObjects for synchronization should inherit this class.
  */
 class DataObjectGenerator {

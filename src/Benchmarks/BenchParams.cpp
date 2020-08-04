@@ -12,14 +12,18 @@ const string BenchParams::PARAM_DELIM = string(80, '-');
 
 BenchParams::BenchParams(shared_ptr<DataObjectGenerator> serverElems, shared_ptr<DataObjectGenerator> clientElems,
                          GenSync::SyncProtocol prot, size_t similar, size_t serverMinusClient,
-                         size_t clientMinusServer, bool multiset) :
+                         size_t clientMinusServer, bool multiset,
+                         string serverDataFile, string clientDataFile, string paramsFile) :
     syncProtocol(prot),
     similarCount(similar),
     serverMinusClientCount(serverMinusClient),
     clientMinusServerCount(clientMinusServer),
     multiset(multiset),
     serverElems (serverElems),
-    clientElems (clientElems) {}
+    clientElems (clientElems),
+    serverDataFile (serverDataFile),
+    clientDataFile (clientDataFile),
+    paramsFile (paramsFile) {}
 
 ostream& operator<<(ostream& os, const BenchParams& bp) {
     os << "Sync protocol (as in GenSync.h): " << (int) bp.syncProtocol << "\n"

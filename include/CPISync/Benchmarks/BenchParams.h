@@ -67,18 +67,21 @@ struct CuckooParams : Params {
 };
 
 class BenchParams {
+public:
     static const string PARAM_DELIM; // parameter list delimiter in printouts
 
-public:
     BenchParams() = default;
     ~BenchParams() = default;
 
     BenchParams(shared_ptr<DataObjectGenerator> serverElems, shared_ptr<DataObjectGenerator> clientElems,
-                GenSync::SyncProtocol prot = GenSync::SyncProtocol::CPISync,
-                size_t similar = 64,
-                size_t serverMinusClient = 128,
-                size_t clientMinusServer = 256,
-                bool multiset = false);
+                GenSync::SyncProtocol prot,
+                size_t similar,
+                size_t serverMinusClient,
+                size_t clientMinusServer,
+                bool multiset,
+                string serverDataFile,
+                string clientDataFile,
+                string paramsFile);
 
     friend ostream& operator<<(ostream& os, const BenchParams& bp);
 
@@ -86,10 +89,13 @@ public:
     size_t similarCount;        // the number of similar elements between the two sets
     size_t serverMinusClientCount;
     size_t clientMinusServerCount;
-    bool multiset;              // whether the sets to be reconciled are multisets
-    Params syncParams;          // parameters of the concrete sync protocol
+    bool multiset;                          // whether the sets to be reconciled are multisets
+    shared_ptr<Params> syncParams;          // parameters of the concrete sync protocol
     shared_ptr<DataObjectGenerator> serverElems;
     shared_ptr<DataObjectGenerator> clientElems;
+    string serverDataFile;
+    string clientDataFile;
+    string paramsFile;
 };
 
 #endif // BENCHPARAMS_H
