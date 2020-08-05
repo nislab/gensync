@@ -15,7 +15,11 @@
 
 // See the corresponding sync classes for the parameters documentation
 struct Params {
-    friend ostream& operator<<(ostream&, const Params&);
+    virtual ostream& serialize(ostream& os) const = 0;
+    virtual istream& unserialize(istream& is) = 0;
+
+    friend ostream& operator<<(ostream& os, const Params& x) {return x.serialize(os);}
+    friend istream& operator>>(istream& is, Params& x) {return x.unserialize(is);}
 };
 
 struct CPISyncParams : Params{
@@ -25,45 +29,22 @@ struct CPISyncParams : Params{
     size_t redundant = 0;
     bool hashes = false;
 
-    friend ostream& operator<<(ostream& os, const CPISyncParams& x) {
-        os << "m_bar: " << x.m_bar << "\n"
-           << "bits: " << x.bits << "\n"
-           << "epsilon: " << x.epsilon << "\n"
-           << "redundant: " << x.redundant << "\n"
-           << "hashes: " << std::boolalpha << x.hashes << "\n";
-
-        return os;
-    };
+    ostream& serialize(ostream& os) const;
+    istream& unserialize(istream& is);
 };
 
 struct IBLTParams : Params {
-    size_t expected = 0;
-    size_t eltSize = 0;
-    size_t numElemChild = 0;
+    size_t expected = 0, eltSize = 0, numElemChild = 0;
 
-    friend ostream& operator<<(ostream& os, const IBLTParams& x) {
-        os << "expected: " << x.expected << "\n"
-           << "eltSize: " << x.eltSize << "\n"
-           << "numElemChild: " << x.numElemChild;
-
-        return os;
-    };
+    ostream& serialize(ostream& os) const;
+    istream& unserialize(istream& is);
 };
 
 struct CuckooParams : Params {
-    size_t fngprtSize = 0;
-    size_t bucketSize = 0;
-    size_t filterSize = 0;
-    size_t maxKicks = 0;
+    size_t fngprtSize = 0, bucketSize = 0, filterSize = 0, maxKicks = 0;
 
-    friend ostream& operator<<(ostream& os, const CuckooParams& x) {
-        os << "fngprtSize: " << x.fngprtSize << "\n"
-           << "bucketSize: " << x.bucketSize << "\n"
-           << "filterSize: " << x.filterSize << "\n"
-           << "maxKicks: " << x.maxKicks;
-
-        return os;
-    };
+    ostream& serialize(ostream& os) const;
+    istream& unserialize(istream& is);
 };
 
 class BenchParams {

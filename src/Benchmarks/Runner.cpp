@@ -129,17 +129,17 @@ int main(int argc, char* argv[]) {
     //                                         })).to_ZZ()
     //      << "\n";
 
-    ofstream of("output.txt");
-    auto first = toStr<ZZ>(ZZ(19));
-    auto second = toStr<ZZ>(ZZ(42));
-    of << base64_encode(first.data(), first.length()) << "\n";
-    of << base64_encode(second.data(), second.length()) << "\n";
-    of.close();
+    // ofstream of("output.txt");
+    // auto first = toStr<ZZ>(ZZ(19));
+    // auto second = toStr<ZZ>(ZZ(42));
+    // of << base64_encode(first.data(), first.length()) << "\n";
+    // of << base64_encode(second.data(), second.length()) << "\n";
+    // of.close();
 
-    FromFileGen ffgen("output.txt");
-    cout << "From file is:\n";
-    for (auto dd : ffgen)
-        cout << dd.to_ZZ() << "\n";
+    // FromFileGen ffgen("output.txt");
+    // cout << "From file is:\n";
+    // for (auto dd : ffgen)
+    //     cout << dd.to_ZZ() << "\n";
 }
 
 // Constructs the parameters from log file
