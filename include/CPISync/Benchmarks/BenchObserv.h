@@ -34,14 +34,14 @@ public:
 
     friend ostream& operator<<(ostream& os, const BenchObserv& bo) {
         os << "Parameters:\n" << bo.params
-           << BenchParams::PARAM_DELIM << "\n"
+           << BenchParams::DELIM_LINE << "\n"
            << "Server stats:\n"
-           << BenchParams::PARAM_DELIM << "\n"
+           << BenchParams::DELIM_LINE << "\n"
            << "Success: " << bo.serverSuccess << " [" << bo.serverException << "]" << "\n"
            << bo.serverStats << "\n"
-           << BenchParams::PARAM_DELIM << "\n"
+           << BenchParams::DELIM_LINE << "\n"
            << "Client stats:\n"
-           << BenchParams::PARAM_DELIM << "\n"
+           << BenchParams::DELIM_LINE << "\n"
            << "Success: " << bo.clientSuccess << " [" << bo.clientException << "]" << "\n"
            << bo.clientStats << "\n";
 

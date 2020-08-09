@@ -18,7 +18,7 @@
  */
 class FromFileGen : public DataObjectGenerator {
 public:
-    FromFileGen(string fName_) : fName (fName_), file(fName_) {};
+    FromFileGen(string fName) : fName (fName), file(fName) {};
 
     inline ZZ decodeLine(const string& line) {
         string dLine = base64_decode(line);

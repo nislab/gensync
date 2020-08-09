@@ -12,6 +12,7 @@
 #include <iostream>
 #include <CPISync/Syncs/GenSync.h>
 #include <CPISync/Benchmarks/DataObjectGenerator.h>
+#include <CPISync/Benchmarks/FromFileGen.h>
 
 // See the corresponding sync classes for the parameters documentation
 struct Params {
@@ -20,63 +21,102 @@ struct Params {
 
     friend ostream& operator<<(ostream& os, const Params& x) {return x.serialize(os);}
     friend istream& operator>>(istream& is, Params& x) {return x.unserialize(is);}
+
+    /**
+     * Sets up the GenSync::Builder object appropriately
+     * @param gsb The builder object to be set with the parameters according the Params specialization
+     */
+    virtual void apply(GenSync::Builder& gsb) const = 0;
 };
 
-struct CPISyncParams : Params{
-    size_t m_bar = 0;
-    size_t bits = 0;
-    float epsilon = 0;
-    size_t redundant = 0;
-    bool hashes = false;
+struct CPISyncParams : Params {
+    size_t m_bar;
+    size_t bits;
+    float epsilon;
+    size_t partitions;
+    bool hashes;
+
+    CPISyncParams() : m_bar (0), bits (0), epsilon (0), partitions (0), hashes (false) {}
 
     ostream& serialize(ostream& os) const;
     istream& unserialize(istream& is);
+
+    void apply(GenSync::Builder& gsb) const;
 };
 
 struct IBLTParams : Params {
-    size_t expected = 0, eltSize = 0, numElemChild = 0;
+    size_t expected, eltSize, numElemChild;
+
+    IBLTParams() : expected (0), eltSize (0), numElemChild (0) {}
 
     ostream& serialize(ostream& os) const;
     istream& unserialize(istream& is);
+
+    void apply(GenSync::Builder& gsb) const;
 };
 
 struct CuckooParams : Params {
-    size_t fngprtSize = 0, bucketSize = 0, filterSize = 0, maxKicks = 0;
+    size_t fngprtSize, bucketSize, filterSize, maxKicks;
+
+    CuckooParams() : fngprtSize (0), bucketSize (0), filterSize (0), maxKicks (0) {}
 
     ostream& serialize(ostream& os) const;
     istream& unserialize(istream& is);
+
+    void apply(GenSync::Builder& gsb) const;
 };
 
 class BenchParams {
 public:
-    static const string PARAM_DELIM; // parameter list delimiter in printouts
+    static const string DELIM_LINE; // parameter list delimiter in printouts
+    // the paths to the files where the server and the client elements are temporarily stored
+    static const string SERVER_ELEM_FILE, CLIENT_ELEM_FILE;
 
     BenchParams() = default;
-    ~BenchParams() = default;
+    ~BenchParams();
 
-    BenchParams(shared_ptr<DataObjectGenerator> serverElems, shared_ptr<DataObjectGenerator> clientElems,
-                GenSync::SyncProtocol prot,
-                size_t similar,
-                size_t serverMinusClient,
-                size_t clientMinusServer,
-                bool multiset,
-                string serverDataFile,
-                string clientDataFile,
-                string paramsFile);
+    /**
+     * Reconstructs the sync parameters from the input stream. The
+     * format of the file is as follows:
+     *
+     * SYNC_METHOD_IDENTIFIER (see GenSync::SyncProtocol)
+     * Params
+     * BenchParams::DELIM_LINE
+     * BASE64_ENCODED_ELEMENTS_OF_A_SET(as DataObjects)
+     * BenchParams::DELIM_LINE
+     * BASE64_ENCODED_ELEMENTS_OF_A_SET(as DataObjects)
+     *
+     * @param is The input stream from which to construct this object. Normally a file.
+     */
+    BenchParams(istream& is);
+
+    /**
+     * @param prot The sync protocol
+     * @param syncParams The sync parameters
+     * @param similar The number of elements common among the server and client
+     * @param serverMinusClient The number of elements local to server
+     * @param clientMinusServer The number of elements local to client
+     * @param multiset Set to true when syncing multisets
+     */
+    BenchParams(GenSync::SyncProtocol prot,
+                shared_ptr<Params> syncParams,
+                size_t similar = 0,
+                size_t serverMinusClient = 128,
+                size_t clientMinusServer = 128,
+                bool multiset = false);
 
     friend ostream& operator<<(ostream& os, const BenchParams& bp);
 
-    GenSync::SyncProtocol syncProtocol; // protocol used to sync
-    size_t similarCount;        // the number of similar elements between the two sets
-    size_t serverMinusClientCount;
-    size_t clientMinusServerCount;
-    bool multiset;                          // whether the sets to be reconciled are multisets
-    shared_ptr<Params> syncParams;          // parameters of the concrete sync protocol
+    GenSync::SyncProtocol syncProtocol;
+    shared_ptr<Params> syncParams;
     shared_ptr<DataObjectGenerator> serverElems;
     shared_ptr<DataObjectGenerator> clientElems;
-    string serverDataFile;
-    string clientDataFile;
-    string paramsFile;
+
+    bool loadedFromFile;        // whether this object is deserialized from a file
+    size_t similarCount;
+    size_t serverMinusClientCount;
+    size_t clientMinusServerCount;
+    bool multiset;
 };
 
 #endif // BENCHPARAMS_H
