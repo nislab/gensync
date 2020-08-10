@@ -23,8 +23,8 @@ struct Params {
     friend istream& operator>>(istream& is, Params& x) {return x.unserialize(is);}
 
     /**
-     * Sets up the GenSync::Builder object appropriately
-     * @param gsb The builder object to be set with the parameters according the Params specialization
+     * Sets up the GenSync::Builder object using this parameters
+     * @param gsb The builder object to be used
      */
     virtual void apply(GenSync::Builder& gsb) const = 0;
 };

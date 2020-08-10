@@ -25,7 +25,6 @@
  */
 
 // TODO: Support dynamic set evolution while syncing
-// TODO: Support marshaling and unmarshaling of BenchParams for reuse in different syncs
 // TODO: Keep all the runs as separate from each other as possible
 
 #include <iostream>
@@ -37,8 +36,6 @@
 #include <CPISync/Benchmarks/BenchObserv.h>
 #include <CPISync/Benchmarks/RandGen.h>
 #include <CPISync/Benchmarks/FromFileGen.h>
-
-#include <CPISync/Aux/Auxiliary.h>
 
 using namespace std;
 using GenSyncPair = pair<shared_ptr<GenSync>, shared_ptr<GenSync>>;
