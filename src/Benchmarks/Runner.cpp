@@ -62,12 +62,10 @@ int main(int argc, char* argv[]) {
     CMDParams par = parse(argc, argv);
 
     BenchParams bPar;
-    if (!par.inFile.empty()) {
-        ifstream file(par.inFile);
-        bPar = BenchParams{file};
-    } else {
+    if (!par.inFile.empty())
+        bPar = BenchParams{par.inFile};
+    else
         throw runtime_error("Not implemented");
-    }
 
     GenSyncPair genSyncs = buildGenSyncs(bPar);
 
@@ -185,21 +183,16 @@ GenSyncPair buildGenSyncs(const BenchParams& par) {
         .setComm(GenSync::SyncComm::socket)
         .setProtocol(par.syncProtocol);
 
-    if (par.loadedFromFile) {
-        par.syncParams->apply(serverBuilder);
-        par.syncParams->apply(clientBuilder);
-        auto server = make_shared<GenSync>(serverBuilder.build());
-        auto client = make_shared<GenSync>(clientBuilder.build());
+    par.syncParams->apply(serverBuilder);
+    par.syncParams->apply(clientBuilder);
+    auto server = make_shared<GenSync>(serverBuilder.build());
+    auto client = make_shared<GenSync>(clientBuilder.build());
 
-        for (auto elem : *par.serverElems)
-            server->addElem(make_shared<DataObject>(elem));
+    for (auto elem : *par.serverElems)
+        server->addElem(make_shared<DataObject>(elem));
 
-        for (auto elem : *par.clientElems)
-            client->addElem(make_shared<DataObject>(elem));
+    for (auto elem : *par.clientElems)
+        client->addElem(make_shared<DataObject>(elem));
 
-        return {server, client};
-    }
-
-    // TODO: build GenSyc objects from the command line parameters
-    throw runtime_error("Not implemented");
+    return {server, client};
 }

@@ -105,6 +105,13 @@ public:
                 + "\n   * pFactor = " + toStr(pFactor) + "\n   * Evaluation Points = " + toStr(redundant_k) + '\n';
     }
 
+    /* Getters for the parameters set in the constructor */
+    long getBitNum() const {return bitNum;}
+    long getMaxDiff() const {return maxDiff;}
+    int getProbEps() const {return probEps;}
+    long getPFactor() const {return pFactor;}
+    bool getHashes() const {return hashes;}
+
 protected:
 
     pTree *treeNode; /** A tree of CPISync'ed data.  Each tree node is responsible for a specific range of the

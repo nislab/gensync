@@ -6,12 +6,17 @@
  * Created on July, 2020.
  */
 
-#include <CPISync/Benchmarks/BenchParams.h>
 #include <cstdio>
-
-const string BenchParams::DELIM_LINE = string(80, '-');
-const string BenchParams::SERVER_ELEM_FILE = "server.cpisynctmp";
-const string BenchParams::CLIENT_ELEM_FILE = "client.cpisynctmp";
+#include <CPISync/Benchmarks/BenchParams.h>
+#include <CPISync/Syncs/ProbCPISync.h>
+#include <CPISync/Syncs/InterCPISync.h>
+#include <CPISync/Syncs/FullSync.h>
+#include <CPISync/Syncs/IBLTSync.h>
+#include <CPISync/Syncs/IBLTSync_HalfRound.h>
+#include <CPISync/Syncs/IBLTSync_Multiset.h>
+#include <CPISync/Syncs/CPISync_HalfRound.h>
+#include <CPISync/Syncs/IBLTSetOfSets.h>
+#include <CPISync/Syncs/CuckooSync.h>
 
 template<char delimiter>
 class DelimitedString : public string {};
@@ -32,7 +37,8 @@ ostream& CPISyncParams::serialize(ostream& os) const {
        << "bits: " << bits << "\n"
        << "epsilon: " << epsilon << "\n"
        << "partitions: " << partitions << "\n"
-       << "hashes: " << std::boolalpha << hashes;
+       << "hashes: " << std::boolalpha << hashes << "\n"
+       << "pFactor: " << pFactor;
 
     return os;
 }
@@ -43,6 +49,7 @@ istream& CPISyncParams::unserialize(istream& is) {
     getVal<decltype(epsilon)>(is, epsilon);
     getVal<decltype(partitions)>(is, partitions);
     getVal<decltype(hashes)>(is, hashes);
+    getVal<decltype(pFactor)>(is, pFactor);
 
     return is;
 }
@@ -53,6 +60,9 @@ void CPISyncParams::apply(GenSync::Builder& gsb) const {
     gsb.setErr(epsilon);
     gsb.setNumPartitions(partitions);
     gsb.setHashes(hashes);
+
+    if (pFactor)                // pFactor = 0 is treated as not set
+        gsb.setNumPartitions(pFactor);
 }
 
 ostream& IBLTParams::serialize(ostream& os) const {
@@ -102,23 +112,11 @@ void CuckooParams::apply(GenSync::Builder& gsb) const {
     gsb.setMaxKicks(maxKicks);
 }
 
-BenchParams::BenchParams(istream& is) :
-    loadedFromFile (true),
-    similarCount (0),
-    serverMinusClientCount (0),
-    clientMinusServerCount (0)
-{
-    string line;
-    getline(is, line);
-    stringstream lineS(line);
+BenchParams::BenchParams(const string& fName) {
+    ifstream is(fName);
     size_t protInt;
-    lineS >> protInt;
+    getVal<decltype(protInt)>(is, protInt);
     syncProtocol = static_cast<GenSync::SyncProtocol>(protInt);
-
-    if (syncProtocol == GenSync::SyncProtocol::IBLTSync_Multiset)
-        multiset = true;
-    else
-        multiset = false;
 
     if (syncProtocol == GenSync::SyncProtocol::CPISync
         || syncProtocol == GenSync::SyncProtocol::CPISync_OneLessRound
@@ -142,75 +140,106 @@ BenchParams::BenchParams(istream& is) :
         syncParams = par;
     } else if (syncProtocol == GenSync::SyncProtocol::FullSync) {
         syncParams = nullptr;
-        multiset = false;
     } else {
         stringstream ss;
         ss << "There is no viable sync protocol with ID " << static_cast<size_t>(syncProtocol);
         throw runtime_error(ss.str());
     }
 
-    // Construct DataObject generators with corresponding temporary files
-    getline(is, line);
-    if (line.find(DELIM_LINE) != string::npos) { // after this line the sets data starts
-        ofstream serverF(SERVER_ELEM_FILE);      // temporary files
-        ofstream clientF(CLIENT_ELEM_FILE);
-        size_t nextDelim = 0;
-        while (getline(is, line)) {
-            if (line.find(DELIM_LINE) != string::npos)
-                if (++nextDelim > 1)
-                    throw runtime_error("BenchParams: more than two sets in the file");
+    serverElems = make_shared<FromFileGen>(fName, FromFileGen::FIRST);
+    clientElems = make_shared<FromFileGen>(fName, FromFileGen::SECOND);
+}
 
-            if (nextDelim)
-                clientF << line << "\n";
-            else
-                serverF << line << "\n";
-        }
-    } else {
-        throw runtime_error("BenchParams: malformed content in the input stream");
+/**
+ * This function should be the only place where we dynamically
+ * determine what concrete SyncMethod is in use.
+ */
+BenchParams::BenchParams(SyncMethod& meth) : serverElems (nullptr), clientElems (nullptr) {
+    auto cpi = dynamic_cast<CPISync*>(&meth);
+    if (cpi) {
+        syncProtocol = GenSync::SyncProtocol::CPISync;
+        syncParams = make_shared<CPISyncParams>(cpi->getMaxDiff(), cpi->getBits(),
+                                                cpi->getProbEps(), cpi->getHashes(),
+                                                cpi->getRedundant());
+        return;
     }
 
-    serverElems = make_shared<FromFileGen>(SERVER_ELEM_FILE);
-    clientElems = make_shared<FromFileGen>(CLIENT_ELEM_FILE);
-}
-
-BenchParams::BenchParams(GenSync::SyncProtocol prot,
-                         shared_ptr<Params> syncParams,
-                         size_t similar,
-                         size_t serverMinusClient,
-                         size_t clientMinusServer,
-                         bool multiset) :
-    syncProtocol(prot),
-    syncParams (syncParams),
-    loadedFromFile (false),
-    similarCount (similar),
-    serverMinusClientCount (serverMinusClient),
-    clientMinusServerCount (clientMinusServer),
-    multiset (multiset)
-{
-    // TODO: Reconstruct this from parameters
-    serverElems = NULL;
-    clientElems = NULL;
-
-    throw runtime_error("Not implemented");
-}
-
-BenchParams::~BenchParams() {
-    if (remove(SERVER_ELEM_FILE.c_str()) != 0 || remove(CLIENT_ELEM_FILE.c_str()) != 0) {
-        stringstream ss("BenchParams: temporary files deletion has failed.\n");
-        ss << "Please manually delete " << SERVER_ELEM_FILE << " and " << CLIENT_ELEM_FILE << "\n";
-        cerr << ss.str();
+    auto probCpi = dynamic_cast<ProbCPISync*>(&meth);
+    if (probCpi) {
+        syncProtocol = GenSync::SyncProtocol::ProbCPISync;
+        syncParams = make_shared<CPISyncParams>(probCpi->getMaxDiff(), probCpi->getBits(),
+                                                probCpi->getProbEps(), probCpi->getHashes());
+        return;
     }
+
+    auto interCpi = dynamic_cast<InterCPISync*>(&meth);
+    if (interCpi) {
+        syncProtocol = GenSync::SyncProtocol::InteractiveCPISync;
+        syncParams = make_shared<CPISyncParams>(interCpi->getMaxDiff(), interCpi->getBitNum(),
+                                                interCpi->getProbEps(), interCpi->getHashes(),
+                                                0, interCpi->getPFactor());
+        return;
+    }
+
+    auto oneWay = dynamic_cast<CPISync_HalfRound*>(&meth);
+    if (oneWay) {
+        syncProtocol = GenSync::SyncProtocol::OneWayCPISync;
+        syncParams = make_shared<CPISyncParams>(oneWay->getMaxDiff(), oneWay->getBits(),
+                                                oneWay->getProbEps(), oneWay->getHashes());
+        return;
+    }
+
+    auto full = dynamic_cast<FullSync*>(&meth);
+    if (full) {
+        syncProtocol = GenSync::SyncProtocol::FullSync;
+        syncParams = make_shared<FullSyncParams>();
+        return;
+    }
+
+    auto iblt = dynamic_cast<IBLTSync*>(&meth);
+    if (iblt) {
+        syncProtocol = GenSync::SyncProtocol::IBLTSync;
+        syncParams = make_shared<IBLTParams>(iblt->getExpNumElems(), iblt->getElementSize());
+        return;
+    }
+
+    auto ibltHR = dynamic_cast<IBLTSync_HalfRound*>(&meth);
+    if (ibltHR) {
+        syncProtocol = GenSync::SyncProtocol::OneWayIBLTSync;
+        syncParams = make_shared<IBLTParams>(ibltHR->getExpNumElems(), ibltHR->getElementSize());
+        return;
+    }
+
+    auto ibltSoS = dynamic_cast<IBLTSetOfSets*>(&meth);
+    if (ibltSoS) {
+        syncProtocol = GenSync::SyncProtocol::IBLTSetOfSets;
+        syncParams = make_shared<IBLTParams>(ibltSoS->getExpNumElems(), ibltSoS->getElemSize(), ibltSoS->getChildSize());
+        return;
+    }
+
+    auto cuc = dynamic_cast<CuckooSync*>(&meth);
+    if (cuc) {
+        syncProtocol = GenSync::SyncProtocol::CuckooSync;
+        syncParams = make_shared<CuckooParams>(cuc->getFngprtSize(), cuc->getBucketSize(),
+                                               cuc->getFilterSize(), cuc->getMaxKicks());
+        return;
+    }
+
+    auto ibltMulti = dynamic_cast<IBLTSync_Multiset*>(&meth);
+    if (ibltMulti) {
+        syncProtocol = GenSync::SyncProtocol::IBLTSync_Multiset;
+        syncParams = make_shared<IBLTParams>(ibltMulti->getExpNumElems(), ibltMulti->getElementSize());
+        return;
+    }
+
+    throw runtime_error("The SyncMethod is not known to BenchParams");
 }
+
+BenchParams::~BenchParams() {}
 
 ostream& operator<<(ostream& os, const BenchParams& bp) {
     os << "Sync protocol (as in GenSync.h): " << (int) bp.syncProtocol << "\n"
-       << "# similar elements: " << bp.similarCount << "\n"
-       << "# server only elements: " << bp.serverMinusClientCount << "\n"
-       << "# client only elements: " << bp.clientMinusServerCount << "\n"
-       << "multiset: " << std::boolalpha << bp.multiset << "\n"
-       << BenchParams::DELIM_LINE << "\n"
-       << "Sync params:\n" << bp.syncParams << "\n"
-       << BenchParams::DELIM_LINE;
+       << "Sync params:\n" << bp.syncParams << "\n";
 
     return os;
 }

@@ -99,6 +99,11 @@ public:
     }
   }
 
+    /* Getters for the parameters set in the constructor */
+    size_t getExpNumElems() const {return expNumElems;};
+    size_t getChildSize() const {return childSize;};
+    size_t getElemSize() const {return elemSize;};
+
 protected:
   // one way flag
   bool oneWay;

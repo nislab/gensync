@@ -8,6 +8,7 @@
 IBLTSync_Multiset::IBLTSync_Multiset(size_t expected, size_t eltSize): myIBLT(expected, eltSize) {
     expNumElems = expected;
     oneWay = false;
+    elementSize = eltSize;
 }
 
 bool IBLTSync_Multiset::SyncClient(const shared_ptr<Communicant>& commSync, list<shared_ptr<DataObject>> &selfMinusOther, list<shared_ptr<DataObject>> &otherMinusSelf){

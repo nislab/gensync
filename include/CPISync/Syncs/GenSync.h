@@ -531,6 +531,13 @@ public:
         //    delete myMeth;
     }
 
+#if defined (REPR)
+    /**
+     * Writes the sync log file in the form UNIQUE_NAME.cpisync to the directory set in REPR.
+     */
+    void writeSyncLog() const;
+#endif
+
 private:
     SyncProtocol proto; /** the sync protocol to implement */
     SyncComm comm; /** communication means for the synchronization */

@@ -27,16 +27,33 @@ struct Params {
      * @param gsb The builder object to be used
      */
     virtual void apply(GenSync::Builder& gsb) const = 0;
+
+    /**
+     * Makes Params from SyncMethod
+     * @param gs The GenSync object from which to get
+     */
+    virtual shared_ptr<Params> slurp(SyncMethod& gs) const = 0;
+};
+
+struct FullSyncParams : Params {
+    ostream& serialize(ostream& os) const {os << "FullSync\n"; return os;};
+    istream& unserialize(istream& is) {string line; getline(is, line); return is;};
+    void apply(GenSync::Builder& gsb) const {};
 };
 
 struct CPISyncParams : Params {
     size_t m_bar;
     size_t bits;
     float epsilon;
-    size_t partitions;
     bool hashes;
+    size_t partitions;
+    size_t pFactor;
 
-    CPISyncParams() : m_bar (0), bits (0), epsilon (0), partitions (0), hashes (false) {}
+    CPISyncParams() : m_bar (0), bits (0), epsilon (0), hashes (false), partitions (0), pFactor (0) {}
+    CPISyncParams(size_t m_bar, size_t bits, float epsilon, bool hashes,
+                  size_t partitions = 0, size_t pFactor = 0) :
+        m_bar (m_bar), bits (bits), epsilon (epsilon), hashes (hashes),
+        partitions (partitions), pFactor(pFactor) {}
 
     ostream& serialize(ostream& os) const;
     istream& unserialize(istream& is);
@@ -48,6 +65,8 @@ struct IBLTParams : Params {
     size_t expected, eltSize, numElemChild;
 
     IBLTParams() : expected (0), eltSize (0), numElemChild (0) {}
+    IBLTParams(size_t expected, size_t eltSize, size_t numElemChild = 0) :
+        expected (expected), eltSize (eltSize), numElemChild (numElemChild) {}
 
     ostream& serialize(ostream& os) const;
     istream& unserialize(istream& is);
@@ -59,6 +78,8 @@ struct CuckooParams : Params {
     size_t fngprtSize, bucketSize, filterSize, maxKicks;
 
     CuckooParams() : fngprtSize (0), bucketSize (0), filterSize (0), maxKicks (0) {}
+    CuckooParams(size_t fngprtSize, size_t bucketSize, size_t filterSize, size_t maxKicks) :
+        fngprtSize (fngprtSize), bucketSize (bucketSize), filterSize (filterSize), maxKicks (maxKicks) {}
 
     ostream& serialize(ostream& os) const;
     istream& unserialize(istream& is);
@@ -68,10 +89,6 @@ struct CuckooParams : Params {
 
 class BenchParams {
 public:
-    static const string DELIM_LINE; // parameter list delimiter in printouts
-    // the paths to the files where the server and the client elements are temporarily stored
-    static const string SERVER_ELEM_FILE, CLIENT_ELEM_FILE;
-
     BenchParams() = default;
     ~BenchParams();
 
@@ -86,24 +103,15 @@ public:
      * BenchParams::DELIM_LINE
      * BASE64_ENCODED_ELEMENTS_OF_A_SET(as DataObjects)
      *
-     * @param is The input stream from which to construct this object. Normally a file.
+     * @param fName The name of the parameters file.
      */
-    BenchParams(istream& is);
+    explicit BenchParams(const string& fName);
 
     /**
-     * @param prot The sync protocol
-     * @param syncParams The sync parameters
-     * @param similar The number of elements common among the server and client
-     * @param serverMinusClient The number of elements local to server
-     * @param clientMinusServer The number of elements local to client
-     * @param multiset Set to true when syncing multisets
+     * This constructor keeps serverElems and clientElems empty
+     * @param meth The sync method from which to obtain parameters.
      */
-    BenchParams(GenSync::SyncProtocol prot,
-                shared_ptr<Params> syncParams,
-                size_t similar = 0,
-                size_t serverMinusClient = 128,
-                size_t clientMinusServer = 128,
-                bool multiset = false);
+    explicit BenchParams(SyncMethod& meth);
 
     friend ostream& operator<<(ostream& os, const BenchParams& bp);
 
@@ -111,12 +119,6 @@ public:
     shared_ptr<Params> syncParams;
     shared_ptr<DataObjectGenerator> serverElems;
     shared_ptr<DataObjectGenerator> clientElems;
-
-    bool loadedFromFile;        // whether this object is deserialized from a file
-    size_t similarCount;
-    size_t serverMinusClientCount;
-    size_t clientMinusServerCount;
-    bool multiset;
 };
 
 #endif // BENCHPARAMS_H

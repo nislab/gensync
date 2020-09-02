@@ -34,6 +34,13 @@ public:
     bool addElem(shared_ptr<DataObject> datum) override;
 
     string getName() override;
+
+    /* Getters for the parameters set in the constructor */
+    size_t getFngprtSize() const {return myCF.getFngprtSize();};
+    size_t getBucketSize() const {return myCF.getBucketSize();};
+    size_t getFilterSize() const {return myCF.getFilterSize();};
+    size_t getMaxKicks() const {return myCF.getMaxKicks();};
+
 private:
     /**
      * Cuckoo filter for reconciliation

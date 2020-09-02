@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.6)
 project(cpisync)
 set(CMAKE_CXX_STANDARD 11)
 
+# if compiled with REPR (reproducible), GenSync server and the client produce .cpisync log files
+add_definitions(-DREPR="$ENV{TMPDIR}/cpisync")
+
 include(CTest)
 include(GNUInstallDirs)
 
@@ -63,6 +66,7 @@ set(SOURCE_FILES
 
         ${BENCH_DIR}/Runner.cpp
         ${BENCH_DIR}/BenchParams.cpp
+        ${BENCH_DIR}/FromFileGen.cpp
 
         ${SRC_DIR}/main.cpp)
 

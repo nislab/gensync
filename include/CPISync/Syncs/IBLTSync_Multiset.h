@@ -21,6 +21,10 @@ public:
 
     string getName() override;
 
+    /* Getters for the parameters set in the constructor */
+    size_t getExpNumElems() const {return expNumElems;};
+    size_t getElementSize() const {return elementSize;};
+
 private:
 
     // one way flag
@@ -31,6 +35,9 @@ private:
 
     // Instance variable to sore the expected number of elements
     size_t expNumElems;
+
+    // Element size as set in the constructor
+    size_t elementSize;
 };
 
 #endif //CPISYNC_IBLTSYNC_MULTISET_H

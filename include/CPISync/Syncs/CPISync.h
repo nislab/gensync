@@ -119,7 +119,13 @@ public:
    */
   string printElem();
 
-  
+    /* Getters for the parameters set in the constructor */
+    long getMaxDiff() const {return maxDiff;}
+    long getBits() const {return bits;}
+    int getProbEps() const {return probEps;}
+    int getRedundant() const {return redundant;}
+    bool getHashes() const {return hashQ;}
+
 protected:
   // internal data
   bool probCPI{}; /** If true, then CPISync actually operates using the probabilistic CPISync protocol, wherein
@@ -143,6 +149,7 @@ protected:
                      */
 
   long bitNum; /** Number of bits used to represent an element of the set that is being synchronized. */
+  long bits; /** bits as initially set in the constructor */
   long maxDiff; /** Maximum number of differences to synchronize (for regular CPIsync) */
   int probEps; /** Negative log of the upper bound on the probability of error for the synchronization. */
   ZZ fieldSize; /** The size of the finite field used to represent set elements. */
@@ -151,9 +158,10 @@ protected:
   long currDiff; /** The number of differences currently being synchronization. (initially set by the constructor) - for iterative methods. */
   int redundant_k; /** the number of redundant samples of the characteristic polynomial to evaluate.
                          *  This relates to the probability of error for the synchronization. */
+  int redundant; /** redundant as initially set in the constructor */
 
   map< ZZ, shared_ptr<DataObject> > CPI_hash; /** list of pairs, one for each element in the set (to be synchronized).
-                                           *  The first item in the pair is a hash (a long integer) 
+                                           *  The first item in the pair is a hash (a long integer)
                                            *  of the second item, which is the set element.
                                            *  All operations are done on the hashes, and this look-up table can be used to retrieve
                                            *  the actual element once the hashes have been synchronized.

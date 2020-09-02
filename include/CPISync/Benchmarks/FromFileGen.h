@@ -18,30 +18,23 @@
  */
 class FromFileGen : public DataObjectGenerator {
 public:
-    FromFileGen(string fName) : fName (fName), file(fName) {};
+    static const string DELIM_LINE; // parameter list delimiter in printouts
 
-    inline ZZ decodeLine(const string& line) {
-        string dLine = base64_decode(line);
-        return to_ZZ(dLine.data());
-    }
+    explicit FromFileGen(const string& fName);
+
+    /**
+     * FromFileGen objects can be constructed from a BenchParam file.
+     * BenchParam file contain two blocks separated by BenchParams::DELIM_LINE.
+     * WhichOne signalizes from which block is this FromFileGen constructed.
+     */
+    enum WhichOne {FIRST, SECOND};
+
+    FromFileGen(const string& fName, WhichOne firstOrSecond);
 
     /* Implementation of DataObjectGenerator virtual functions */
 
-    DataObjectGenerator::iterator begin() {
-        string line;
-        getline(file, line);
-        if (file.eof())
-            return {this, DataObject()};
-        return {this, DataObject(decodeLine(line))};
-    }
-
-    DataObject produce() {
-        string line;
-        getline(file, line);
-        if (file.eof())
-            return DataObject();
-        return DataObject(decodeLine(line));
-    }
+    DataObjectGenerator::iterator begin();
+    DataObject produce();
 
 private:
     string fName;

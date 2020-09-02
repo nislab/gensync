@@ -21,9 +21,9 @@ public:
     BenchObserv() = default;
     ~BenchObserv() = default;
 
-    BenchObserv(BenchParams params, string serverStats, string clientStats,
+    BenchObserv(BenchParams& params, string& serverStats, string& clientStats,
                 bool serverSuccess, bool clientSuccess,
-                string serverException, string clientException) :
+                string& serverException, string& clientException) :
         params (params),
         clientStats (clientStats),
         serverStats (serverStats),
@@ -34,14 +34,14 @@ public:
 
     friend ostream& operator<<(ostream& os, const BenchObserv& bo) {
         os << "Parameters:\n" << bo.params
-           << BenchParams::DELIM_LINE << "\n"
+           << FromFileGen::DELIM_LINE << "\n"
            << "Server stats:\n"
-           << BenchParams::DELIM_LINE << "\n"
+           << FromFileGen::DELIM_LINE << "\n"
            << "Success: " << bo.serverSuccess << " [" << bo.serverException << "]" << "\n"
            << bo.serverStats << "\n"
-           << BenchParams::DELIM_LINE << "\n"
+           << FromFileGen::DELIM_LINE << "\n"
            << "Client stats:\n"
-           << BenchParams::DELIM_LINE << "\n"
+           << FromFileGen::DELIM_LINE << "\n"
            << "Success: " << bo.clientSuccess << " [" << bo.clientException << "]" << "\n"
            << bo.clientStats << "\n";
 

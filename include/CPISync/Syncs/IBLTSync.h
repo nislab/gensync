@@ -35,6 +35,10 @@ public:
     bool delElem(shared_ptr<DataObject> datum) override;
 
     string getName() override;
+
+    /* Getters for the parameters set in the constructor */
+    size_t getExpNumElems() const {return expNumElems;}
+    size_t getElementSize() const {return elementSize;}
 protected:
     // one way flag
     bool oneWay;
@@ -44,6 +48,9 @@ private:
 
     // Instance variable to sore the expected number of elements
     size_t expNumElems;
+
+    // Size of elements as set in the constructor
+    size_t elementSize;
 };
 
 
