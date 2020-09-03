@@ -21,40 +21,24 @@ public:
     BenchObserv() = default;
     ~BenchObserv() = default;
 
-    BenchObserv(BenchParams& params, string& serverStats, string& clientStats,
-                bool serverSuccess, bool clientSuccess,
-                string& serverException, string& clientException) :
+    BenchObserv(BenchParams& params, string& stats, bool success, string& exception) :
         params (params),
-        clientStats (clientStats),
-        serverStats (serverStats),
-        serverSuccess (serverSuccess),
-        clientSuccess (clientSuccess),
-        serverException (serverException),
-        clientException (clientException) {}
+        stats (stats),
+        success (success),
+        exception (exception) {}
 
     friend ostream& operator<<(ostream& os, const BenchObserv& bo) {
         os << "Parameters:\n" << bo.params
-           << FromFileGen::DELIM_LINE << "\n"
-           << "Server stats:\n"
-           << FromFileGen::DELIM_LINE << "\n"
-           << "Success: " << bo.serverSuccess << " [" << bo.serverException << "]" << "\n"
-           << bo.serverStats << "\n"
-           << FromFileGen::DELIM_LINE << "\n"
-           << "Client stats:\n"
-           << FromFileGen::DELIM_LINE << "\n"
-           << "Success: " << bo.clientSuccess << " [" << bo.clientException << "]" << "\n"
-           << bo.clientStats << "\n";
+           << "Success: " << bo.success << " [" << bo.exception << "]" << "\n"
+           << "Stats:\n" << bo.stats << "\n";
 
       return os;
     }
 
     BenchParams params;   // the parameters used to run this benchmark
-    string clientStats;
-    string serverStats;
-    bool serverSuccess;
-    bool clientSuccess;
-    string serverException;
-    string clientException;
+    string stats;
+    bool success;
+    string exception;
 };
 
 #endif // BENCHOBSERV_H

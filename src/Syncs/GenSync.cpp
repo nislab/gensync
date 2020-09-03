@@ -20,6 +20,10 @@
 
 #if defined (REPR)
 #include <CPISync/Benchmarks/BenchParams.h>
+#include <CPISync/Benchmarks/BenchObserv.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <iomanip>
 #endif
 
 using namespace std::chrono;
@@ -99,142 +103,176 @@ GenSync::~GenSync() {
 
 // add element
 void GenSync::addElem(shared_ptr<DataObject> newDatum) {
-	Logger::gLog(Logger::METHOD, "Entering GenSync::addElem");
-	// store locally
-	myData.push_back(newDatum);
+    Logger::gLog(Logger::METHOD, "Entering GenSync::addElem");
+    // store locally
+    myData.push_back(newDatum);
 
-	// update sync methods' metadata
-	vector<shared_ptr<SyncMethod>>::iterator itAgt;
-	for (itAgt = mySyncVec.begin(); itAgt != mySyncVec.end(); ++itAgt) {
-		if (!(*itAgt)->addElem(newDatum))
-			Logger::error_and_quit("Could not add item " + newDatum->to_string() + ".  Please considering increasing the number of bits per set element.");
-	}
+    // update sync methods' metadata
+    vector<shared_ptr<SyncMethod>>::iterator itAgt;
+    for (itAgt = mySyncVec.begin(); itAgt != mySyncVec.end(); ++itAgt) {
+        if (!(*itAgt)->addElem(newDatum))
+            Logger::error_and_quit("Could not add item " + newDatum->to_string() + ".  Please considering increasing the number of bits per set element.");
+    }
 
-	// update file
-	if (outFile != nullptr)
-		(*outFile) << newDatum->to_string() << endl;
+    // update file
+    if (outFile != nullptr)
+        (*outFile) << newDatum->to_string() << endl;
 }
 
 // delete element
 bool GenSync::delElem(shared_ptr<DataObject> delPtr) {
-	Logger::gLog(Logger::METHOD, "Entering GenSync::delElem");
-	if (!myData.empty()) {
-		//Iterate through mySyncVec and call that sync's delElem method
-		for (const auto& itAgt : mySyncVec) {
-			if (!itAgt->delElem(delPtr)) {
+    Logger::gLog(Logger::METHOD, "Entering GenSync::delElem");
+    if (!myData.empty()) {
+        //Iterate through mySyncVec and call that sync's delElem method
+        for (const auto& itAgt : mySyncVec) {
+            if (!itAgt->delElem(delPtr)) {
                 Logger::error("Error deleting item. SyncVec delete failed ");
-				return false;
-			}
-		}
+                return false;
+            }
+        }
 
-		//Remove data from GenSync object meta-data and report success of delete
-		unsigned long before = myData.size();
-		myData.remove(delPtr); //Does not have a return value so check size difference
-		return myData.size() < before;
-	}
-	else{
-		Logger::error("genSync is empty");
-		return false;
-	}
+        //Remove data from GenSync object meta-data and report success of delete
+        unsigned long before = myData.size();
+        myData.remove(delPtr); //Does not have a return value so check size difference
+        return myData.size() < before;
+    }
+    else{
+        Logger::error("genSync is empty");
+        return false;
+    }
 }
 
 //Call delete elements on all data
 bool GenSync::clearData(){
-	bool success = true;
+    bool success = true;
 
-	auto itr = myData.begin();
-	while (itr != myData.end()) {
-		success &= delElem(*itr++);
-	}
+    auto itr = myData.begin();
+    while (itr != myData.end()) {
+        success &= delElem(*itr++);
+    }
 
-	return success && myData.empty();
+    return success && myData.empty();
 }
 
 const list<string> GenSync::dumpElements() {
-	list<string> dump;
-	for(const auto& itr : myData){
-		dump.push_back(itr->print());
-	}
-	return dump;
+    list<string> dump;
+    for(const auto& itr : myData){
+        dump.push_back(itr->print());
+    }
+    return dump;
 }
 
 // COMMUNICANT MANIPULATION
 
 // insert a communicant in the vector at the index position
 void GenSync::addComm(const shared_ptr<Communicant>& newComm, int index) {
-	Logger::gLog(Logger::METHOD, "Entering GenSync::addComm");
-	vector<shared_ptr<Communicant>>::iterator itComm;
+    Logger::gLog(Logger::METHOD, "Entering GenSync::addComm");
+    vector<shared_ptr<Communicant>>::iterator itComm;
 
-	itComm = myCommVec.begin();
-	if (index == 0) {
-		myCommVec.push_back(newComm);
-	} else {
-		advance(itComm, index - 1);
-		myCommVec.insert(itComm, newComm);
-	}
+    itComm = myCommVec.begin();
+    if (index == 0) {
+        myCommVec.push_back(newComm);
+    } else {
+        advance(itComm, index - 1);
+        myCommVec.insert(itComm, newComm);
+    }
 }
 
 /**
  *  delete a communicant from the vector at the index position
  * */
 void GenSync::delComm(int index) {
-	vector<shared_ptr<Communicant>>::iterator itComm;
+    vector<shared_ptr<Communicant>>::iterator itComm;
 
-	itComm = myCommVec.begin();
-	if (index == 0) {
-		myCommVec.erase(itComm);
-	} else {
-		advance(itComm, index - 1);
-		myCommVec.erase(itComm);
-	}
+    itComm = myCommVec.begin();
+    if (index == 0) {
+        myCommVec.erase(itComm);
+    } else {
+        advance(itComm, index - 1);
+        myCommVec.erase(itComm);
+    }
 
 }
 
 void GenSync::delComm(const shared_ptr<Communicant>& oldComm) {
-	myCommVec.erase(std::remove(myCommVec.begin(), myCommVec.end(), oldComm), myCommVec.end());
+    myCommVec.erase(std::remove(myCommVec.begin(), myCommVec.end(), oldComm), myCommVec.end());
 }
 
 int GenSync::numComm() {
-	return narrow_cast<int>(myCommVec.size());
+    return narrow_cast<int>(myCommVec.size());
 }
 
 // insert a syncmethod in the vector at the index position
 void GenSync::addSyncAgt(const shared_ptr<SyncMethod>& newAgt, int index) {
-	Logger::gLog(Logger::METHOD, "Entering GenSync::addSyncAgt");
-	// create and populate the new agent
-	list<shared_ptr<DataObject>>::iterator itData;
-	for (itData = myData.begin(); itData != myData.end(); itData++)
-		if (!newAgt->addElem(*itData))
-			Logger::error_and_quit("Was not able to add an item to the next syncagent.");
+    Logger::gLog(Logger::METHOD, "Entering GenSync::addSyncAgt");
+    // create and populate the new agent
+    list<shared_ptr<DataObject>>::iterator itData;
+    for (itData = myData.begin(); itData != myData.end(); itData++)
+        if (!newAgt->addElem(*itData))
+            Logger::error_and_quit("Was not able to add an item to the next syncagent.");
 
-	// add the agent to the sync agents vector
-	auto idxIter = mySyncVec.begin();
-	advance(idxIter, index);
-	mySyncVec.insert(idxIter, newAgt);
+    // add the agent to the sync agents vector
+    auto idxIter = mySyncVec.begin();
+    advance(idxIter, index);
+    mySyncVec.insert(idxIter, newAgt);
 }
 
 
 // delete a syncmethod from the vector at the index position
 
 void GenSync::delSyncAgt(int index) {
-	mySyncVec.erase(getSyncAgt(index));
+    mySyncVec.erase(getSyncAgt(index));
 }
 
 vector<shared_ptr<SyncMethod>>::iterator GenSync::getSyncAgt(int index) {
-	vector<shared_ptr<SyncMethod>>::iterator itAgt;
+    vector<shared_ptr<SyncMethod>>::iterator itAgt;
 
-	itAgt = mySyncVec.begin();
-	advance(itAgt, index);
+    itAgt = mySyncVec.begin();
+    advance(itAgt, index);
 
-	return itAgt;
+    return itAgt;
 }
 
 // SYNCHRONIZATION METHODS
 
+#if defined (REPR)
+void GenSync::writeSyncLog(shared_ptr<Communicant> comm,
+                           list<shared_ptr<DataObject>> selfMinusOther,
+                           list<shared_ptr<DataObject>> otherMinusSelf,
+                           bool success, string& exception) const {
+    mkdir(REPR, 666);           // creates a directory in cwd
+
+    auto cTime = std::time(nullptr);
+    stringstream tss, prss, obss;
+    tss << std::put_time(std::gmtime(&cTime), "%c");
+    string ts = tss.str();
+    std::replace(ts.begin(), ts.end(), ' ', '_');
+    string commName = comm->getName();
+    std::replace(commName.begin(), commName.end(), ' ', '_');
+    prss << REPR << "/" << commName << ts << "_params.cpisync";
+    obss << REPR << "/" << commName << ts << "_observ.cpisync";
+
+    BenchParams params{**mySyncVec.begin()};
+    ofstream paramsF(prss.str());
+    paramsF << params;
+    for (auto dob : selfMinusOther)
+        paramsF << base64_encode(dob->to_string().c_str(), dob->to_string().length()) << "\n";
+    paramsF << FromFileGen::DELIM_LINE << "\n";
+    for (auto dob : otherMinusSelf)
+        paramsF << base64_encode(dob->to_string().c_str(), dob->to_string().length()) << "\n";
+    paramsF.close();
+
+    ofstream observF(obss.str());
+    string stats = printStats(0);
+    BenchObserv observ{params, stats, success, exception};
+    observF << observ;
+}
+#endif
+
 // listen, receive data and conduct synchronization
 bool GenSync::serverSyncBegin(int sync_num) {
     Logger::gLog(Logger::METHOD, "Entering GenSync::serverSyncBegin");
-    // find the right syncAgent	
+    // find the right syncAgent
     auto syncAgent = mySyncVec.begin();
     advance(syncAgent, sync_num);
 
@@ -248,12 +286,18 @@ bool GenSync::serverSyncBegin(int sync_num) {
         selfMinusOther.clear();
         otherMinusSelf.clear();
 
+        string exceptionText;
         try {
             syncSuccess &= (*syncAgent)->SyncServer(*itComm, selfMinusOther, otherMinusSelf);
         } catch (SyncFailureException& s) {
-            Logger::error_and_quit(s.what());
+            exceptionText = s.what();
+            Logger::error_and_quit(exceptionText);
             return false;
         }
+
+#if defined (REPR)
+        writeSyncLog(*itComm, selfMinusOther, otherMinusSelf, syncSuccess, exceptionText);
+#endif
 
         // post process and add any items that were found in the reconciliation
         _PostProcessing(otherMinusSelf, myData, &GenSync::addElem, &GenSync::delElem, this);
@@ -279,15 +323,21 @@ bool GenSync::clientSyncBegin(int sync_num) {
         otherMinusSelf.clear();
 
         // do the sync
+        string exceptionText;
         try {
             if (!(*syncAgentIt)->SyncClient(*itComm, selfMinusOther, otherMinusSelf)) {
                 Logger::gLog(Logger::METHOD, "Sync to " + (*itComm)->getName() + " failed!");
                 syncSuccess = false;
             }
         } catch (SyncFailureException& s) {
-            Logger::error_and_quit(s.what());
+            exceptionText = s.what();
+            Logger::error_and_quit(exceptionText);
             return false;
         }
+
+#if defined (REPR)
+        writeSyncLog(*itComm, selfMinusOther, otherMinusSelf, syncSuccess, exceptionText);
+#endif
 
         // add any items that were found in the reconciliation
         _PostProcessing(otherMinusSelf, myData, &GenSync::addElem, &GenSync::delElem, this);

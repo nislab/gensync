@@ -359,6 +359,17 @@ private:
 
     /** The file to which to output any additions to the data structure. */
     shared_ptr<ofstream> outFile;
+
+#if defined (REPR)
+    /**
+     * Writes the sync log file in the form UNIQUE_NAME.cpisync to the directory set in REPR.
+     * Called in serverSyncBegin and clientSyncBegin
+     */
+    void writeSyncLog(shared_ptr<Communicant> comm,
+                      list<shared_ptr<DataObject>> selfMinusOther,
+                      list<shared_ptr<DataObject>> otherMinusSelf,
+                      bool success, string& eception) const;
+#endif
 };
 
 
@@ -530,13 +541,6 @@ public:
         //if (myMeth != NULL)
         //    delete myMeth;
     }
-
-#if defined (REPR)
-    /**
-     * Writes the sync log file in the form UNIQUE_NAME.cpisync to the directory set in REPR.
-     */
-    void writeSyncLog() const;
-#endif
 
 private:
     SyncProtocol proto; /** the sync protocol to implement */

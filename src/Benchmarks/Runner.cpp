@@ -69,36 +69,22 @@ int main(int argc, char* argv[]) {
 
     GenSyncPair genSyncs = buildGenSyncs(bPar);
 
-    // initialize indicators
-    bool serverSuccess = false, clientSuccess = false;
-    string serverStats, clientStats, serverEx = "", clientEx = "";
-
     pid_t pid = fork();
     if (pid == 0) { // child process
         try {
-            serverSuccess = genSyncs.first->serverSyncBegin(0);
-            serverStats = genSyncs.first->printStats(0);
+            genSyncs.first->serverSyncBegin(0);
         } catch (exception& e) {
-            cout << e.what() << endl;
-            serverEx = e.what();
+            cout << "Sync Exception [server]: " << e.what() << "\n";
         }
     } else if (pid > 0) { // parent process
         try {
-            clientSuccess = genSyncs.second->clientSyncBegin(0);
-            clientStats = genSyncs.second->printStats(0);
+            genSyncs.second->clientSyncBegin(0);
         } catch (exception& e) {
-            cout << e.what() << endl;
-            clientEx = e.what();
+            cout << "Sync Exception [client]: " << e.what() << "\n";
         }
     } else if (pid < 0) {
         throw runtime_error("Fork has failed");
     }
-
-    // write the benchmark statistics to the file
-    BenchObserv bObs{bPar, serverStats, clientStats, serverSuccess, clientSuccess, serverEx, clientEx};
-    ofstream outputFile(par.outFile);
-    outputFile << bObs;
-    outputFile.close();
 }
 
 CMDParams parse(int argc, char* argv[]) {

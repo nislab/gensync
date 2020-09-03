@@ -239,7 +239,8 @@ BenchParams::~BenchParams() {}
 
 ostream& operator<<(ostream& os, const BenchParams& bp) {
     os << "Sync protocol (as in GenSync.h): " << (int) bp.syncProtocol << "\n"
-       << "Sync params:\n" << bp.syncParams << "\n";
+       << "Sync params:\n" << bp.syncParams << "\n"
+       << FromFileGen::DELIM_LINE << "\n";
 
     return os;
 }

@@ -27,12 +27,6 @@ struct Params {
      * @param gsb The builder object to be used
      */
     virtual void apply(GenSync::Builder& gsb) const = 0;
-
-    /**
-     * Makes Params from SyncMethod
-     * @param gs The GenSync object from which to get
-     */
-    virtual shared_ptr<Params> slurp(SyncMethod& gs) const = 0;
 };
 
 struct FullSyncParams : Params {
