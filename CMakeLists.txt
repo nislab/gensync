@@ -3,7 +3,7 @@ project(cpisync)
 set(CMAKE_CXX_STANDARD 11)
 
 # if compiled with REPR (reproducible), GenSync server and the client produce .cpisync log files
-add_definitions(-DREPR="$ENV{TMP}/cpisync")
+add_definitions(-DREPR="cpisync")
 
 include(CTest)
 include(GNUInstallDirs)

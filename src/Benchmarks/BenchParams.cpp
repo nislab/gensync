@@ -32,6 +32,13 @@ void getVal(istream& is, T& container) {
     istringstream(delimited.at(1)) >> container;
 }
 
+// Extract SyncProtocol from the next line in the input stream
+inline GenSync::SyncProtocol getProtocol(istream& is) {
+    size_t protoInt;
+    getVal<decltype(protoInt)>(is, protoInt);
+    return static_cast<GenSync::SyncProtocol>(protoInt);
+}
+
 ostream& CPISyncParams::serialize(ostream& os) const {
     os << "m_bar: " << m_bar << "\n"
        << "bits: " << bits << "\n"
@@ -112,12 +119,10 @@ void CuckooParams::apply(GenSync::Builder& gsb) const {
     gsb.setMaxKicks(maxKicks);
 }
 
-BenchParams::BenchParams(const string& fName) {
-    ifstream is(fName);
-    size_t protInt;
-    getVal<decltype(protInt)>(is, protInt);
-    syncProtocol = static_cast<GenSync::SyncProtocol>(protInt);
-
+/**
+ * Makes the correct Params specialization using the data in the input stream.
+ */
+inline shared_ptr<Params> decideBenchParams(GenSync::SyncProtocol syncProtocol, ifstream& is) {
     if (syncProtocol == GenSync::SyncProtocol::CPISync
         || syncProtocol == GenSync::SyncProtocol::CPISync_OneLessRound
         || syncProtocol == GenSync::SyncProtocol::CPISync_HalfRound
@@ -126,26 +131,31 @@ BenchParams::BenchParams(const string& fName) {
         || syncProtocol == GenSync::SyncProtocol::OneWayCPISync) {
         auto par = make_shared<CPISyncParams>();
         is >> *par;
-        syncParams = par;
+        return par;
     } else if (syncProtocol == GenSync::SyncProtocol::IBLTSync
                || syncProtocol == GenSync::SyncProtocol::OneWayIBLTSync
                || syncProtocol == GenSync::SyncProtocol::IBLTSetOfSets
                || syncProtocol == GenSync::SyncProtocol::IBLTSync_Multiset) {
         auto par = make_shared<IBLTParams>();
         is >> *par;
-        syncParams = par;
+        return par;
     } else if (syncProtocol == GenSync::SyncProtocol::CuckooSync) {
         auto par = make_shared<CuckooParams>();
         is >> *par;
-        syncParams = par;
+        return par;
     } else if (syncProtocol == GenSync::SyncProtocol::FullSync) {
-        syncParams = nullptr;
+        return nullptr;
     } else {
         stringstream ss;
         ss << "There is no viable sync protocol with ID " << static_cast<size_t>(syncProtocol);
         throw runtime_error(ss.str());
     }
+}
 
+BenchParams::BenchParams(const string& fName) {
+    ifstream is(fName);
+    syncProtocol = getProtocol(is);
+    syncParams = decideBenchParams(syncProtocol, is);
     serverElems = make_shared<FromFileGen>(fName, FromFileGen::FIRST);
     clientElems = make_shared<FromFileGen>(fName, FromFileGen::SECOND);
 }
@@ -239,7 +249,7 @@ BenchParams::~BenchParams() {}
 
 ostream& operator<<(ostream& os, const BenchParams& bp) {
     os << "Sync protocol (as in GenSync.h): " << (int) bp.syncProtocol << "\n"
-       << "Sync params:\n" << bp.syncParams << "\n"
+       << "Sync params:\n" << *bp.syncParams << "\n"
        << FromFileGen::DELIM_LINE << "\n";
 
     return os;

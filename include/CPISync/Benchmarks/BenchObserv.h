@@ -16,8 +16,10 @@
 
 using namespace std;
 
-class BenchObserv {
-public:
+/**
+ * Represents the performance observation of a sync run.
+ */
+struct BenchObserv {
     BenchObserv() = default;
     ~BenchObserv() = default;
 
@@ -28,11 +30,11 @@ public:
         exception (exception) {}
 
     friend ostream& operator<<(ostream& os, const BenchObserv& bo) {
-        os << "Parameters:\n" << bo.params
+        os << bo.params
            << "Success: " << bo.success << " [" << bo.exception << "]" << "\n"
            << "Stats:\n" << bo.stats << "\n";
 
-      return os;
+        return os;
     }
 
     BenchParams params;   // the parameters used to run this benchmark

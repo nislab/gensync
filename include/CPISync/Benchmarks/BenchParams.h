@@ -14,7 +14,12 @@
 #include <CPISync/Benchmarks/DataObjectGenerator.h>
 #include <CPISync/Benchmarks/FromFileGen.h>
 
-// See the corresponding sync classes for the parameters documentation
+/**
+ * Virtual class to represent the parameters of the syncs.
+ *
+ * For each sync there is a specialization of this class.
+ * See the corresponding sync classes for the parameters documentation.
+ */
 struct Params {
     virtual ostream& serialize(ostream& os) const = 0;
     virtual istream& unserialize(istream& is) = 0;
@@ -81,8 +86,10 @@ struct CuckooParams : Params {
     void apply(GenSync::Builder& gsb) const;
 };
 
-class BenchParams {
-public:
+/**
+ * Class the holds the parameters and the data sets for the syncs.
+ */
+struct BenchParams {
     BenchParams() = default;
     ~BenchParams();
 

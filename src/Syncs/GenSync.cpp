@@ -240,7 +240,8 @@ void GenSync::writeSyncLog(shared_ptr<Communicant> comm,
                            list<shared_ptr<DataObject>> selfMinusOther,
                            list<shared_ptr<DataObject>> otherMinusSelf,
                            bool success, string& exception) const {
-    mkdir(REPR, 666);           // creates a directory in cwd
+    mkdir(REPR, 0);
+    chmod(REPR, 0777);
 
     auto cTime = std::time(nullptr);
     stringstream tss, prss, obss;
@@ -249,8 +250,8 @@ void GenSync::writeSyncLog(shared_ptr<Communicant> comm,
     std::replace(ts.begin(), ts.end(), ' ', '_');
     string commName = comm->getName();
     std::replace(commName.begin(), commName.end(), ' ', '_');
-    prss << REPR << "/" << commName << ts << "_params.cpisync";
-    obss << REPR << "/" << commName << ts << "_observ.cpisync";
+    prss << REPR << "/" << commName << "_" << ts << "_params.cpisync";
+    obss << REPR << "/" << commName << "_" << ts << "_observ.cpisync";
 
     BenchParams params{**mySyncVec.begin()};
     ofstream paramsF(prss.str());
