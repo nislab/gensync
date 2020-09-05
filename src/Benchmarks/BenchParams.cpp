@@ -26,10 +26,14 @@ template<typename T>
 void getVal(istream& is, T& container) {
     string line;
     getline(is, line);
-    istringstream lineS(line);
-    vector<string> delimited ((istream_iterator<DelimitedString<':'>>(lineS)),
-                              istream_iterator<DelimitedString<':'>>());
-    istringstream(delimited.at(1)) >> container;
+
+    stringstream ss(line);
+    string segment;
+    vector<string> segments;
+    while (getline(ss, segment, ':'))
+        segments.push_back(segment);
+
+    istringstream(segments.at(1)) >> container;
 }
 
 // Extract SyncProtocol from the next line in the input stream
@@ -154,6 +158,12 @@ inline shared_ptr<Params> decideBenchParams(GenSync::SyncProtocol syncProtocol, 
 
 BenchParams::BenchParams(const string& fName) {
     ifstream is(fName);
+    if (!is.is_open()) {
+        stringstream ss;
+        ss << "File " << fName << " not found";
+        throw runtime_error(ss.str());
+    }
+
     syncProtocol = getProtocol(is);
     syncParams = decideBenchParams(syncProtocol, is);
     serverElems = make_shared<FromFileGen>(fName, FromFileGen::FIRST);
@@ -249,7 +259,7 @@ BenchParams::~BenchParams() {}
 
 ostream& operator<<(ostream& os, const BenchParams& bp) {
     os << "Sync protocol (as in GenSync.h): " << (int) bp.syncProtocol << "\n"
-       << "Sync params:\n" << *bp.syncParams << "\n"
+       << *bp.syncParams << "\n"
        << FromFileGen::DELIM_LINE << "\n";
 
     return os;
