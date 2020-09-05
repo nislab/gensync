@@ -18,7 +18,7 @@
 #include <CPISync/Syncs/IBLTSetOfSets.h>
 #include <CPISync/Syncs/CuckooSync.h>
 
-#if defined (REPR)
+#if defined (RECORD)
 #include <CPISync/Benchmarks/BenchParams.h>
 #include <CPISync/Benchmarks/BenchObserv.h>
 #include <sys/stat.h>
@@ -235,13 +235,13 @@ vector<shared_ptr<SyncMethod>>::iterator GenSync::getSyncAgt(int index) {
 
 // SYNCHRONIZATION METHODS
 
-#if defined (REPR)
+#if defined (RECORD)
 void GenSync::writeSyncLog(shared_ptr<Communicant> comm,
                            list<shared_ptr<DataObject>> selfMinusOther,
                            list<shared_ptr<DataObject>> otherMinusSelf,
                            bool success, string& exception) const {
-    mkdir(REPR, 0);
-    chmod(REPR, 0777);
+    mkdir(RECORD, 0);
+    chmod(RECORD, 0777);
 
     auto cTime = std::time(nullptr);
     stringstream tss, prss, obss;
@@ -250,8 +250,8 @@ void GenSync::writeSyncLog(shared_ptr<Communicant> comm,
     std::replace(ts.begin(), ts.end(), ' ', '_');
     string commName = comm->getName();
     std::replace(commName.begin(), commName.end(), ' ', '_');
-    prss << REPR << "/" << commName << "_" << ts << "_params.cpisync";
-    obss << REPR << "/" << commName << "_" << ts << "_observ.cpisync";
+    prss << RECORD << "/" << commName << "_" << ts << "_params.cpisync";
+    obss << RECORD << "/" << commName << "_" << ts << "_observ.cpisync";
 
     BenchParams params{**mySyncVec.begin()};
     ofstream paramsF(prss.str());

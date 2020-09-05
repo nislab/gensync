@@ -360,7 +360,7 @@ private:
     /** The file to which to output any additions to the data structure. */
     shared_ptr<ofstream> outFile;
 
-#if defined (REPR)
+#if defined (RECORD)
     /**
      * Writes the sync log file in the form UNIQUE_NAME.cpisync to the directory set in REPR.
      * Called in serverSyncBegin and clientSyncBegin

@@ -32,7 +32,7 @@ struct BenchObserv {
     friend ostream& operator<<(ostream& os, const BenchObserv& bo) {
         os << bo.params
            << "Success: " << bo.success << " [" << bo.exception << "]" << "\n"
-           << "Stats:\n" << bo.stats << "\n";
+           << bo.stats << "\n";
 
         return os;
     }

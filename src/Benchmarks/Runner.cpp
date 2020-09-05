@@ -6,20 +6,7 @@
  * Created on July, 2020.
  *
  * Usage:
- * $ ./Benchmarks [-in FILENAME] [-sim SIMILAR] [-smc SMC] [-cms CMS] [-multi MULTISET]
- * Example:
- * $ ./Benchmarks -in ~/params.cpisync -sim 12 -smc 100 -cms 122 -multi false
- *
- * If switches other than -in are specified, synthetic data is
- * generated.
- *
- * FILENAME := string
- * SIMILAR := int
- * SMC := int
- * CMS := int
- * MULTISET := "true" | "false"
- *
- * See the CMDParams definition bellow.
+ * $ ./Benchmarks PATH_TO_PARAMS_FILE
  */
 
 // TODO: Support dynamic set evolution while syncing
