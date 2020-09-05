@@ -27,8 +27,8 @@ If the server and the client `GenSync`s are run on the separate
 machines, each machine will contain the corresponding files.
 
 ## Using produced files
-The files that are produced in the directory set in `RECORD` are the
-only thing you need to reproduce the behavior of the synchronization
+The files that are produced in the directory set in `RECORD` are
+everything you need to reproduce the behavior of the synchronization
 algorithm on the data sets from the application that uses `CPISync` as
 a library.
 
