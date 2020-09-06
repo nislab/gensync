@@ -39,7 +39,7 @@ void CPISync::initData(long num) {
 }
 
 CPISync::CPISync(long m_bar, long bits, int epsilon, int redundant, bool hashes /* = false */) :
-maxDiff(m_bar), probEps(epsilon), hashQ(hashes) {
+    hashQ(hashes), bits (bits), maxDiff(m_bar), probEps(epsilon) {
 Logger::gLog(Logger::METHOD,"Entering CPISync::CPISync");
 
     // set default parameters

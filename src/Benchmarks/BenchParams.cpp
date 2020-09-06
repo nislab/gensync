@@ -33,7 +33,7 @@ void getVal(istream& is, T& container) {
     while (getline(ss, segment, ':'))
         segments.push_back(segment);
 
-    istringstream(segments.at(1)) >> container;
+    istringstream(segments.at(1)) >> std::boolalpha >> container;
 }
 
 // Extract SyncProtocol from the next line in the input stream
@@ -72,6 +72,7 @@ void CPISyncParams::apply(GenSync::Builder& gsb) const {
     gsb.setNumPartitions(partitions);
     gsb.setHashes(hashes);
 
+    // TODO: [BUG#1] setNumPartitions is called in two places...
     if (pFactor)                // pFactor = 0 is treated as not set
         gsb.setNumPartitions(pFactor);
 }
@@ -177,6 +178,7 @@ BenchParams::BenchParams(const string& fName) {
 BenchParams::BenchParams(SyncMethod& meth) : serverElems (nullptr), clientElems (nullptr) {
     auto cpi = dynamic_cast<CPISync*>(&meth);
     if (cpi) {
+        // TODO: [BUG#1] I don't set partitions here...
         syncProtocol = GenSync::SyncProtocol::CPISync;
         syncParams = make_shared<CPISyncParams>(cpi->getMaxDiff(), cpi->getBits(),
                                                 cpi->getProbEps(), cpi->getHashes(),
