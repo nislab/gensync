@@ -12,15 +12,8 @@
 // TODO: Support dynamic set evolution while syncing
 // TODO: Keep all the runs as separate from each other as possible
 
-#include <iostream>
-#include <sstream>
-#include <limits>
-#include <unistd.h>
 #include <CPISync/Syncs/GenSync.h>
 #include <CPISync/Benchmarks/BenchParams.h>
-#include <CPISync/Benchmarks/BenchObserv.h>
-#include <CPISync/Benchmarks/RandGen.h>
-#include <CPISync/Benchmarks/FromFileGen.h>
 
 using namespace std;
 using GenSyncPair = pair<shared_ptr<GenSync>, shared_ptr<GenSync>>;

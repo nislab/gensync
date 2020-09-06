@@ -19,7 +19,7 @@ directory provided in `RECORD`:
 - `..._params.cpisync` the same as seen on the client side,
 - `..._observ.cpisync` the synchronization algorithm parameters and
   the synchronization performance metrics as seen on the server side,
-- `..._observ.cpisync` the same as seen on the client,
+- `..._observ.cpisync` the same as seen on the client.
 
 Each file name is prepended with a unique string.
 
