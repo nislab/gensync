@@ -243,15 +243,12 @@ void GenSync::writeSyncLog(shared_ptr<Communicant> comm,
     mkdir(RECORD, 0);
     chmod(RECORD, 0777);
 
-    auto cTime = std::time(nullptr);
-    stringstream tss, prss, obss;
-    tss << std::put_time(std::gmtime(&cTime), "%c");
-    string ts = tss.str();
-    std::replace(ts.begin(), ts.end(), ' ', '_');
+    nanoseconds ms = duration_cast<nanoseconds>(system_clock::now().time_since_epoch());
+    stringstream prss, obss;
     string commName = comm->getName();
     std::replace(commName.begin(), commName.end(), ' ', '_');
-    prss << RECORD << "/" << commName << "_" << ts << "_params.cpisync";
-    obss << RECORD << "/" << commName << "_" << ts << "_observ.cpisync";
+    prss << RECORD << "/" << commName << "_" << ms.count() << "_params.cpisync";
+    obss << RECORD << "/" << commName << "_" << ms.count() << "_observ.cpisync";
 
     BenchParams params{**mySyncVec.begin()};
     ofstream paramsF(prss.str());
@@ -296,7 +293,7 @@ bool GenSync::serverSyncBegin(int sync_num) {
             return false;
         }
 
-#if defined (REPR)
+#if defined (RECORD)
         writeSyncLog(*itComm, selfMinusOther, otherMinusSelf, syncSuccess, exceptionText);
 #endif
 
@@ -310,7 +307,7 @@ bool GenSync::serverSyncBegin(int sync_num) {
 // request connection, send data and get the result
 bool GenSync::clientSyncBegin(int sync_num) {
     Logger::gLog(Logger::METHOD, "Entering GenSync::clientSyncBegin");
-    // find the right syncAgent	
+    // find the right syncAgent
     auto syncAgentIt = mySyncVec.begin();
     advance(syncAgentIt, sync_num);
 
@@ -336,7 +333,7 @@ bool GenSync::clientSyncBegin(int sync_num) {
             return false;
         }
 
-#if defined (REPR)
+#if defined (RECORD)
         writeSyncLog(*itComm, selfMinusOther, otherMinusSelf, syncSuccess, exceptionText);
 #endif
 
