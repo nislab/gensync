@@ -47,9 +47,8 @@ ostream& CPISyncParams::serialize(ostream& os) const {
     os << "m_bar: " << m_bar << "\n"
        << "bits: " << bits << "\n"
        << "epsilon: " << epsilon << "\n"
-       << "partitions: " << partitions << "\n"
-       << "hashes: " << std::boolalpha << hashes << "\n"
-       << "pFactor: " << pFactor;
+       << "partitions/pFactor(for InterCPISync): " << partitions << "\n"
+       << "hashes: " << std::boolalpha << hashes;
 
     return os;
 }
@@ -60,7 +59,6 @@ istream& CPISyncParams::unserialize(istream& is) {
     getVal<decltype(epsilon)>(is, epsilon);
     getVal<decltype(partitions)>(is, partitions);
     getVal<decltype(hashes)>(is, hashes);
-    getVal<decltype(pFactor)>(is, pFactor);
 
     return is;
 }
@@ -71,10 +69,6 @@ void CPISyncParams::apply(GenSync::Builder& gsb) const {
     gsb.setErr(epsilon);
     gsb.setNumPartitions(partitions);
     gsb.setHashes(hashes);
-
-    // TODO: [BUG#1] setNumPartitions is called in two places...
-    if (pFactor)                // pFactor = 0 is treated as not set
-        gsb.setNumPartitions(pFactor);
 }
 
 ostream& IBLTParams::serialize(ostream& os) const {
@@ -178,7 +172,6 @@ BenchParams::BenchParams(const string& fName) {
 BenchParams::BenchParams(SyncMethod& meth) : serverElems (nullptr), clientElems (nullptr) {
     auto cpi = dynamic_cast<CPISync*>(&meth);
     if (cpi) {
-        // TODO: [BUG#1] I don't set partitions here...
         syncProtocol = GenSync::SyncProtocol::CPISync;
         syncParams = make_shared<CPISyncParams>(cpi->getMaxDiff(), cpi->getBits(),
                                                 cpi->getProbEps(), cpi->getHashes(),
@@ -199,7 +192,7 @@ BenchParams::BenchParams(SyncMethod& meth) : serverElems (nullptr), clientElems 
         syncProtocol = GenSync::SyncProtocol::InteractiveCPISync;
         syncParams = make_shared<CPISyncParams>(interCpi->getMaxDiff(), interCpi->getBitNum(),
                                                 interCpi->getProbEps(), interCpi->getHashes(),
-                                                0, interCpi->getPFactor());
+                                                interCpi->getPFactor());
         return;
     }
 

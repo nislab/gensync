@@ -45,14 +45,15 @@ struct CPISyncParams : Params {
     size_t bits;
     float epsilon;
     bool hashes;
-    size_t partitions;
-    size_t pFactor;
+    size_t partitions; // InterCPISync has pFactor.
+                       // However, it is set via numParts in GenSync so we don't need to
+                       // keep separate track of it.
 
-    CPISyncParams() : m_bar (0), bits (0), epsilon (0), hashes (false), partitions (0), pFactor (0) {}
+    CPISyncParams() : m_bar (0), bits (0), epsilon (0), hashes (false), partitions (0) {}
     CPISyncParams(size_t m_bar, size_t bits, float epsilon, bool hashes,
-                  size_t partitions = 0, size_t pFactor = 0) :
+                  size_t partitions = 0) :
         m_bar (m_bar), bits (bits), epsilon (epsilon), hashes (hashes),
-        partitions (partitions), pFactor(pFactor) {}
+        partitions (partitions) {}
 
     ostream& serialize(ostream& os) const;
     istream& unserialize(istream& is);
@@ -87,7 +88,7 @@ struct CuckooParams : Params {
 };
 
 /**
- * Class the holds the parameters and the data sets for the syncs.
+ * Class that holds the parameters and the data sets for the syncs.
  */
 struct BenchParams {
     BenchParams() = default;
