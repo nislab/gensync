@@ -23,7 +23,7 @@ struct BenchObserv {
     BenchObserv() = default;
     ~BenchObserv() = default;
 
-    BenchObserv(BenchParams& params, string& stats, bool success, string& exception) :
+    BenchObserv(BenchParams& params, string& stats, bool success, const string& exception) :
         params (params),
         stats (stats),
         success (success),

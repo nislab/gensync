@@ -239,16 +239,16 @@ vector<shared_ptr<SyncMethod>>::iterator GenSync::getSyncAgt(int index) {
 void GenSync::writeSyncLog(shared_ptr<Communicant> comm,
                            list<shared_ptr<DataObject>> selfMinusOther,
                            list<shared_ptr<DataObject>> otherMinusSelf,
-                           bool success, string& exception) const {
+                           bool success, const string& exception) const {
     mkdir(RECORD, 0);
     chmod(RECORD, 0777);
 
-    nanoseconds ms = duration_cast<nanoseconds>(system_clock::now().time_since_epoch());
+    nanoseconds ns = duration_cast<nanoseconds>(system_clock::now().time_since_epoch());
     stringstream prss, obss;
     string commName = comm->getName();
     std::replace(commName.begin(), commName.end(), ' ', '_');
-    prss << RECORD << "/" << commName << "_" << ms.count() << "_params.cpisync";
-    obss << RECORD << "/" << commName << "_" << ms.count() << "_observ.cpisync";
+    prss << RECORD << "/" << commName << "_" << ns.count() << "_params.cpisync";
+    obss << RECORD << "/" << commName << "_" << ns.count() << "_observ.cpisync";
 
     BenchParams params{**mySyncVec.begin()};
     ofstream paramsF(prss.str());

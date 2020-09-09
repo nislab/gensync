@@ -368,7 +368,7 @@ private:
     void writeSyncLog(shared_ptr<Communicant> comm,
                       list<shared_ptr<DataObject>> selfMinusOther,
                       list<shared_ptr<DataObject>> otherMinusSelf,
-                      bool success, string& eception) const;
+                      bool success, const string& eception) const;
 #endif
 };
 
