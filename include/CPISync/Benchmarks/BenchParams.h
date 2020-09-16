@@ -91,6 +91,9 @@ struct CuckooParams : Params {
  * Class that holds the parameters and the data sets for the syncs.
  */
 struct BenchParams {
+    static const char KEYVAL_SEP;      // separates keys and values in parameter files
+    static const string FILEPATH_SEP;  // path separator for the referenced files in parameter files
+
     BenchParams() = default;
     ~BenchParams();
 

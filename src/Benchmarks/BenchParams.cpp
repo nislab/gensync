@@ -7,6 +7,7 @@
  */
 
 #include <cstdio>
+#include <regex>
 #include <CPISync/Benchmarks/BenchParams.h>
 #include <CPISync/Syncs/ProbCPISync.h>
 #include <CPISync/Syncs/InterCPISync.h>
@@ -18,10 +19,15 @@
 #include <CPISync/Syncs/IBLTSetOfSets.h>
 #include <CPISync/Syncs/CuckooSync.h>
 
+const char BenchParams::KEYVAL_SEP = ':';
+const string BenchParams::FILEPATH_SEP = "/"; // TODO: we currently don't compile for _WIN32!
+
 template<char delimiter>
 class DelimitedString : public string {};
 
-// Extracts data from the next line in input stream. The line is of the form "text: data"
+/**
+ * Extracts data from the next line in input stream. The line is of the form "text: data"
+ */
 template<typename T>
 void getVal(istream& is, T& container) {
     string line;
@@ -30,13 +36,15 @@ void getVal(istream& is, T& container) {
     stringstream ss(line);
     string segment;
     vector<string> segments;
-    while (getline(ss, segment, ':'))
+    while (getline(ss, segment, BenchParams::KEYVAL_SEP))
         segments.push_back(segment);
 
     istringstream(segments.at(1)) >> std::boolalpha >> container;
 }
 
-// Extract SyncProtocol from the next line in the input stream
+/**
+ * Extract SyncProtocol from the next line in the input stream
+ */
 inline GenSync::SyncProtocol getProtocol(istream& is) {
     size_t protoInt;
     getVal<decltype(protoInt)>(is, protoInt);
@@ -151,6 +159,47 @@ inline shared_ptr<Params> decideBenchParams(GenSync::SyncProtocol syncProtocol, 
     }
 }
 
+/**
+ * Figures out whether the file contains real data or a reference to a
+ * data file. If there is reference, it returns the path to the
+ * referenced file. Otherwise it returns an empty string.
+ *
+ * Referenced file path is considered relative to the file we are
+ * currently reading.
+ */
+inline string getReference(istream& is, const string& origFile) {
+    string line;
+    getline(is, line);
+    if (line.compare(FromFileGen::DELIM_LINE) != 0) {
+        string msg = "File is malformed.\n";
+        Logger::error_and_quit(msg);
+    }
+
+    getline(is, line);
+    auto pos = line.find(FromFileGen::REFERENCE);
+    if (pos != string::npos) {
+        stringstream ss(line);
+        string segment;
+        vector<string> segments;
+        while (getline(ss, segment, BenchParams::KEYVAL_SEP))
+            segments.push_back(segment);
+
+        string refFName = segments.at(1);
+
+        // trim leading and trailing spaces
+        refFName = std::regex_replace(refFName, std::regex("^ +| +$"), "");
+
+        // build the relative path to the referenced file
+        auto origFNameLen = origFile.substr(origFile.find_last_of(BenchParams::FILEPATH_SEP)).length();
+        string pref = origFile.substr(0, origFile.length() - origFNameLen);
+        stringstream prefs;
+        prefs << pref << BenchParams::FILEPATH_SEP << refFName;
+        return prefs.str();
+    }
+
+    return "";
+}
+
 BenchParams::BenchParams(const string& fName) {
     ifstream is(fName);
     if (!is.is_open()) {
@@ -161,8 +210,12 @@ BenchParams::BenchParams(const string& fName) {
 
     syncProtocol = getProtocol(is);
     syncParams = decideBenchParams(syncProtocol, is);
-    serverElems = make_shared<FromFileGen>(fName, FromFileGen::FIRST);
-    clientElems = make_shared<FromFileGen>(fName, FromFileGen::SECOND);
+
+    string refFile = getReference(is, fName);
+    string fToUse = refFile.empty() ? fName : refFile;
+
+    serverElems = make_shared<FromFileGen>(fToUse, FromFileGen::FIRST);
+    clientElems = make_shared<FromFileGen>(fToUse, FromFileGen::SECOND);
 }
 
 /**

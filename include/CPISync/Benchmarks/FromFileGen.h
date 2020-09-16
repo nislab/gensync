@@ -19,6 +19,7 @@
 class FromFileGen : public DataObjectGenerator {
 public:
     static const string DELIM_LINE; // parameter list delimiter in printouts
+    static const string REFERENCE;  // reference to other file that contains data sets
 
     explicit FromFileGen(const string& fName);
 

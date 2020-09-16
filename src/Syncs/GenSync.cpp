@@ -24,6 +24,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <iomanip>
+#include <dirent.h>
 #endif
 
 using namespace std::chrono;
@@ -240,24 +241,52 @@ void GenSync::writeSyncLog(shared_ptr<Communicant> comm,
                            list<shared_ptr<DataObject>> selfMinusOther,
                            list<shared_ptr<DataObject>> otherMinusSelf,
                            bool success, const string& exception) const {
+    string pSuffix = "_params.cpisync", oSuffix = "_observ.cpisync", pdSuffix = "_params_data.cpisync";
+
     mkdir(RECORD, 0);
     chmod(RECORD, 0777);
+
+    // figure out whether pdSuffix file already exists in the RECORD dir
+    string dataFile = "";
+    DIR *dir = opendir(RECORD);
+    struct dirent *dirEntry;
+    if (dir != NULL) {
+        while ((dirEntry = readdir(dir))) {
+            string entryName = dirEntry->d_name;
+            auto found = entryName.find(pdSuffix);
+            if (found != string::npos) {
+                dataFile = entryName;
+                break;
+            }
+        }
+
+        closedir(dir);
+    } else {
+        stringstream mess;
+        mess << "Directory " << RECORD << " does not exist in the current directory.";
+        Logger::error_and_quit(mess.str());
+    }
 
     nanoseconds ns = duration_cast<nanoseconds>(system_clock::now().time_since_epoch());
     stringstream prss, obss;
     string commName = comm->getName();
     std::replace(commName.begin(), commName.end(), ' ', '_');
-    prss << RECORD << "/" << commName << "_" << ns.count() << "_params.cpisync";
-    obss << RECORD << "/" << commName << "_" << ns.count() << "_observ.cpisync";
+    prss << RECORD << "/" << commName << "_" << ns.count() << (dataFile.empty() ? pdSuffix : pSuffix);
+    obss << RECORD << "/" << commName << "_" << ns.count() << oSuffix;
 
     BenchParams params{**mySyncVec.begin()};
     ofstream paramsF(prss.str());
     paramsF << params;
-    for (auto dob : selfMinusOther)
-        paramsF << base64_encode(dob->to_string().c_str(), dob->to_string().length()) << "\n";
-    paramsF << FromFileGen::DELIM_LINE << "\n";
-    for (auto dob : otherMinusSelf)
-        paramsF << base64_encode(dob->to_string().c_str(), dob->to_string().length()) << "\n";
+
+    if (dataFile.empty()) {
+        for (auto dob : selfMinusOther)
+            paramsF << base64_encode(dob->to_string().c_str(), dob->to_string().length()) << "\n";
+        paramsF << FromFileGen::DELIM_LINE << "\n";
+        for (auto dob : otherMinusSelf)
+            paramsF << base64_encode(dob->to_string().c_str(), dob->to_string().length()) << "\n";
+    } else {
+        paramsF << FromFileGen::REFERENCE << " " << dataFile << "\n";
+    }
     paramsF.close();
 
     ofstream observF(obss.str());
