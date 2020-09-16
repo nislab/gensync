@@ -219,7 +219,7 @@ BenchParams::BenchParams(const string& fName) {
 }
 
 /**
- * This function should be the only place where we dynamically
+ * This constructor should be the only place where we dynamically
  * determine what concrete SyncMethod is in use.
  */
 BenchParams::BenchParams(SyncMethod& meth) : serverElems (nullptr), clientElems (nullptr) {
