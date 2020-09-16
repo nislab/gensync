@@ -92,6 +92,9 @@ hashes: true
 Reference: CommSocket_1600209310687907210_params_data.cpisync
 ```
 
+The reference file is looked for in the same directory where the file
+that contains the reference resides.
+
 It is important to note that if you run both the `CPISync` client and
 the server on the same machine, it may happen that you get multiple
 `..._params_data.cpisync` and no `..._params.cpisync` files. This
