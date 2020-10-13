@@ -57,7 +57,7 @@ copy of `...params_data.cpisync` in your `RECORD` directory. If your
 the former contain a reference while the latter contain the full copy
 of the data you synchronize.
 
-For example, a `...params_data.cpisyn` looks like this:
+For example, a `...params_data.cpisync` looks like this:
 
 ``` shell
 Sync protocol (as in GenSync.h): 1

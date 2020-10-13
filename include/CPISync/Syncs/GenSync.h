@@ -362,7 +362,7 @@ private:
 
 #if defined (RECORD)
     /**
-     * Writes the sync log file in the form UNIQUE_NAME.cpisync to the directory set in REPR.
+     * Writes the sync log file in the form UNIQUE_NAME.cpisync to the directory set in RECORD.
      * Called in serverSyncBegin and clientSyncBegin
      */
     void writeSyncLog(shared_ptr<Communicant> comm,

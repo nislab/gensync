@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
         } catch (exception& e) {
             cout << "Sync Exception [client]: " << e.what() << "\n";
         }
-} else if (pid < 0) {
+    } else if (pid < 0) {
         throw runtime_error("Fork has failed");
     }
 }
