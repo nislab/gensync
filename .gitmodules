@@ -1,4 +1,3 @@
 [submodule "incubator-datasketches-cpp"]
 	path = incubator-datasketches-cpp
-	url = git@github.com:apache/incubator-datasketches-cpp.git
-	tag = 2.1.0-incubating
+	url = git@github.com:apache/incubator-datasketches-cpp.git	
