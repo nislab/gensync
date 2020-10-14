@@ -6,6 +6,8 @@
 
 SyncMethod::SyncMethod() {
     SyncID = SYNC_TYPE::GenericSync; // synchronization type
+
+    sketches = make_shared<Sketches>(Sketches{Sketches::Types::CARDINALITY}); // initiate sketches
 }
 
 SyncMethod::~SyncMethod() = default;

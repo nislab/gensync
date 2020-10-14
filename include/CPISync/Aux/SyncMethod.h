@@ -9,6 +9,10 @@
 #include <chrono>
 #include <CPISync/Communicants/Communicant.h>
 
+#if defined (RECORD)
+#include <CPISync/Aux/Sketches.h>
+#endif
+
 // namespaces
 using std::vector;
 using std::list;
@@ -70,14 +74,21 @@ public:
      * hash, so it is advisable not to change the datum dereference hereafter.
      * @return true iff the addition was successful
      */
-    virtual bool addElem(shared_ptr<DataObject> datum) { elements.push_back(datum); return true; };
+    virtual bool addElem(shared_ptr<DataObject> datum) {
+        elements.push_back(datum);
+#if defined (RECORD)
+        sketches->inc(datum);
+#endif
+
+        return true;
+    };
 
     /**
      * Delete an element from the data structure that will be performing the synchronization.
      * @param datum The element to delete.
      * @return true iff the removal was successful
      */
-    virtual bool delElem(shared_ptr<DataObject> datum) { 
+    virtual bool delElem(shared_ptr<DataObject> datum) {
         long int before = elements.size();
         elements.erase(std::remove(elements.begin(), elements.end(), datum), elements.end());
         return before > elements.size(); // true iff there were more elements before removal than after
@@ -248,6 +259,13 @@ public:
      */
     SyncStats mySyncStats;
 
+#if defined (RECORD)
+    /**
+     * @returns The sketches of the elements set associated with this SyncMethod.
+     */
+    shared_ptr<Sketches> getSketches() {return sketches;};
+#endif
+
 protected:
 
     /**
@@ -268,11 +286,14 @@ protected:
      * @throws SyncFailureException if the parameters don't match between the synchronizing parties.
      */
     virtual void RecvSyncParam(const shared_ptr<Communicant>& commSync, bool oneWay = false);
-    
+
     SYNC_TYPE SyncID; /** A number that uniquely identifies a given synchronization protocol. */
-    
+
 private:
     vector<shared_ptr<DataObject>> elements; /** Pointers to the elements stored in the data structure. */
+#if defined (RECORD)
+    shared_ptr<Sketches> sketches; /** Sketches of the set that is reconciled. */
+#endif
 };
 
 

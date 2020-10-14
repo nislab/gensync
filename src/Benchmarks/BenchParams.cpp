@@ -211,6 +211,15 @@ BenchParams::BenchParams(const string& fName) {
     syncProtocol = getProtocol(is);
     syncParams = decideBenchParams(syncProtocol, is);
 
+    // Expect Sketches here in file. When there, just skip them.
+    string line;
+    getline(is, line);
+    if (line.find(Sketches::PRINT_KEY) == string::npos) {
+        stringstream ss;
+        ss << "\"" << Sketches::PRINT_KEY << "\" expected here\n";
+        Logger::error_and_quit(ss.str());
+    }
+
     string refFile = getReference(is, fName);
     string fToUse = refFile.empty() ? fName : refFile;
 
@@ -222,7 +231,10 @@ BenchParams::BenchParams(const string& fName) {
  * This constructor should be the only place where we dynamically
  * determine what concrete SyncMethod is in use.
  */
-BenchParams::BenchParams(SyncMethod& meth) : serverElems (nullptr), clientElems (nullptr) {
+BenchParams::BenchParams(SyncMethod& meth) :
+    serverElems (nullptr),
+    clientElems (nullptr),
+    sketches (meth.getSketches()) {
     auto cpi = dynamic_cast<CPISync*>(&meth);
     if (cpi) {
         syncProtocol = GenSync::SyncProtocol::CPISync;
@@ -308,6 +320,7 @@ BenchParams::~BenchParams() {}
 ostream& operator<<(ostream& os, const BenchParams& bp) {
     os << "Sync protocol (as in GenSync.h): " << (int) bp.syncProtocol << "\n"
        << *bp.syncParams << "\n"
+       << **bp.sketches << "\n"
        << FromFileGen::DELIM_LINE << "\n";
 
     return os;

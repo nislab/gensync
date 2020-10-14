@@ -13,6 +13,7 @@
 #include <CPISync/Syncs/GenSync.h>
 #include <CPISync/Benchmarks/DataObjectGenerator.h>
 #include <CPISync/Benchmarks/FromFileGen.h>
+#include <CPISync/Aux/Sketches.h>
 
 /**
  * Virtual class to represent the parameters of the syncs.
@@ -124,6 +125,7 @@ struct BenchParams {
     shared_ptr<Params> syncParams;
     shared_ptr<DataObjectGenerator> serverElems;
     shared_ptr<DataObjectGenerator> clientElems;
+    Nullable<shared_ptr<Sketches>> sketches; /** Set sketches of the SyncMethod, otherwise nothing. */
 };
 
 #endif // BENCHPARAMS_H

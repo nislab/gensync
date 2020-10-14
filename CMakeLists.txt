@@ -41,6 +41,7 @@ set(SOURCE_FILES
         ${AUX_DIR}/Logger.cpp
         ${AUX_DIR}/UID.cpp
         ${AUX_DIR}/SyncMethod.cpp
+        ${AUX_DIR}/Sketches.cpp
 
         ${DATA_DIR}/DataObject.cpp
 
@@ -79,6 +80,7 @@ set(HEADERS
         ${AUX_DIR_INC}/Logger.h
         ${AUX_DIR_INC}/SyncMethod.h
         ${AUX_DIR_INC}/UID.h
+        ${AUX_DIR_INC}/Sketches.h
 
         ${DATA_DIR_INC}/DataFileC.h
         ${DATA_DIR_INC}/DataMemC.h
