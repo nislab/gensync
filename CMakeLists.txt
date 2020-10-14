@@ -2,11 +2,16 @@ cmake_minimum_required(VERSION 3.6)
 project(cpisync)
 set(CMAKE_CXX_STANDARD 11)
 
-# if compiled with RECORD (reproducible), GenSync server and the client produce .cpisync log files
+# if compiled with RECORD, GenSync server and client produce extensive log files
+# that can be used to reproduce exact sync behavior afterwards
 add_definitions(-DRECORD="cpisync")
 
 include(CTest)
 include(GNUInstallDirs)
+
+# include Apache Data Sketches as a header-only library
+include_directories(incubator-datasketches-cpp/common/include
+                    incubator-datasketches-cpp/hll/include)
 
 # some flags
 set(CMAKE_CXX_FLAGS "-DDEFAULT_LOGLEVEL=TEST")

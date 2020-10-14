@@ -10,6 +10,7 @@
 #define SKETCHES_H
 
 #include <CPISync/Data/DataObject.h>
+#include "hll.hpp"
 
 /**
    This class encapsulates various data sketches computed over the
@@ -21,10 +22,12 @@ public:
 
     struct Values {
         int cardinality = 0;
+        double uniqueElem = 0;
     };
 
     enum class Types {
-        CARDINALITY
+        CARDINALITY,
+        UNIQUE_ELEM
     };
 
     /**
@@ -49,7 +52,7 @@ public:
      * @returns The numerical values of all the sketches.
      * @throws sketches_exception if something goes wrong in the process
      */
-    Values get();
+    Values get () const;
 
     class sketches_exception : public std::exception {
         const char* what() const throw() {
@@ -59,7 +62,16 @@ public:
     };
 
     friend ostream& operator<<(ostream& os, const Sketches& sk) {
-        os << PRINT_KEY << ": {cardinality: " << *(sk.cardinality.value) << "}";
+        Values vals = sk.get();
+
+        os << PRINT_KEY << ": {";
+
+        if (sk.cardinality.initiated)
+            os << "cardinality: " << vals.cardinality;
+        if (sk.uniqueElem.initiated)
+            os << ", unique(HyperLogLog): " << vals.uniqueElem;
+
+        os << "}";
 
         return os;
     };
@@ -78,6 +90,11 @@ private:
      * The cardinality of the set.
      */
     Sketch<int> cardinality;
+
+    /**
+     * The HyperLogLog unique elements estimator.
+     */
+    Sketch<datasketches::hll_sketch_alloc<>> uniqueElem;
 };
 
 #endif  // Sketches
