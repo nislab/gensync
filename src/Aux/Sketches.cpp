@@ -9,6 +9,8 @@
 #include <CPISync/Aux/Sketches.h>
 
 const string Sketches::PRINT_KEY = "Sketches";
+const uint Sketches::HLL_LOG_K = 14;
+const uint Sketches::FI_LOG_MAX_SIZE = 7;
 
 Sketches::Sketches(std::initializer_list<Types> sketches) {
     for (auto st : sketches)
@@ -18,8 +20,12 @@ Sketches::Sketches(std::initializer_list<Types> sketches) {
             cardinality.initiated = true;
             break;
         case Types::UNIQUE_ELEM:
-            uniqueElem.value = std::unique_ptr<datasketches::hll_sketch_alloc<>>(new datasketches::hll_sketch_alloc<>(14));
+            uniqueElem.value = std::unique_ptr<datasketches::hll_sketch_alloc<>>(new datasketches::hll_sketch_alloc<>(HLL_LOG_K));
             uniqueElem.initiated = true;
+            break;
+        case Types::HEAVY_HITTERS:
+            heavyHitters.value = std::unique_ptr<datasketches::frequent_items_sketch<unsigned long>>(new datasketches::frequent_items_sketch<unsigned long>(FI_LOG_MAX_SIZE));
+            heavyHitters.initiated = true;
             break;
         }
 }
@@ -28,8 +34,11 @@ Sketches::Sketches() {
     cardinality.value = std::unique_ptr<int>(new int(0));
     cardinality.initiated = true;
 
-    uniqueElem.value = std::unique_ptr<datasketches::hll_sketch_alloc<>>(new datasketches::hll_sketch_alloc<>(14));
+    uniqueElem.value = std::unique_ptr<datasketches::hll_sketch_alloc<>>(new datasketches::hll_sketch_alloc<>(HLL_LOG_K));
     uniqueElem.initiated = true;
+
+    heavyHitters.value = std::unique_ptr<datasketches::frequent_items_sketch<unsigned long>>(new datasketches::frequent_items_sketch<unsigned long>(FI_LOG_MAX_SIZE));
+    heavyHitters.initiated = true;
 }
 
 void Sketches::inc(std::shared_ptr<DataObject> elem) {
@@ -37,6 +46,9 @@ void Sketches::inc(std::shared_ptr<DataObject> elem) {
         (*cardinality.value)++;
 
     if (uniqueElem.initiated)
+        uniqueElem.value->update(to_uint(elem->to_ZZ()));
+
+    if (heavyHitters.initiated)
         uniqueElem.value->update(to_uint(elem->to_ZZ()));
 }
 
@@ -48,6 +60,9 @@ Sketches::Values Sketches::get() const {
 
     if (uniqueElem.initiated)
         ret.uniqueElem = uniqueElem.value->get_estimate();
+
+    if (uniqueElem.initiated)
+        ret.heavyHitters = heavyHitters.value->get_frequent_items(datasketches::NO_FALSE_POSITIVES).size();
 
     return ret;
 }

@@ -10,7 +10,7 @@
  */
 
 // TODO: Support dynamic set evolution while syncing
-// TODO: Keep all the runs as separate from each other as possible
+// TODO: Generate sets with various distributions (if we need multisets, try Zipf)
 
 #include <CPISync/Syncs/GenSync.h>
 #include <CPISync/Benchmarks/BenchParams.h>

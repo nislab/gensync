@@ -8,7 +8,8 @@ SyncMethod::SyncMethod() {
     SyncID = SYNC_TYPE::GenericSync; // synchronization type
 
     sketches = make_shared<Sketches>(Sketches{Sketches::Types::CARDINALITY,
-                                              Sketches::Types::UNIQUE_ELEM}); // initiate sketches
+                                              Sketches::Types::UNIQUE_ELEM,
+                                              Sketches::Types::HEAVY_HITTERS}); // initiate sketches
 }
 
 SyncMethod::~SyncMethod() = default;

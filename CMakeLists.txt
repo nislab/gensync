@@ -11,7 +11,8 @@ include(GNUInstallDirs)
 
 # include Apache Data Sketches as a header-only library
 include_directories(incubator-datasketches-cpp/common/include
-                    incubator-datasketches-cpp/hll/include)
+                    incubator-datasketches-cpp/hll/include
+                    incubator-datasketches-cpp/fi/include)
 
 # some flags
 set(CMAKE_CXX_FLAGS "-DDEFAULT_LOGLEVEL=TEST")

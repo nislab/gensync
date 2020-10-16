@@ -11,6 +11,7 @@
 
 #include <CPISync/Data/DataObject.h>
 #include "hll.hpp"
+#include "frequent_items_sketch.hpp"
 
 /**
    This class encapsulates various data sketches computed over the
@@ -19,15 +20,19 @@
 class Sketches {
 public:
     static const string PRINT_KEY; // string to use as a key when print sketches
+    static const uint HLL_LOG_K;   // log base 2 of the number of buckets in HyperLogLog sketch
+    static const uint FI_LOG_MAX_SIZE;        // number of first heavy hitters considered in the heavy hitters sketch
 
     struct Values {
-        int cardinality = 0;
+        uint cardinality = 0;
         double uniqueElem = 0;
+        uint heavyHitters = 0;
     };
 
     enum class Types {
         CARDINALITY,
-        UNIQUE_ELEM
+        UNIQUE_ELEM,
+        HEAVY_HITTERS,
     };
 
     /**
@@ -70,6 +75,8 @@ public:
             os << "cardinality: " << vals.cardinality;
         if (sk.uniqueElem.initiated)
             os << ", unique(HyperLogLog): " << vals.uniqueElem;
+        if (sk.heavyHitters.initiated)
+            os << ", heavyHitters: " << vals.heavyHitters;
 
         os << "}";
 
@@ -95,6 +102,15 @@ private:
      * The HyperLogLog unique elements estimator.
      */
     Sketch<datasketches::hll_sketch_alloc<>> uniqueElem;
+
+    /**
+     * Statistics calculated over heavy hitters.
+     * Heavy hitters make sense only when we synchronize multisets.
+     * We count the number of heavy hitters with their occurrence count lower
+     * bound above the maximum error.
+     * (see https://datasketches.apache.org/docs/Frequency/FrequentItemsOverview.html)
+     */
+    Sketch<datasketches::frequent_items_sketch<unsigned long>> heavyHitters;
 };
 
 #endif  // Sketches
