@@ -9,7 +9,8 @@
  * $ ./Benchmarks PATH_TO_PARAMS_FILE IGNORE_DATA_SETS_FROM_FILE
  *
  * Anything can be passed as IGNORE_DATA_SETS_FROM_FILE.
- * If you want to use data sets from file, just don't pass anyting as a second command line argument.
+ * If you want to use data sets from file, just don't pass anyting as a second
+ * command line argument.
  */
 
 // TODO: Support dynamic set evolution while syncing
@@ -29,15 +30,15 @@ static std::mt19937 gen(rd());
 // maximum cardinality of a set.
 // The cardinality in the multiset sense depends on the repetitions of the
 // elements, which is also random.
-static const size_t MAX_CARD = 1 << 8;
+static const size_t MAX_CARD = 1 << 10;
 // one item can repeat only up to (CARD_MAX / REP_RATIO) + 1 times
-static const size_t REP_RATIO = 1 << 6;
+static const size_t REP_RATIO = 1 << 7;
 // maximum value of an element
-static const size_t MAX_DOBJ = 2 << 20;
+static const size_t MAX_DOBJ = 1 << 31;
 // default set cardinality
 static const size_t DEFAULT_CARD = 1;
 // default Zipfian distribution alpha parameter
-static const double ZF_ALPHA = 0.5;
+static const double ZF_ALPHA = 1.0;
 
 // distribution used in Zipfian distribution
 static uniform_real_distribution<double> dist(0.0, 1.0);
@@ -46,17 +47,19 @@ static uniform_int_distribution<int> card(128, MAX_CARD);
 // synthetic common elements count
 static uniform_int_distribution<int> comm(MAX_CARD * 0.03, MAX_CARD * 0.5);
 // DataObject value distribution
-static uniform_int_distribution<int> elem(0, MAX_DOBJ);
+static uniform_int_distribution<size_t> elem(0, MAX_DOBJ);
 
 /**
  * Builds GenSync objects for syncing.
  * @param par The benchmark parameters objects that holds the details
- * @param zipfElems If true, the elements are not taken from benchmark parameters but are generated randomly from a Zipfian distribution.
- * @return The pair of generated GenSync objects. The first is the server, the second is the client.
+ * @param zipfElems If true, the elements are not taken from benchmark
+ * parameters but are generated randomly from a Zipfian distribution.
+ * @return The pair of generated GenSync objects. The first is the server, the
+ * second is the client.
  */
 GenSyncPair buildGenSyncs(const BenchParams &par, bool zipfElems = false);
 /**
- * Generates zipf distributed random numbers from 0 to n.
+ * Generates zipf distributed random numbers from 1 to n.
  * @param n The highest number
  * @param alpha The alpha parameter of Zipfian distribution
  * @return A number sampled from the distribution
@@ -126,8 +129,8 @@ GenSyncPair buildGenSyncs(const BenchParams &par, bool zipfElems) {
     } while (cardB < common + 1);
 
     stringstream ss;
-    ss << "Benchmarks generated sets:  Client: "
-       << cardA << ", Server: " << cardB << ", Common: " << common;
+    ss << "Benchmarks generated sets:  Client: " << cardA
+       << ", Server: " << cardB << ", Common: " << common;
     Logger::gLog(Logger::TEST, ss.str());
 
     Logger::gLog(Logger::TEST, "Adding common elements...");
@@ -210,6 +213,6 @@ shared_ptr<DataObject> makeObj() {
 }
 
 void addAnElemWithReps(shared_ptr<GenSync> gs, shared_ptr<DataObject> obj) {
-  for (size_t rep = 0; rep < zipf(MAX_CARD / REP_RATIO) + 1; rep++)
+  for (size_t rep = 0; rep < zipf(MAX_CARD / REP_RATIO); rep++)
     gs->addElem(obj);
 }

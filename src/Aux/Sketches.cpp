@@ -10,7 +10,7 @@
 
 const string Sketches::PRINT_KEY = "Sketches";
 const uint Sketches::HLL_LOG_K = 14;
-const uint Sketches::FI_LOG_MAX_SIZE = 12;
+const uint Sketches::FI_LOG_MAX_SIZE = 10;
 
 Sketches::Sketches(std::initializer_list<Types> sketches) {
     for (auto st : sketches)
