@@ -47,6 +47,11 @@ compile_commands.json
 CTestTestfile.cmake
 build
 
+### Emacs ###
+.ccls-cache
+.dir-locals.el
+.projectile
+
 ### NetBeans ###
 nbproject/
 nbproject/private/

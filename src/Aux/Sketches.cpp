@@ -10,7 +10,7 @@
 
 const string Sketches::PRINT_KEY = "Sketches";
 const uint Sketches::HLL_LOG_K = 14;
-const uint Sketches::FI_LOG_MAX_SIZE = 7;
+const uint Sketches::FI_LOG_MAX_SIZE = 12;
 
 Sketches::Sketches(std::initializer_list<Types> sketches) {
     for (auto st : sketches)
@@ -49,7 +49,7 @@ void Sketches::inc(std::shared_ptr<DataObject> elem) {
         uniqueElem.value->update(to_uint(elem->to_ZZ()));
 
     if (heavyHitters.initiated)
-        uniqueElem.value->update(to_uint(elem->to_ZZ()));
+        heavyHitters.value->update(to_uint(elem->to_ZZ()));
 }
 
 Sketches::Values Sketches::get() const {
