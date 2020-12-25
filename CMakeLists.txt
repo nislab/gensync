@@ -15,7 +15,7 @@ include_directories(incubator-datasketches-cpp/common/include
                     incubator-datasketches-cpp/fi/include)
 
 # some flags
-set(CMAKE_CXX_FLAGS "-DDEFAULT_LOGLEVEL=TEST")
+set(CMAKE_CXX_FLAGS "-std=c++11 -DDEFAULT_LOGLEVEL=TEST")
 
 # Set project directory strucuture
 set(SRC_DIR src)
