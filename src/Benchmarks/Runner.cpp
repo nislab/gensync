@@ -4,13 +4,6 @@
  * @author Novak Boškov <boskov@bu.edu>
  *
  * Created on July, 2020.
- *
- * Usage:
- * $ ./Benchmarks PATH_TO_PARAMS_FILE IGNORE_DATA_SETS_FROM_FILE
- *
- * Anything can be passed as IGNORE_DATA_SETS_FROM_FILE.
- * If you want to use data sets from file, just don't pass anyting as a second
- * command line argument.
  */
 
 // TODO: Support dynamic set evolution while syncing
@@ -19,6 +12,17 @@
 #include <CPISync/Syncs/GenSync.h>
 #include <assert.h>
 #include <random>
+#include <unistd.h>
+
+static const string HELP = R"(Usage: ./Benchmarks -p PRAMS_FILE [OPTIONS]
+
+OPTIONS:
+    -h print this message and exit
+    -g whether to generate sets or to use those from PARAMS_FILE.
+       In SERVER and CLIENT modes data from PARAMS_FILE is always used.
+       The first set from PARAMS_FILE is loaded into the peer.
+    -m MODE mode of operation (can be "server", "client", or "both" by default)
+    -r PEER_HOSTNAME host name of the peer (requred when -m is not "both"))";
 
 using namespace std;
 using GenSyncPair = pair<shared_ptr<GenSync>, shared_ptr<GenSync>>;
@@ -50,14 +54,23 @@ static uniform_int_distribution<int> comm(MAX_CARD * 0.03, MAX_CARD * 0.5);
 static uniform_int_distribution<size_t> elem(0, MAX_DOBJ);
 
 /**
+ * What part of the reconciliation protocol does this program run.
+ */
+enum RunningMode { CLIENT, SERVER, BOTH };
+
+/**
  * Builds GenSync objects for syncing.
  * @param par The benchmark parameters objects that holds the details
  * @param zipfElems If true, the elements are not taken from benchmark
- * parameters but are generated randomly from a Zipfian distribution.
+ * parameters but are generated randomly from a Zipfian distribution
+ * @param mode the running mode
+ * @param peerHostname the hostname of the peer if mode is SERVER or CLIENT
  * @return The pair of generated GenSync objects. The first is the server, the
- * second is the client.
+ * second is the client. If mode is SEVER or CLIENT, then the second one is
+ * NULL.
  */
-GenSyncPair buildGenSyncs(const BenchParams &par, bool zipfElems = false);
+GenSyncPair buildGenSyncs(const BenchParams &par, RunningMode mode,
+                          bool zipfElems = false, string peerHostname = "");
 /**
  * Generates zipf distributed random numbers from 1 to n.
  * @param n The highest number
@@ -79,43 +92,128 @@ inline void addAnElemWithReps(shared_ptr<GenSync> gs,
                               shared_ptr<DataObject> obj);
 
 int main(int argc, char *argv[]) {
-    BenchParams bPar = BenchParams{argv[1]};
-    GenSyncPair genSyncs = buildGenSyncs(bPar, argc >= 3);
+    /*********************** Parse command line options ***********************/
+    int opt;
+    string paramFile = "";
+    string peerHostname = "";
+    RunningMode mode = BOTH;
+    bool generateSets = false;
+    while ((opt = getopt(argc, argv, "p:m:r:gh")) != -1) {
+        switch (opt) {
+        case 'p':
+            paramFile = optarg;
+            break;
+        case 'r':
+            peerHostname = optarg;
+            break;
+        case 'm': {
+            char *value = optarg;
+            if (strcmp(value, "server") == 0)
+                mode = SERVER;
+            else if (strcmp(value, "client") == 0)
+                mode = CLIENT;
+            else if (strcmp(value, "both") == 0)
+                mode = BOTH;
+            else {
+                cerr << "Invalid option for running mode.\n";
+                exit(1);
+            }
+            break;
+        }
+        case 'g':
+            generateSets = true;
+            break;
+        case 'h':
+            cout << HELP;
+            exit(0);
+            break;
+        default:
+            cerr << HELP;
+            exit(1);
+        }
+    }
+
+    // Options that make no sense.
+    if (paramFile.empty()) {
+        cerr << "You need to pass the parameters file.\n" << HELP;
+        exit(1);
+    }
+    if (peerHostname.empty() && mode != BOTH) {
+        cerr << "When mode is not both, you need to pass the hostname of the "
+                "peer.\n"
+             << HELP;
+        exit(1);
+    }
+    if (mode != BOTH && generateSets) {
+        cerr << "Sets can be generated only in both mode.\n" << HELP;
+        exit(1);
+    }
+
+    /**************************** Create the peers ****************************/
+
+    BenchParams bPar = BenchParams{paramFile};
+    GenSyncPair genSyncs = buildGenSyncs(bPar, mode, generateSets);
 
     Logger::gLog(Logger::TEST, "Sets are ready, reconciliation starts...");
 
-    pid_t pid = fork();
-    if (pid == 0) { // child process
+    if (mode == SERVER) {
+        // run only server
         try {
             genSyncs.first->serverSyncBegin(0);
         } catch (exception &e) {
-            cout << "Sync Exception [server]: " << e.what() << "\n";
+            cout << "Sync exception: " << e.what() << "\n";
         }
-    } else if (pid > 0) { // parent process
+    } else if (mode == CLIENT) {
+        // run only client
         try {
-            genSyncs.second->clientSyncBegin(0);
+            genSyncs.first->clientSyncBegin(0);
         } catch (exception &e) {
-            cout << "Sync Exception [client]: " << e.what() << "\n";
+            cout << "Sync exception: " << e.what() << "\n";
         }
-    } else if (pid < 0) {
-        throw runtime_error("Fork has failed");
+    } else {
+        // run both
+        pid_t pid = fork();
+        if (pid == 0) { // child process
+            try {
+                genSyncs.first->serverSyncBegin(0);
+            } catch (exception &e) {
+                cout << "Sync Exception [server]: " << e.what() << "\n";
+            }
+        } else if (pid > 0) { // parent process
+            try {
+                genSyncs.second->clientSyncBegin(0);
+            } catch (exception &e) {
+                cout << "Sync Exception [client]: " << e.what() << "\n";
+            }
+        } else if (pid < 0) {
+            throw runtime_error("Fork has failed");
+        }
     }
 }
 
-GenSyncPair buildGenSyncs(const BenchParams &par, bool zipfElems) {
-    GenSync::Builder serverBuilder = GenSync::Builder()
-                                         .setComm(GenSync::SyncComm::socket)
-                                         .setProtocol(par.syncProtocol);
-    GenSync::Builder clientBuilder = GenSync::Builder()
-                                         .setComm(GenSync::SyncComm::socket)
-                                         .setProtocol(par.syncProtocol);
+GenSyncPair buildGenSyncs(const BenchParams &par, RunningMode mode,
+                          bool zipfElems, string peerHostname) {
+    GenSync::Builder builderA = GenSync::Builder()
+                                    .setComm(GenSync::SyncComm::socket)
+                                    .setProtocol(par.syncProtocol);
 
-    par.syncParams->apply(serverBuilder);
-    par.syncParams->apply(clientBuilder);
-    auto server = make_shared<GenSync>(serverBuilder.build());
-    auto client = make_shared<GenSync>(clientBuilder.build());
+    GenSync::Builder builderB = GenSync::Builder()
+                                    .setComm(GenSync::SyncComm::socket)
+                                    .setProtocol(par.syncProtocol);
 
-    if (zipfElems) {
+    if (mode != BOTH)
+        builderA.setHost(peerHostname);
+
+    par.syncParams->apply(builderA);
+    if (mode == BOTH)
+        par.syncParams->apply(builderB);
+
+    shared_ptr<GenSync> genA = make_shared<GenSync>(builderA.build());
+    shared_ptr<GenSync> genB = NULL;
+    if (mode == BOTH)
+        genB = make_shared<GenSync>(builderB.build());
+
+    if (zipfElems && mode == BOTH) {
         size_t cardA = DEFAULT_CARD;
         size_t cardB = DEFAULT_CARD;
         size_t common = comm(gen);
@@ -129,34 +227,35 @@ GenSyncPair buildGenSyncs(const BenchParams &par, bool zipfElems) {
         } while (cardB < common + 1);
 
         stringstream ss;
-        ss << "Benchmarks generated sets:  Client: " << cardA
-           << ", Server: " << cardB << ", Common: " << common;
+        ss << "Benchmarks generated sets:  Peer A: " << cardA
+           << ", Peer B: " << cardB << ", Common: " << common;
         Logger::gLog(Logger::TEST, ss.str());
 
         Logger::gLog(Logger::TEST, "Adding common elements...");
         for (size_t ii = 0; ii < common; ii++) {
             auto obj = makeObj();
-            addAnElemWithReps(server, obj);
-            addAnElemWithReps(client, obj);
+            addAnElemWithReps(genA, obj);
+            addAnElemWithReps(genB, obj);
         }
 
-        Logger::gLog(Logger::TEST, "Adding server local elements...");
+        Logger::gLog(Logger::TEST, "Adding peer A local elements...");
         for (size_t ii = 0; ii < (cardA - common); ii++)
-            addAnElemWithReps(server, makeObj());
+            addAnElemWithReps(genA, makeObj());
 
-        Logger::gLog(Logger::TEST, "Adding client local elements...");
+        Logger::gLog(Logger::TEST, "Adding peer B local elements...");
         for (size_t ii = 0; ii < (cardB - common); ii++)
-            addAnElemWithReps(client, makeObj());
+            addAnElemWithReps(genB, makeObj());
 
     } else {
-        for (auto elem : *par.serverElems)
-            server->addElem(make_shared<DataObject>(elem));
+        for (auto elem : *par.AElems)
+            genA->addElem(make_shared<DataObject>(elem));
 
-        for (auto elem : *par.clientElems)
-            client->addElem(make_shared<DataObject>(elem));
+        if (mode == BOTH)
+            for (auto elem : *par.BElems)
+                genB->addElem(make_shared<DataObject>(elem));
     }
 
-    return {server, client};
+    return {genA, genB};
 }
 
 /**

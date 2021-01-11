@@ -123,8 +123,8 @@ struct BenchParams {
 
     GenSync::SyncProtocol syncProtocol;
     shared_ptr<Params> syncParams;
-    shared_ptr<DataObjectGenerator> serverElems;
-    shared_ptr<DataObjectGenerator> clientElems;
+    shared_ptr<DataObjectGenerator> AElems;  /** Peer A's elements */
+    shared_ptr<DataObjectGenerator> BElems;  /** Peer B's elements */
     Nullable<shared_ptr<Sketches>> sketches; /** Set sketches of the SyncMethod, otherwise nothing. */
 };
 

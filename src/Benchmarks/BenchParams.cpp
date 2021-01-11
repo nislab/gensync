@@ -223,8 +223,8 @@ BenchParams::BenchParams(const string& fName) {
     string refFile = getReference(is, fName);
     string fToUse = refFile.empty() ? fName : refFile;
 
-    serverElems = make_shared<FromFileGen>(fToUse, FromFileGen::FIRST);
-    clientElems = make_shared<FromFileGen>(fToUse, FromFileGen::SECOND);
+    AElems = make_shared<FromFileGen>(fToUse, FromFileGen::FIRST);
+    BElems = make_shared<FromFileGen>(fToUse, FromFileGen::SECOND);
 }
 
 /**
@@ -232,8 +232,8 @@ BenchParams::BenchParams(const string& fName) {
  * determine what concrete SyncMethod is in use.
  */
 BenchParams::BenchParams(SyncMethod& meth) :
-    serverElems (nullptr),
-    clientElems (nullptr),
+    AElems (nullptr),
+    BElems (nullptr),
     sketches (meth.getSketches()) {
     auto cpi = dynamic_cast<CPISync*>(&meth);
     if (cpi) {
