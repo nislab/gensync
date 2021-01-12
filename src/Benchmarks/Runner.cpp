@@ -22,7 +22,7 @@ OPTIONS:
        In SERVER and CLIENT modes data from PARAMS_FILE is always used.
        The first set from PARAMS_FILE is loaded into the peer.
     -m MODE mode of operation (can be "server", "client", or "both" by default)
-    -r PEER_HOSTNAME host name of the peer (requred when -m is not "both"))";
+    -r PEER_HOSTNAME host name of the peer (requred when -m is client))";
 
 using namespace std;
 using GenSyncPair = pair<shared_ptr<GenSync>, shared_ptr<GenSync>>;
@@ -138,9 +138,9 @@ int main(int argc, char *argv[]) {
         cerr << "You need to pass the parameters file.\n" << HELP;
         exit(1);
     }
-    if (peerHostname.empty() && mode != BOTH) {
-        cerr << "When mode is not both, you need to pass the hostname of the "
-                "peer.\n"
+    if (peerHostname.empty() && mode == CLIENT) {
+        cerr << "When mode is client, you need to pass the hostname of the "
+                "server.\n"
              << HELP;
         exit(1);
     }
@@ -152,7 +152,7 @@ int main(int argc, char *argv[]) {
     /**************************** Create the peers ****************************/
 
     BenchParams bPar = BenchParams{paramFile};
-    GenSyncPair genSyncs = buildGenSyncs(bPar, mode, generateSets);
+    GenSyncPair genSyncs = buildGenSyncs(bPar, mode, generateSets, peerHostname);
 
     Logger::gLog(Logger::TEST, "Sets are ready, reconciliation starts...");
 
@@ -201,7 +201,7 @@ GenSyncPair buildGenSyncs(const BenchParams &par, RunningMode mode,
                                     .setComm(GenSync::SyncComm::socket)
                                     .setProtocol(par.syncProtocol);
 
-    if (mode != BOTH)
+    if (mode == CLIENT)
         builderA.setHost(peerHostname);
 
     par.syncParams->apply(builderA);
