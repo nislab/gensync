@@ -279,9 +279,23 @@ void GenSync::writeSyncLog(shared_ptr<Communicant> comm,
     paramsF << params;
 
     if (dataFile.empty()) {
-        for (auto dob : selfMinusOther)
+        for (auto dob : myData)
             paramsF << base64_encode(dob->to_string().c_str(), dob->to_string().length()) << "\n";
+
         paramsF << FromFileGen::DELIM_LINE << "\n";
+
+        // The other set is equal to ours - (ours - theirs)
+        for (auto my: myData) {
+          bool inSelfMinuOther = false;
+          for (auto smo: selfMinusOther)
+              if (my->to_ZZ() == smo->to_ZZ()) {
+                  inSelfMinuOther = true;
+                  break;
+              }
+          if (! inSelfMinuOther)
+              paramsF << base64_encode(my->to_string().c_str(), my->to_string().length()) << "\n";
+        }
+
         for (auto dob : otherMinusSelf)
             paramsF << base64_encode(dob->to_string().c_str(), dob->to_string().length()) << "\n";
     } else {
