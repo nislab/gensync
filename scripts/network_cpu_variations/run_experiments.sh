@@ -35,77 +35,91 @@ benchmarks_path=~/Desktop/CODE/cpisync/build/Benchmarks
 ################################ PARAMETERS END ################################
 
 help() {
-    echo -e "USAGE: ./run_experiments.sh [-q] [-r REMOTE_PATH]\n"
+    echo -e "USAGE: ./run_experiments.sh [-q] [-s] [-r REMOTE_PATH]\n"
     echo -e "If remote machine is used, it needs Mininet and all the CPISync dependencies.\n"
     echo "OPTIONS:"
     echo "    -r REMOTE_PATH the path on remote to copy all the needed parts."
+    echo "    -s used with -r when we only want to prepare an experiment on remote but not to run it."
     echo "    -q when this script is run on remote set this."
     echo -e "\nEXAMPLES:"
     echo "    ./run_experiments.sh # runs locally"
     echo "    ./run_experiments.sh -r remote_name:/remote/path"
 }
 
-while getopts "r:qh" option; do
-    case $option in
-        r) remote_path=$OPTARG
+push_and_run() {
+    if ! [[ $benchmarks_path == *"build"* ]]; then
+        echo "benchmark_path not in cpisync/build, cannot infer cpisync path from it."
+        exit 1
+    fi
 
-           if ! [[ $benchmarks_path == *"build"* ]]; then
-               echo "benchmark_path not in cpisync/build, cannot infer cpisync path from it."
-               exit 1
-           fi
+    cpisync_dir="$(cd $(dirname $benchmarks_path); cd ..; pwd)"
 
-           cpisync_dir="$(cd $(dirname $benchmarks_path); cd ..; pwd)"
+    address_and_path=(${remote_path//:/ })
+    address=${address_and_path[0]}
+    path=${address_and_path[1]}
 
-           address_and_path=(${remote_path//:/ })
-           address=${address_and_path[0]}
-           path=${address_and_path[1]}
+    ssh $address mkdir -p $path
 
-           ssh $address mkdir -p $path
+    # Put CPISync source code on remote
+    rsync -a --info=progress2   \
+          --exclude build       \
+          --exclude scripts     \
+          --exclude '.*'        \
+          --exclude *.deb       \
+          --exclude *.rpm       \
+          $cpisync_dir $remote_path
 
-           # Put CPISync source code on remote
-           rsync -a --info=progress2   \
-                 --exclude build       \
-                 --exclude scripts     \
-                 --exclude '.*'        \
-                 --exclude *.deb       \
-                 --exclude *.rpm       \
-                 $cpisync_dir $remote_path
+    rsync -a --info=progress2 \
+          $mininet_path $remote_path/$(basename $mininet_path)
+    rsync -a --info=progress2 \
+          count_common.py $remote_path/count_common.py
+    rsync -a --info=progress2 \
+          $server_params_file $remote_path/$(basename $server_params_file)
+    rsync -a --info=progress2 \
+          $client_params_file $remote_path/$(basename $client_params_file)
+    rsync -a --info=progress2 \
+          $(basename $0) $remote_path/$(basename $0)
 
-           # Build CPISync on remote
-           ssh $address "cd $path/cpisync
+    # Build CPISync on remote
+    ssh $address "cd $path/cpisync
                          mkdir build && cd build
                          cmake -GNinja . ../
                          ninja"
 
-           rsync -a --info=progress2 \
-                 $mininet_path $remote_path/$(basename $mininet_path)
-           rsync -a --info=progress2 \
-                 count_common.py $remote_path/count_common.py
-           rsync -a --info=progress2 \
-                 $server_params_file $remote_path/$(basename $server_params_file)
-           rsync -a --info=progress2 \
-                 $client_params_file $remote_path/$(basename $client_params_file)
-           rsync -a --info=progress2 \
-                 $(basename $0) $remote_path/$(basename $0)
-
-           ssh -t $address "cd $path
+    if ! [[ $prepare_only ]]; then
+        ssh -t $address "cd $path
                             timestamp=\$(date +%s)
                             nohup ./$(basename $0) -q > nohup_\$timestamp.out &
                             echo \"~~~~~~~~> nohup.out:\"
                             tail -f -n 1 nohup_\$timestamp.out"
-           exit
+    fi
+}
+
+when_on_remote() {
+    server_params_file=$(basename $server_params_file)
+    client_params_file=$(basename $client_params_file)
+    mininet_path=$(basename $mininet_path)
+    benchmarks_path=./cpisync/build/$(basename $benchmarks_path)
+}
+
+while getopts "qsr:h" option; do
+    case $option in
+        s) prepare_only=yes
+           ;;
+        r) remote_path=$OPTARG
            ;;
         # When run on remote, all the needed parts are in the same directory
-        q) server_params_file=$(basename $server_params_file)
-           client_params_file=$(basename $client_params_file)
-           mininet_path=$(basename $mininet_path)
-           pwd
-           benchmarks_path=./cpisync/build/$(basename $benchmarks_path)
+        q) when_on_remote
            ;;
         h|*) help
              exit
     esac
 done
+
+if [ $remote_path ]; then
+    push_and_run
+    exit
+fi
 
 if ! [[ -f $mininet_path ]]; then
     echo "Mininet path does not exist: $mininet_path"
