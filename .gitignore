@@ -199,3 +199,5 @@ fabric.properties
 *.csv
 /scripts/.mypy_cache/
 *.mnlog
+/scripts/network_cpu_variations/DATA/
+/scripts/network_cpu_variations/.mypy_cache/

@@ -18,32 +18,37 @@ set -e
 repeat=10
 
 # CPISync related parameters files
-server_params_file=server_params_data.cpisync
-client_params_file=client_params_data.cpisync
+server_params_file=server_params_data_IBLTSync_optimal.cpisync
+client_params_file=client_params_data_IBLTSync_optimal.cpisync
 
 # network parameters
 latency=20
-bandwidth=50
-packet_loss=2
-cpu_server=30
-cpu_client=30
+bandwidth=10
+packet_loss=1
+cpu_server=10
+cpu_client=10
 
 # where to obtain needed executables
 mininet_path=~/Desktop/playground/mininet_exec/mininet_exec.py
-python_path=~/.virtualenvs/statistics/bin/python
+python_path=/home/novak/.virtualenvs/statistics/bin/python
 benchmarks_path=~/Desktop/CODE/cpisync/build/Benchmarks
 ################################ PARAMETERS END ################################
 
 help() {
-    echo -e "USAGE: ./run_experiments.sh [-q] [-s] [-r REMOTE_PATH]\n"
+    echo -e "USAGE: ./run_experiments.sh [-q] [-s] [-r REMOTE_PATH] [-p PULL_REMOTE]\n"
     echo -e "If remote machine is used, it needs Mininet and all the CPISync dependencies.\n"
     echo "OPTIONS:"
     echo "    -r REMOTE_PATH the path on remote to copy all the needed parts."
+    echo "    -p PULL_REMOTE pull from here to my DATA/. Used to gather data from experimetns."
     echo "    -s used with -r when we only want to prepare an experiment on remote but not to run it."
-    echo "    -q when this script is run on remote set this."
+    echo "    -q when this script is run on a remote set this."
     echo -e "\nEXAMPLES:"
-    echo "    ./run_experiments.sh # runs locally"
+    echo "    # runs locally"
+    echo "    ./run_experiments.sh"
+    echo "    # runs on remote"
     echo "    ./run_experiments.sh -r remote_name:/remote/path"
+    echo "    # pulls the experimental data from the remote. Creates DATA/CPISync/1/.cpisync."
+    echo "    ./run_experiments.sh -p remote_name:/home/novak/EXPERIMENTS/./CPISync/1/.cpisync"
 }
 
 push_and_run() {
@@ -102,11 +107,18 @@ when_on_remote() {
     benchmarks_path=./cpisync/build/$(basename $benchmarks_path)
 }
 
-while getopts "qsr:h" option; do
+pull_from_remote() {
+    rsync --recursive --relative --info=progress2 $1 DATA/
+}
+
+while getopts "hqsr:p:" option; do
     case $option in
         s) prepare_only=yes
            ;;
         r) remote_path=$OPTARG
+           ;;
+        p) pull_from_remote $OPTARG
+           exit
            ;;
         # When run on remote, all the needed parts are in the same directory
         q) when_on_remote
