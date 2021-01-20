@@ -24,6 +24,7 @@ set(DATA_DIR ${SRC_DIR}/Data)
 set(COMM_DIR ${SRC_DIR}/Communicants)
 set(SYNC_DIR ${SRC_DIR}/Syncs)
 set(BENCH_DIR ${SRC_DIR}/Benchmarks)
+set(TOOLS_DIR ${SRC_DIR}/Tools)
 
 set(INCLUDE include/CPISync)
 set(AUX_DIR_INC ${INCLUDE}/Aux)
@@ -74,6 +75,8 @@ set(SOURCE_FILES
         ${BENCH_DIR}/Runner.cpp
         ${BENCH_DIR}/BenchParams.cpp
         ${BENCH_DIR}/FromFileGen.cpp
+
+        ${TOOLS_DIR}/makeParamsFile.cpp
 
         ${SRC_DIR}/main.cpp)
 
@@ -153,6 +156,10 @@ target_link_libraries(TryMe cpisync ntl cppunit pthread gmp)
 # Benchmarks
 add_executable(Benchmarks ${BENCH_DIR}/Runner.cpp)
 target_link_libraries(Benchmarks cpisync ntl cppunit pthread gmp)
+
+# Tools
+add_executable(makeParamsFile ${TOOLS_DIR}/makeParamsFile.cpp)
+target_link_libraries(makeParamsFile cpisync ntl pthread gmp)
 
 # Define a macro for adding executables testing multiple files
 # @param dir The relative path to the folder containing test files to add
