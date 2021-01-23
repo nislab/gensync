@@ -36,4 +36,8 @@ if __name__ == '__main__':
                          .format(sep_count()))
         exit(1)
 
-    sys.stdout.write('{}'.format(len(set_A.intersection(set_B))))
+    sys.stdout.write('|common|:{} |s-c|:{} |c-s|:{}\n|(s)erver|:{} |(c)lient|:{}'
+                     .format(len(set_A.intersection(set_B)),
+                             len(set_A.difference(set_B)),
+                             len(set_B.difference(set_A)),
+                             len(set_A), len(set_B)))

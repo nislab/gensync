@@ -15,18 +15,30 @@ set -e
 
 ############################### PARAMETERS BEGIN ###############################
 # how many times to repeat the same experiment
-repeat=10
+repeat=1
 
-# CPISync related parameters files
-server_params_file=server_params_data_IBLTSync_optimal.cpisync
-client_params_file=client_params_data_IBLTSync_optimal.cpisync
+# Define either server and client files...
+# server_params_file=server_params_data_IBLTSync_optimal.cpisync
+# client_params_file=client_params_data_IBLTSync_optimal.cpisync
+
+# ... or the directory where to find the data sets, and a .cpisync header
+params_dir=/home/novak/Desktop/CODE/btc-analysis/cpisync_ready
+params_header="
+Sync protocol (as in GenSync.h): 1
+m_bar: 2048
+bits: 64
+epsilon: 3
+partitions/pFactor(for InterCPISync): 0
+hashes: false
+Sketches:
+--------------------------------------------------------------------------------"
 
 # network parameters
 latency=20
-bandwidth=10
+bandwidth=50
 packet_loss=1
-cpu_server=10
-cpu_client=10
+cpu_server=30
+cpu_client=30
 
 # where to obtain needed executables
 mininet_path=~/Desktop/playground/mininet_exec/mininet_exec.py
@@ -36,7 +48,8 @@ benchmarks_path=~/Desktop/CODE/cpisync/build/Benchmarks
 
 help() {
     echo -e "USAGE: ./run_experiments.sh [-q] [-s] [-r REMOTE_PATH] [-p PULL_REMOTE]\n"
-    echo -e "If remote machine is used, it needs Mininet and all the CPISync dependencies.\n"
+    echo -e "If remote machine is used, it needs Mininet and all the CPISync dependencies."
+    echo -e "CPISync source code will be compiled on the remote machine.\n"
     echo "OPTIONS:"
     echo "    -r REMOTE_PATH the path on remote to copy all the needed parts."
     echo "    -p PULL_REMOTE pull from here to my DATA/. Used to gather data from experimetns."
@@ -78,10 +91,15 @@ push_and_run() {
           $mininet_path $remote_path/$(basename $mininet_path)
     rsync -a --info=progress2 \
           count_common.py $remote_path/count_common.py
-    rsync -a --info=progress2 \
-          $server_params_file $remote_path/$(basename $server_params_file)
-    rsync -a --info=progress2 \
-          $client_params_file $remote_path/$(basename $client_params_file)
+    if [[ $server_params_file && $client_params_file ]]; then
+        rsync -a --info=progress2 \
+              $server_params_file $remote_path/$(basename $server_params_file)
+        rsync -a --info=progress2 \
+              $client_params_file $remote_path/$(basename $client_params_file)
+    else                        # We get data sets from a dir
+        rsync -a --info=progress2 \
+              $params_dir $remote_path
+    fi
     rsync -a --info=progress2 \
           $(basename $0) $remote_path/$(basename $0)
 
@@ -101,8 +119,12 @@ push_and_run() {
 }
 
 when_on_remote() {
-    server_params_file=$(basename $server_params_file)
-    client_params_file=$(basename $client_params_file)
+    if [[ $server_params_file && $client_params_file ]]; then
+        server_params_file=$(basename $server_params_file)
+        client_params_file=$(basename $client_params_file)
+    else
+        params_dir=$(basename $params_dir)
+    fi
     mininet_path=$(basename $mininet_path)
     benchmarks_path=./cpisync/build/$(basename $benchmarks_path)
 }
@@ -122,6 +144,7 @@ while getopts "hqsr:p:" option; do
            ;;
         # When run on remote, all the needed parts are in the same directory
         q) when_on_remote
+           we_are_on_remote=yes
            ;;
         h|*) help
              exit
@@ -145,13 +168,27 @@ if ! [[ -f $benchmarks_path ]]; then
     echo -e "Benchmark executable does not exist: $benchmarks_path"
     exit 1
 fi
-if ! [[ -f $server_params_file ]]; then
-    echo "No file: $server_params_file"
+if ! [[ ($server_params_file && $client_params_file) \
+            || ($params_dir && $params_header) ]]
+then
+    echo "You either need to specify server_params_file and client_params_file,"
+    echo "or params_dir and params_header"
     exit 1
 fi
-if ! [[ -f $client_params_file ]]; then
-    echo "No file: $client_params_file"
-    exit 1
+
+# Prepare .cpisync param files if only the raw params_dir data is passed
+# Always done locally
+if [[ $params_dir && $params_header ]] \
+       && ! [[ $we_are_on_remote ]]
+then
+    echo "Adding headers to raw data sets in $params_dir, if needed..."
+    tmp_file=$(mktemp)
+    for file in $params_dir/*.cpisync; do
+        if ! [[ $(head -n 1 $file) == "Sync protocol"* ]]; then
+            echo -e "$params_header" | awk 'NF' | cat - $file > $tmp_file
+            mv $tmp_file $file
+        fi
+    done
 fi
 
 # Cleanup Mininet environment
@@ -161,28 +198,68 @@ sudo mn -c
 rm -rf '.cpisync'
 sudo rm -rf '.mnlog'
 
-# What is the actual common elements count
-echo "$(./count_common.py $server_params_file -- "--------") common elements."
-echo -e "As per $server_params_file\n"
+run_mininet_exec() {
+    sudo $python_path $mininet_path                         \
+         --latency $latency                                 \
+         --bandwidth $bandwidth                             \
+         --packet-loss $packet_loss                         \
+         --cpu-server $cpu_server                           \
+         --cpu-client $cpu_client                           \
+         "$benchmarks_path -p $1 -m server"                 \
+         "$benchmarks_path -p $2 -m client -r 192.168.1.1"
+}
 
-mininet_exec="sudo $python_path $mininet_path                                            \
-                   --latency $latency                                                    \
-                   --bandwidth $bandwidth                                                \
-                   --packet-loss $packet_loss                                            \
-                   --cpu-server $cpu_server                                              \
-                   --cpu-client $cpu_client                                              \
-                   \"$benchmarks_path -p $server_params_file -m server\"                 \
-                   \"$benchmarks_path -p $client_params_file -m client -r 192.168.1.1\""
+if [[ $server_params_file && $client_params_file ]]; then
+    # How many common elements
+    echo "$(./count_common.py $server_params_file -- "--------")"
+    echo -e "As per $server_params_file\n"
 
-echo "Mininet command:"
-echo $mininet_exec
+    for i in `seq $repeat`
+    do
+        echo "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+        echo "Experiment run $i: [`date`]"
+        echo "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+        run_mininet_exec $server_params_file $client_params_file
+    done
 
-for i in `seq $repeat`
-do
+    echo "Completed $repeat mininet_exec calls!"
+    exit                        # finish here!
+fi
+
+# Otherwise, we're loading data from a params_dir
+for p_file in $params_dir/*.cpisync; do
+    # Obtain server-client .cpisync param file pairs
+    if [[ $p_file == *"server"* ]]; then
+        id="$(echo $p_file | awk -F'_' '{ print $(NF-1)"_"$NF }')"
+        id=${id//.cpisync/}
+        server_params_file=$p_file
+        client_params_file=$(find $params_dir -name "*client*$id.cpisync")
+    else
+        continue
+    fi
+
+    # How many common elements
+    echo "$(./count_common.py $server_params_file -- "--------")"
+    echo -e "As per $server_params_file\n"
+
     echo "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
-    echo "Experiment run: $i [`date`]"
+    echo "Experiment run for $server_params_file: [`date`]"
     echo "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
-    eval $mininet_exec
+
+    # Run experiment loop
+    for i in `seq $repeat`
+    do
+        echo "%%%%%%%% Repetition #$i"
+        run_mininet_exec $server_params_file $client_params_file
+    done
+
+    # post processing
+    if [[ -d .cpisync ]]; then
+        mv .cpisync .cpisync_$id
+    else
+        echo "No .cpisync directory, something went wrong."
+        exit 1
+    fi
 done
 
-echo "Completed $repeat mininet_exec calls!"
+echo "Completed mininet_exec job!"
