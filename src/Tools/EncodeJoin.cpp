@@ -52,12 +52,17 @@ string encodeLine(string line);
  * file. It uses the separator from Benchamrks/FromFileGen.
  */
 int main(int argc, char *argv[]) {
-    if (argc != 3)
+    if (argc != 4)
         throw invalid_argument("Requires exactly 3 command line arguments.");
     if (SHRINK < 8)
         throw invalid_argument("SHRINK must be >= 8.");
 
     ofstream outFile(argv[3]);
+    if (!outFile.is_open()) {
+        stringstream ss;
+        ss << "Cannot open " << argv[3];
+        throw invalid_argument(ss.str());
+    }
 
     string line;
     ifstream firstFile(argv[1]);

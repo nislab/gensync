@@ -21,7 +21,7 @@ OPTIONS:
     -g whether to generate sets or to use those from PARAMS_FILE.
        In SERVER and CLIENT modes data from PARAMS_FILE is always used.
        The first set from PARAMS_FILE is loaded into the peer.
-    -m MODE mode of operation (can be "server", "client", or "both" by default)
+    -m MODE mode of operation (can be "server", "client", or "both")
     -r PEER_HOSTNAME host name of the peer (requred when -m is client))";
 
 using namespace std;
@@ -116,7 +116,7 @@ int main(int argc, char *argv[]) {
                 mode = BOTH;
             else {
                 cerr << "Invalid option for running mode.\n";
-                exit(1);
+                return 0;
             }
             break;
         }
@@ -125,28 +125,27 @@ int main(int argc, char *argv[]) {
             break;
         case 'h':
             cout << HELP;
-            exit(0);
-            break;
+            return 0;
         default:
             cerr << HELP;
-            exit(1);
+            return 0;
         }
     }
 
     // Options that make no sense.
     if (paramFile.empty()) {
         cerr << "You need to pass the parameters file.\n" << HELP;
-        exit(1);
+        return 0;
     }
     if (peerHostname.empty() && mode == CLIENT) {
         cerr << "When mode is client, you need to pass the hostname of the "
                 "server.\n"
              << HELP;
-        exit(1);
+        return 0;
     }
     if (mode != BOTH && generateSets) {
         cerr << "Sets can be generated only in both mode.\n" << HELP;
-        exit(1);
+        return 0;
     }
 
     /**************************** Create the peers ****************************/
