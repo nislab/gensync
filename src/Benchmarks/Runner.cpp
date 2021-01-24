@@ -11,10 +11,17 @@
 #include <CPISync/Benchmarks/BenchParams.h>
 #include <CPISync/Syncs/GenSync.h>
 #include <assert.h>
+#include <chrono>
 #include <random>
+#include <thread>
 #include <unistd.h>
 
 static const string HELP = R"(Usage: ./Benchmarks -p PRAMS_FILE [OPTIONS]
+
+Do not run multiple instances of -m server or -m client in the same
+directory at the same time. When server and client are run in two
+separate runs of this script, a lock file is created in the current
+directory.
 
 OPTIONS:
     -h print this message and exit
@@ -23,6 +30,10 @@ OPTIONS:
        The first set from PARAMS_FILE is loaded into the peer.
     -m MODE mode of operation (can be "server", "client", or "both")
     -r PEER_HOSTNAME host name of the peer (requred when -m is client))";
+
+// When mode is client only, the client cannot start syncing until it
+// sees this file.
+static const string LOCK_FILE = ".cpisync_benchmarks_server_lock";
 
 using namespace std;
 using GenSyncPair = pair<shared_ptr<GenSync>, shared_ptr<GenSync>>;
@@ -151,19 +162,39 @@ int main(int argc, char *argv[]) {
     /**************************** Create the peers ****************************/
 
     BenchParams bPar = BenchParams{paramFile};
-    GenSyncPair genSyncs = buildGenSyncs(bPar, mode, generateSets, peerHostname);
+    GenSyncPair genSyncs =
+        buildGenSyncs(bPar, mode, generateSets, peerHostname);
 
     Logger::gLog(Logger::TEST, "Sets are ready, reconciliation starts...");
 
-    if (mode == SERVER) {
-        // run only server
+    if (mode == SERVER) { // run only server
+        // create the lock file to signalize that the server is ready
+        ofstream lock(LOCK_FILE);
+
         try {
             genSyncs.first->serverSyncBegin(0);
         } catch (exception &e) {
             cout << "Sync exception: " << e.what() << "\n";
         }
-    } else if (mode == CLIENT) {
-        // run only client
+    } else if (mode == CLIENT) { // run only client
+        // wait until the server is ready to start first
+        bool waitMsgPrinted = false;
+        while (true) {
+            ifstream lock(LOCK_FILE);
+            if (lock.good()) {
+                remove(LOCK_FILE.c_str());
+                break;
+            }
+
+            if (!waitMsgPrinted) {
+                Logger::gLog(Logger::TEST,
+                             "Waiting for the server to create the lock file.");
+                waitMsgPrinted = true;
+            }
+
+            this_thread::sleep_for(chrono::milliseconds(100));
+        }
+
         try {
             genSyncs.first->clientSyncBegin(0);
         } catch (exception &e) {
