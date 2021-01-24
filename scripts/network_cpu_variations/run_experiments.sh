@@ -304,8 +304,7 @@ for p_file in $params_dir/*.cpisync; do
     if [[ -d .cpisync ]]; then
         mv .cpisync .cpisync_$id
     else
-        echo "No .cpisync directory, something went wrong. See .mnlog"
-        exit 1
+        echo "run_experiments.sh: ERROR: No .cpisync directory, something went wrong. See .mnlog"
     fi
 done
 
