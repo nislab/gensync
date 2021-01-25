@@ -23,7 +23,7 @@ repeat=1
 
 # ... or the directory where to find the data sets, and a .cpisync header
 # If params_header contains SET_OPTIMAL, the script tries to do so.
-params_dir=/home/novak/Desktop/CODE/btc-analysis/cpisync_ready
+params_dir=/home/novak/Desktop/CODE/btc-analysis/cpisync_ready_2
 params_header="
 Sync protocol (as in GenSync.h): 1
 m_bar: SET_OPTIMAL
@@ -63,6 +63,53 @@ help() {
     echo "    ./run_experiments.sh -r remote_name:/remote/path"
     echo "    # pulls the experimental data from the remote. Creates DATA/CPISync/1/.cpisync."
     echo "    ./run_experiments.sh -p remote_name:/home/novak/EXPERIMENTS/./CPISync/1/.cpisync"
+}
+
+call_common_el() {
+    echo "$(./count_common.py $1 -- "--------")"
+}
+
+# Third parameter is optional and determines whether the optimal
+# maximal number of mutual differences is used. It works only with
+# CPISync-based parameter headers.
+prepend_params() {
+    sync_prot="$(echo -e "$params_header" | awk 'NF' | head -n 1 | awk -F' ' '{print $NF}')"
+    # if header text contains "SET_OPTIMAL", anywhere
+    infer_optimal=`echo -e "$params_header" | grep "SET_OPTIMAL" || true`
+
+    # works only for CPISync-based parameters
+    if [ "$infer_optimal" ]; then
+        if ! [[ $sync_prot == "1" ]]; then
+            echo "Cannot infer optimal parameters for this sync protocol."
+            exit 1
+        fi
+    fi
+
+    echo "Adding headers to raw data sets in $1, if needed..."
+
+    for file in $params_dir/server*.cpisync; do
+        # set only if not already set
+        if ! [[ $(head -n 1 $file) == "Sync protocol"* ]]; then
+            header_text=$2
+            if [ "$infer_optimal" ]; then
+                read -a common_ret <<< "$(call_common_el $file)"
+                optimal=$((${common_ret[1]} + ${common_ret[2]} + 1)) # plus 1!
+                header_text="$(echo -e "$header_text" | sed "/m_bar/c\m_bar: $optimal")"
+            fi
+
+            # find the corresponding client file
+            id="$(echo $file | awk -F'_' '{ print  $(NF-1)"_"$NF }')"
+            id=${id//.cpisync/}
+            cli_f=$(find $params_dir -name "client_$id.cpisync")
+
+            tmp_file=$(mktemp)
+            both_files=($file $cli_f)
+            for file in ${both_files[@]}; do
+                echo -e "$header_text" | awk 'NF' | cat - $file > $tmp_file
+                mv $tmp_file $file
+            done
+        fi
+    done
 }
 
 push_and_run() {
@@ -153,6 +200,10 @@ while getopts "hqsr:p:" option; do
 done
 
 if [ $remote_path ]; then
+    if [[ $params_dir && $params_header ]]; then
+        prepend_params "$params_dir" "$params_header"
+    fi
+
     push_and_run
     exit
 fi
@@ -177,10 +228,6 @@ then
     exit 1
 fi
 
-call_common_el() {
-    echo "$(./count_common.py $1 -- "--------")"
-}
-
 print_common_el() {
     common_script_out="$(call_common_el $1)"
     read -a cmn_out <<< $common_script_out
@@ -189,49 +236,6 @@ print_common_el() {
     echo -e "|(s)erver|: ${cmn_out[3]}, |(c)lient|: ${cmn_out[4]}"
     echo -e "As per $server_params_file"
     echo -e "-------------------------------------------------------------------------------\n"
-}
-
-# Third parameter is optional and determines whether the optimal
-# maximal number of mutual differences is used. It works only with
-# CPISync-based parameter headers.
-prepend_params() {
-    sync_prot="$(echo -e "$params_header" | awk 'NF' | head -n 1 | awk -F' ' '{print $NF}')"
-    # if header text contains "SET_OPTIMAL", anywhere
-    infer_optimal=`echo -e "$params_header" | grep "SET_OPTIMAL" || true`
-
-    # works only for CPISync-based parameters
-    if [ "$infer_optimal" ]; then
-        if ! [[ $sync_prot == "1" ]]; then
-            echo "Cannot infer optimal parameters for this sync protocol."
-            exit 1
-        fi
-    fi
-
-    echo "Adding headers to raw data sets in $1, if needed..."
-
-    for file in $params_dir/server*.cpisync; do
-        # set only if not already set
-        if ! [[ $(head -n 1 $file) == "Sync protocol"* ]]; then
-            header_text=$2
-            if [ "$infer_optimal" ]; then
-                read -a common_ret <<< "$(call_common_el $file)"
-                optimal=$((${common_ret[1]} + ${common_ret[2]} + 1)) # plus 1!
-                header_text="$(echo -e "$header_text" | sed "/m_bar/c\m_bar: $optimal")"
-            fi
-
-            # find the corresponding client file
-            id="$(echo $file | awk -F'_' '{ print  $(NF-1)"_"$NF }')"
-            id=${id//.cpisync/}
-            cli_f=$(find $params_dir -name "client*$id*.cpisync")
-
-            tmp_file=$(mktemp)
-            both_files=($file $cli_f)
-            for file in ${both_files[@]}; do
-                echo -e "$header_text" | awk 'NF' | cat - $file > $tmp_file
-                mv $tmp_file $file
-            done
-        fi
-    done
 }
 
 # Prepare .cpisync param files if only the raw params_dir data is passed
