@@ -14,7 +14,7 @@
 set -e
 
 ############################### PARAMETERS BEGIN ###############################
-# how many times to repeat the same experiment
+# How many times to repeat the same experiment
 repeat=1
 
 # Define either server and client files...
@@ -34,23 +34,23 @@ hashes: false
 Sketches:
 --------------------------------------------------------------------------------"
 
-# network parameters
+# Network parameters
 latency=20
 bandwidth=50
 packet_loss=1
 cpu_server=30
 cpu_client=30
 
-# where to obtain needed executables
+# Where to obtain needed executables
 mininet_path=~/Desktop/playground/mininet_exec/mininet_exec.py
+cpisync_path=~/Desktop/CODE/cpisync
+## When on remote, python_path is a path on remote
 python_path=/home/novak/.virtualenvs/statistics/bin/python
-benchmarks_path=~/Desktop/CODE/cpisync/build/Benchmarks
 ################################ PARAMETERS END ################################
 
 help() {
     echo -e "USAGE: ./run_experiments.sh [-q] [-s] [-r REMOTE_PATH] [-p PULL_REMOTE]\n"
-    echo -e "If remote machine is used, it needs Mininet and all the CPISync dependencies."
-    echo -e "CPISync source code will be compiled on the remote machine.\n"
+    echo -e "See the beginning of this script for setting experiments parameters.\n"
     echo "OPTIONS:"
     echo "    -r REMOTE_PATH the path on remote to copy all the needed parts."
     echo "    -p PULL_REMOTE pull from here to my DATA/. Used to gather data from experimetns."
@@ -63,7 +63,15 @@ help() {
     echo "    ./run_experiments.sh -r remote_name:/remote/path"
     echo "    # pulls the experimental data from the remote. Creates DATA/CPISync/1/.cpisync."
     echo "    ./run_experiments.sh -p remote_name:/home/novak/EXPERIMENTS/./CPISync/1/.cpisync"
+    echo -e "\nIf a remote machine is used, it needs the following dependencies:"
+    echo "    - Mininet,"
+    echo "    - Python 3 (with Mininet API),"
+    echo "    - CPISync dependencies (see cpisync/README.md), and"
+    echo "    - Ninja build system."
+    echo "CPISync source code will be compiled on the remote machine."
 }
+
+############################### FUNCTIONS BEGIN ################################
 
 call_common_el() {
     echo "$(./count_common.py $1 -- "--------")"
@@ -75,7 +83,7 @@ call_common_el() {
 prepend_params() {
     sync_prot="$(echo -e "$params_header" | awk 'NF' | head -n 1 | awk -F' ' '{print $NF}')"
     # if header text contains "SET_OPTIMAL", anywhere
-    infer_optimal=`echo -e "$params_header" | grep "SET_OPTIMAL" || true`
+    infer_optimal="$(echo -e "$params_header" | grep "SET_OPTIMAL" || true)"
 
     # works only for CPISync-based parameters
     if [ "$infer_optimal" ]; then
@@ -113,13 +121,6 @@ prepend_params() {
 }
 
 push_and_run() {
-    if ! [[ $benchmarks_path == *"build"* ]]; then
-        echo "benchmark_path not in cpisync/build, cannot infer cpisync path from it."
-        exit 1
-    fi
-
-    cpisync_dir="$(cd $(dirname $benchmarks_path); cd ..; pwd)"
-
     address_and_path=(${remote_path//:/ })
     address=${address_and_path[0]}
     path=${address_and_path[1]}
@@ -133,7 +134,7 @@ push_and_run() {
           --exclude '.*'        \
           --exclude *.deb       \
           --exclude *.rpm       \
-          $cpisync_dir $remote_path
+          $cpisync_path $remote_path
 
     rsync -a --info=progress2 \
           $mininet_path $remote_path/$(basename $mininet_path)
@@ -152,10 +153,10 @@ push_and_run() {
           $(basename $0) $remote_path/$(basename $0)
 
     # Build CPISync on remote
-    ssh $address "cd $path/cpisync
-                         mkdir build && cd build
-                         cmake -GNinja . ../
-                         ninja"
+    ssh $address "cd $path/$(basename $cpisync_path)
+                  mkdir build && cd build
+                  cmake -GNinja . ../
+                  ninja"
 
     if ! [[ $prepare_only ]]; then
         ssh -t $address "cd $path
@@ -174,12 +175,35 @@ when_on_remote() {
         params_dir=$(basename $params_dir)
     fi
     mininet_path=$(basename $mininet_path)
-    benchmarks_path=./cpisync/build/$(basename $benchmarks_path)
+    benchmarks_path=./$(basename $cpisync_path)/build/Benchmarks
+}
+
+print_common_el() {
+    common_script_out="$(call_common_el $1)"
+    read -a cmn_out <<< $common_script_out
+    echo -e "\n--------------------------- GROUND TRUTH ABOUT SETS ---------------------------"
+    echo -e "|s intersect c|: ${cmn_out[0]}, |s \ c|: ${cmn_out[1]}, |c \ s|: ${cmn_out[2]}"
+    echo -e "|(s)erver|: ${cmn_out[3]}, |(c)lient|: ${cmn_out[4]}"
+    echo -e "As per $server_params_file"
+    echo -e "-------------------------------------------------------------------------------\n"
+}
+
+run_mininet_exec() {
+    sudo $python_path $mininet_path                         \
+         --latency $latency                                 \
+         --bandwidth $bandwidth                             \
+         --packet-loss $packet_loss                         \
+         --cpu-server $cpu_server                           \
+         --cpu-client $cpu_client                           \
+         "$benchmarks_path -p $1 -m server"                 \
+         "$benchmarks_path -p $2 -m client -r 192.168.1.1"
 }
 
 pull_from_remote() {
     rsync --recursive --relative --info=progress2 $1 DATA/
 }
+
+################################ FUNCTIONS END #################################
 
 while getopts "hqsr:p:" option; do
     case $option in
@@ -228,16 +252,6 @@ then
     exit 1
 fi
 
-print_common_el() {
-    common_script_out="$(call_common_el $1)"
-    read -a cmn_out <<< $common_script_out
-    echo -e "\n--------------------------- GROUND TRUTH ABOUT SETS ---------------------------"
-    echo -e "|s intersect c|: ${cmn_out[0]}, |s \ c|: ${cmn_out[1]}, |c \ s|: ${cmn_out[2]}"
-    echo -e "|(s)erver|: ${cmn_out[3]}, |(c)lient|: ${cmn_out[4]}"
-    echo -e "As per $server_params_file"
-    echo -e "-------------------------------------------------------------------------------\n"
-}
-
 # Prepare .cpisync param files if only the raw params_dir data is passed
 # Always done locally
 if [[ $params_dir && $params_header ]] \
@@ -252,17 +266,6 @@ sudo mn -c
 # reset log directories
 rm -rf '.cpisync'
 sudo rm -rf '.mnlog'
-
-run_mininet_exec() {
-    sudo $python_path $mininet_path                         \
-         --latency $latency                                 \
-         --bandwidth $bandwidth                             \
-         --packet-loss $packet_loss                         \
-         --cpu-server $cpu_server                           \
-         --cpu-client $cpu_client                           \
-         "$benchmarks_path -p $1 -m server"                 \
-         "$benchmarks_path -p $2 -m client -r 192.168.1.1"
-}
 
 if [[ $server_params_file && $client_params_file ]]; then
     print_common_el $server_params_file
