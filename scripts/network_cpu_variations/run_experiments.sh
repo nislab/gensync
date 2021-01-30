@@ -189,6 +189,11 @@ print_common_el() {
 }
 
 run_mininet_exec() {
+    # Assure that Mininet resources are cleaned
+    sudo mn -c
+    echo -e "\n>>>>>>>>>>>>>>>>>>>> Sleeping for 10 seconds...\n"
+    sleep 10
+
     sudo $python_path $mininet_path                         \
          --latency $latency                                 \
          --bandwidth $bandwidth                             \
@@ -259,9 +264,6 @@ if [[ $params_dir && $params_header ]] \
 then
     prepend_params "$params_dir" "$params_header"
 fi
-
-# Cleanup Mininet environment
-sudo mn -c
 
 # reset log directories
 rm -rf '.cpisync'
