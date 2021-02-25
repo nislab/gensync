@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Description
+Counts common elements among the sets.
 
 Usage: ./count_common.py FILE_PATH SETS_SEPARATOR_LINE_STARTS_WITH
 Returns: INTERSECTION_SIZE A_DIFF_B_SIZE B_DIFF_A_SIZE A_SIZE B_SIZE

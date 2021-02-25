@@ -23,7 +23,7 @@ repeat=1
 
 # ... or the directory where to find the data sets, and a .cpisync header
 # If params_header contains SET_OPTIMAL, the script tries to do so.
-params_dir=/home/novak/Desktop/CODE/btc-analysis/cpisync_ready_2
+params_dir=/home/novak/Desktop/CODE/btc-analysis/cpisync_ready_3_days
 params_header="
 Sync protocol (as in GenSync.h): 1
 m_bar: SET_OPTIMAL
@@ -35,11 +35,11 @@ Sketches:
 --------------------------------------------------------------------------------"
 
 # Network parameters
-latency=20
-bandwidth=50
-packet_loss=1
-cpu_server=30
-cpu_client=30
+latency=30
+bandwidth=18
+packet_loss=0.1
+cpu_server=9
+cpu_client=9
 
 # Where to obtain needed executables
 mininet_path=~/Desktop/playground/mininet_exec/mininet_exec.py
@@ -49,11 +49,12 @@ python_path=/home/novak/.virtualenvs/statistics/bin/python
 ################################ PARAMETERS END ################################
 
 help() {
-    echo -e "USAGE: ./run_experiments.sh [-q] [-s] [-r REMOTE_PATH] [-p PULL_REMOTE]\n"
-    echo -e "See the beginning of this script for setting experiments parameters.\n"
+    echo -e "USAGE: ./run_experiments.sh [-q] [-s] [-r REMOTE_PATH] [-p EXPERIMENT_DIR] [-pp PULL_REMOTE]\n"
+    echo -e "See the beginning of this script to set the parameters for experiments.\n"
     echo "OPTIONS:"
     echo "    -r REMOTE_PATH the path on remote to copy all the needed parts."
-    echo "    -p PULL_REMOTE pull from here to my DATA/. Used to gather data from experimetns."
+    echo "    -p EXPERIMENT_DIR make a csv file out of this dir, and pull it to the local working directory."
+    echo "    -pp PULL_REMOTE pull from here to my DATA/. Used to gather data from experimetns."
     echo "    -s used with -r when we only want to prepare an experiment on remote but not to run it."
     echo "    -q when this script is run on a remote set this."
     echo -e "\nEXAMPLES:"
@@ -61,8 +62,10 @@ help() {
     echo "    ./run_experiments.sh"
     echo "    # runs on remote"
     echo "    ./run_experiments.sh -r remote_name:/remote/path"
+    echo "    # collects data on remote and makes CPI_Experiment_1.csv locally"
+    echo "    ./run_experiments.sh -p remote_name:/home/novak/EXPERIMENTS/CPI_Experiment_1"
     echo "    # pulls the experimental data from the remote. Creates DATA/CPISync/1/.cpisync."
-    echo "    ./run_experiments.sh -p remote_name:/home/novak/EXPERIMENTS/./CPISync/1/.cpisync"
+    echo "    ./run_experiments.sh -pp remote_name:/home/novak/EXPERIMENTS/./CPISync/1/.cpisync"
     echo -e "\nIf a remote machine is used, it needs the following dependencies:"
     echo "    - Mininet,"
     echo "    - Python 3 (with Mininet API),"
@@ -140,6 +143,9 @@ push_and_run() {
           $mininet_path $remote_path/$(basename $mininet_path)
     rsync -a --info=progress2 \
           count_common.py $remote_path/count_common.py
+    rsync -a --info=progress2 \
+          extract_data.py $remote_path/extract_data.py
+
     if [[ $server_params_file && $client_params_file ]]; then
         rsync -a --info=progress2 \
               $server_params_file $remote_path/$(basename $server_params_file)
@@ -191,8 +197,8 @@ print_common_el() {
 run_mininet_exec() {
     # Assure that Mininet resources are cleaned
     sudo mn -c
-    echo -e "\n>>>>>>>>>>>>>>>>>>>> Sleeping for 10 seconds...\n"
-    sleep 10
+    # echo -e "\n>>>>>>>>>>>>>>>>>>>> Sleeping for 10 seconds...\n"
+    # sleep 10
 
     sudo $python_path $mininet_path                         \
          --latency $latency                                 \
@@ -208,6 +214,21 @@ pull_from_remote() {
     rsync --recursive --relative --info=progress2 $1 DATA/
 }
 
+pull_csv() {
+    full_path_to_experiemnts_dir=$1
+
+    address_and_path=(${full_path_to_experiemnts_dir//:/ })
+    address=${address_and_path[0]}
+    path=${address_and_path[1]}
+
+    ssh -t $address "cd $path; $python_path extract_data.py $path"
+
+    csv_file_name="$(basename $path)".csv
+
+    rsync -a --info=progress2 \
+          $full_path_to_experiemnts_dir/$csv_file_name $csv_file_name
+}
+
 ################################ FUNCTIONS END #################################
 
 while getopts "hqsr:p:" option; do
@@ -216,7 +237,10 @@ while getopts "hqsr:p:" option; do
            ;;
         r) remote_path=$OPTARG
            ;;
-        p) pull_from_remote $OPTARG
+        p) pull_csv $OPTARG
+           exit
+           ;;
+        pp) pull_from_remote $OPTARG
            exit
            ;;
         # When run on remote, all the needed parts are in the same directory

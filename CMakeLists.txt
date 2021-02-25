@@ -76,7 +76,7 @@ set(SOURCE_FILES
         ${BENCH_DIR}/BenchParams.cpp
         ${BENCH_DIR}/FromFileGen.cpp
 
-        ${TOOLS_DIR}/makeParamsFile.cpp
+        ${TOOLS_DIR}/EncodeJoin.cpp
 
         ${SRC_DIR}/main.cpp)
 
@@ -158,8 +158,8 @@ add_executable(Benchmarks ${BENCH_DIR}/Runner.cpp)
 target_link_libraries(Benchmarks cpisync ntl cppunit pthread gmp)
 
 # Tools
-add_executable(makeParamsFile ${TOOLS_DIR}/makeParamsFile.cpp)
-target_link_libraries(makeParamsFile cpisync ntl pthread gmp)
+add_executable(EncodeJoin ${TOOLS_DIR}/EncodeJoin.cpp)
+target_link_libraries(EncodeJoin cpisync ntl pthread gmp)
 
 # Define a macro for adding executables testing multiple files
 # @param dir The relative path to the folder containing test files to add

@@ -195,6 +195,9 @@ int main(int argc, char *argv[]) {
             this_thread::sleep_for(chrono::milliseconds(100));
         }
 
+        Logger::gLog(Logger::TEST,
+                     "Client detects that the server is ready to start.");
+
         try {
             genSyncs.first->clientSyncBegin(0);
         } catch (exception &e) {
