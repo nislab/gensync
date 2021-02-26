@@ -53,7 +53,7 @@ if __name__ == '__main__':
                         if line.lower().startswith(measure):
                             # success is treated differently
                             if measure == 'success':
-                                if 'true' in line:
+                                if 'true' in line or '1' in line:
                                     measurements.append(True)
                                 else:
                                     measurements.append(False)

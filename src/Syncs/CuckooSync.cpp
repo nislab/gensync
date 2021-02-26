@@ -36,21 +36,6 @@ bool CuckooSync::SyncClient(const shared_ptr<Communicant>& commSync,
         commSync->commConnect();
         mySyncStats.timerEnd(SyncStats::IDLE_TIME);
 
-        // Ensure that server uses the same CF parameters
-        mySyncStats.timerStart(SyncStats::COMM_TIME);
-        if (!commSync->establishCuckooSend(myCF.getFngprtSize(),
-                                           myCF.getBucketSize(),
-                                           myCF.getFilterSize(),
-                                           myCF.getMaxKicks())) {
-            Logger::gLog(Logger::METHOD_DETAILS, "Cuckoo parameters do not"
-                         "match up between client and server!");
-            mySyncStats.timerEnd(SyncStats::COMM_TIME);
-            mySyncStats.increment(SyncStats::XMIT,commSync->getXmitBytes());
-            mySyncStats.increment(SyncStats::RECV,commSync->getRecvBytes());
-
-            return false;
-        }
-
         // Send my CF
         commSync->commSend(myCF);
 
@@ -107,20 +92,6 @@ bool CuckooSync::SyncServer(const shared_ptr<Communicant>& commSync,
         mySyncStats.timerStart(SyncStats::IDLE_TIME);
         commSync->commListen();
         mySyncStats.timerEnd(SyncStats::IDLE_TIME);
-
-        mySyncStats.timerStart(SyncStats::COMM_TIME);
-        if (!commSync->establishCuckooRecv(myCF.getFngprtSize(),
-                                           myCF.getBucketSize(),
-                                           myCF.getFilterSize(),
-                                           myCF.getMaxKicks())) {
-            Logger::gLog(Logger::METHOD_DETAILS, "Cuckoo parameters do not"
-                         "match up between client and server!");
-            mySyncStats.timerEnd(SyncStats::COMM_TIME);
-            mySyncStats.increment(SyncStats::XMIT,commSync->getXmitBytes());
-            mySyncStats.increment(SyncStats::RECV,commSync->getRecvBytes());
-
-            return false;
-        }
 
         // Receive their CF
         Cuckoo theirsCF = commSync->commRecv_Cuckoo();

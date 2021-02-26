@@ -23,14 +23,21 @@ repeat=1
 
 # ... or the directory where to find the data sets, and a .cpisync header
 # If params_header contains SET_OPTIMAL, the script tries to do so.
-params_dir=/home/novak/Desktop/CODE/btc-analysis/cpisync_ready_3_days
-params_header="
-Sync protocol (as in GenSync.h): 1
-m_bar: SET_OPTIMAL
-bits: 64
-epsilon: 3
-partitions/pFactor(for InterCPISync): 0
-hashes: false
+params_dir=/home/novak/Desktop/CODE/btc-analysis/IBLTSync_ready_3_days_5_percent
+# params_header="
+# Sync protocol (as in GenSync.h): 1
+# m_bar: SET_OPTIMAL
+# bits: 64
+# epsilon: 3
+# partitions/pFactor(for InterCPISync): 0
+# hashes: false
+# Sketches:
+# --------------------------------------------------------------------------------"
+params_header="Sync protocol (as in GenSync.h): 12
+fngprtSize: 12
+bucketSize: 4
+filterSize: SET_OPTIMAL
+maxKicks: 500
 Sketches:
 --------------------------------------------------------------------------------"
 
@@ -38,8 +45,8 @@ Sketches:
 latency=30
 bandwidth=18
 packet_loss=0.1
-cpu_server=9
-cpu_client=9
+cpu_server=100
+cpu_client=100
 
 # Where to obtain needed executables
 mininet_path=~/Desktop/playground/mininet_exec/mininet_exec.py
@@ -80,6 +87,16 @@ call_common_el() {
     echo "$(./count_common.py $1 -- "--------")"
 }
 
+next_power_of_two() {
+    python <<EOF
+p = 1
+while p < $1:
+    p = p << 1
+
+print(p)
+EOF
+}
+
 # Third parameter is optional and determines whether the optimal
 # maximal number of mutual differences is used. It works only with
 # CPISync-based parameter headers.
@@ -90,10 +107,13 @@ prepend_params() {
 
     # works only for CPISync-based parameters
     if [ "$infer_optimal" ]; then
-        if ! [[ $sync_prot == "1" ]]; then
-            echo "Cannot infer optimal parameters for this sync protocol."
-            exit 1
-        fi
+        case $sync_prot in
+            1 | 5) ;;
+            8) ;;
+            *) echo "Cannot infer optimal parameters for this sync protocol."
+               exit 1
+               ;;
+        esac
     fi
 
     echo "Adding headers to raw data sets in $1, if needed..."
@@ -105,7 +125,7 @@ prepend_params() {
             if [ "$infer_optimal" ]; then
                 read -a common_ret <<< "$(call_common_el $file)"
                 optimal=$((${common_ret[1]} + ${common_ret[2]} + 1)) # plus 1!
-                header_text="$(echo -e "$header_text" | sed "/m_bar/c\m_bar: $optimal")"
+                header_text="$(echo -e "$header_text" | sed "s/SET_OPTIMAL/$optimal/g")"
             fi
 
             # find the corresponding client file
@@ -241,9 +261,9 @@ while getopts "hqsr:p:" option; do
            exit
            ;;
         pp) pull_from_remote $OPTARG
-           exit
-           ;;
-        # When run on remote, all the needed parts are in the same directory
+            exit
+            ;;
+        # When we are on remote, all the needed parts are in the same directory
         q) when_on_remote
            we_are_on_remote=yes
            ;;
@@ -261,16 +281,17 @@ if [ $remote_path ]; then
     exit
 fi
 
+if ! [[ $we_are_on_remote ]]; then
+    # When we are on remote, it is set appropriately in when_on_remote
+    benchmarks_path=$cpisync_path/build/Benchmarks
+fi
+
 if ! [[ -f $mininet_path ]]; then
     echo "Mininet path does not exist: $mininet_path"
     exit 1
 fi
 if ! [[ -f $python_path ]]; then
     echo "Python path does not exist: $python_path"
-    exit 1
-fi
-if ! [[ -f $benchmarks_path ]]; then
-    echo -e "Benchmark executable does not exist: $benchmarks_path"
     exit 1
 fi
 if ! [[ ($server_params_file && $client_params_file) \
