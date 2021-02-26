@@ -92,25 +92,60 @@ next_power_of_two() {
 p = 1
 while p < $1:
     p = p << 1
-
 print(p)
 EOF
+}
+
+get_prot_from_header_string() {
+    echo "$(echo -e "$params_header" | awk 'NF' | head -n 1 | awk -F' ' '{print $NF}')"
+}
+
+# Only used with CuckooSync parameters
+get_bucket_size() {
+    echo -e "$1" | grep "bucketSize" | awk -F' ' '{print $NF}'
+}
+
+# Gets original header text and the path to the param file
+# Returns the new header text where SET_OPTIMAL is replaced appropriately
+calc_set_optimal_subs() {
+    sync_prot="$(get_prot_from_header_string)"
+
+    case $sync_prot in
+        1 | 8) # CPISync or IBLTSync
+            read -a common_ret <<< "$(call_common_el $2)"
+            optimal=$((${common_ret[1]} + ${common_ret[2]} + 1)) # plus 1!
+            header_text="$(echo -e "$1" | sed "s/SET_OPTIMAL/$optimal/g")"
+            echo -e "$header_text"
+            ;;
+        12) # CuckooSync
+            read -a common_ret <<< "$(call_common_el $2)"
+            my_set_size=${common_ret[3]}
+            bucket_size=$(get_bucket_size "$1")
+            needed_buckets=$(python -c "import math; print(math.ceil($my_set_size/$bucket_size))")
+            optimal=$(next_power_of_two "$needed_buckets")
+            header_text="$(echo -e "$1" | sed "s/SET_OPTIMAL/$optimal/g")"
+            echo -e "$header_text"
+            ;;
+        *)  >&2 echo "Cannot calc_set_optimal_subs for protocol: $sync_prot"
+            exit 1
+    esac
 }
 
 # Third parameter is optional and determines whether the optimal
 # maximal number of mutual differences is used. It works only with
 # CPISync-based parameter headers.
 prepend_params() {
-    sync_prot="$(echo -e "$params_header" | awk 'NF' | head -n 1 | awk -F' ' '{print $NF}')"
+    sync_prot="$(get_prot_from_header_string)"
     # if header text contains "SET_OPTIMAL", anywhere
     infer_optimal="$(echo -e "$params_header" | grep "SET_OPTIMAL" || true)"
 
-    # works only for CPISync-based parameters
+    # works only for some sync protocols
     if [ "$infer_optimal" ]; then
         case $sync_prot in
-            1 | 5) ;;
-            8) ;;
-            *) echo "Cannot infer optimal parameters for this sync protocol."
+            1) ;;               # CPISync
+            8) ;;               # IBLTSync
+            12) ;;              # CuckooSync
+            *) >&2 echo "Cannot infer optimal parameters for this sync protocol."
                exit 1
                ;;
         esac
@@ -123,9 +158,7 @@ prepend_params() {
         if ! [[ $(head -n 1 $file) == "Sync protocol"* ]]; then
             header_text=$2
             if [ "$infer_optimal" ]; then
-                read -a common_ret <<< "$(call_common_el $file)"
-                optimal=$((${common_ret[1]} + ${common_ret[2]} + 1)) # plus 1!
-                header_text="$(echo -e "$header_text" | sed "s/SET_OPTIMAL/$optimal/g")"
+                header_text="$(calc_set_optimal_subs "$header_text" "$file")"
             fi
 
             # find the corresponding client file
@@ -133,12 +166,19 @@ prepend_params() {
             id=${id//.cpisync/}
             cli_f=$(find $params_dir -name "client_$id.cpisync")
 
+            # Add to the server file
             tmp_file=$(mktemp)
-            both_files=($file $cli_f)
-            for file in ${both_files[@]}; do
-                echo -e "$header_text" | awk 'NF' | cat - $file > $tmp_file
-                mv $tmp_file $file
-            done
+            echo -e "$header_text" | awk 'NF' | cat - $file > $tmp_file
+            mv $tmp_file $file
+
+            # Add to the client file
+            if [[ ("$sync_prot" == "12") && "$infer_optimal" ]]; then
+                # CPISync allows possibly different headers for server
+                # and client
+                header_text="$(calc_set_optimal_subs "$header_text" "$cli_f")"
+            fi
+            echo -e "$header_text" | awk 'NF' | cat - $cli_f > $tmp_file
+            mv $tmp_file $cli_f
         fi
     done
 }

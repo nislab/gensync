@@ -29,7 +29,7 @@ OPTIONS:
        In SERVER and CLIENT modes data from PARAMS_FILE is always used.
        The first set from PARAMS_FILE is loaded into the peer.
     -m MODE mode of operation (can be "server", "client", or "both")
-    -r PEER_HOSTNAME host name of the peer (requred when -m is client))";
+    -r PEER_HOSTNAME host name of the peer (requred when -m is client))" "\n";
 
 // When mode is client only, the client cannot start syncing until it
 // sees this file.

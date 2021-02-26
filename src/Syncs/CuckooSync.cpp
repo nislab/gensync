@@ -37,6 +37,7 @@ bool CuckooSync::SyncClient(const shared_ptr<Communicant>& commSync,
         mySyncStats.timerEnd(SyncStats::IDLE_TIME);
 
         // Send my CF
+        mySyncStats.timerStart(SyncStats::COMM_TIME);
         commSync->commSend(myCF);
 
         // Receive theirs CF
@@ -94,6 +95,7 @@ bool CuckooSync::SyncServer(const shared_ptr<Communicant>& commSync,
         mySyncStats.timerEnd(SyncStats::IDLE_TIME);
 
         // Receive their CF
+        mySyncStats.timerStart(SyncStats::COMM_TIME);
         Cuckoo theirsCF = commSync->commRecv_Cuckoo();
         mySyncStats.timerEnd(SyncStats::COMM_TIME);
         mySyncStats.increment(SyncStats::XMIT,commSync->getXmitBytes());
