@@ -35,7 +35,9 @@ if __name__ == '__main__':
     experiment_df = pd.DataFrame(columns=COLUMNS)
     for run in experiment_runs:
         run_dir = os.path.join(experiments_root_dir, run)
-        for observ in os.listdir(run_dir):
+        run_dir_content = os.listdir(run_dir)
+        run_dir_content.sort()
+        for observ in run_dir_content:
             if not observ.endswith(OBSERV_SUFFIX):
                 continue
 
