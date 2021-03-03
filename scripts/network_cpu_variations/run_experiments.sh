@@ -15,7 +15,7 @@ set -e
 
 ############################### PARAMETERS BEGIN ###############################
 # How many times to repeat the same experiment
-repeat=1
+repeat=10
 
 # Define either server and client files...
 # server_params_file=server_params_data_IBLTSync_optimal.cpisync
@@ -23,7 +23,14 @@ repeat=1
 
 # ... or the directory where to find the data sets, and a .cpisync header
 # If params_header contains SET_OPTIMAL, the script tries to do so.
-params_dir=/home/novak/Desktop/CODE/btc-analysis/IBLTSync_ready_3_days_5_percent
+params_dir=/home/novak/Desktop/CODE/btc-analysis/CPI_10K_set
+
+# params_header="Sync protocol (as in GenSync.h): 8
+# expected: SET_OPTIMAL
+# eltSize: 8
+# numElemChild: 0
+# Sketches:
+# --------------------------------------------------------------------------------"
 # params_header="
 # Sync protocol (as in GenSync.h): 1
 # m_bar: SET_OPTIMAL
@@ -33,11 +40,19 @@ params_dir=/home/novak/Desktop/CODE/btc-analysis/IBLTSync_ready_3_days_5_percent
 # hashes: false
 # Sketches:
 # --------------------------------------------------------------------------------"
-params_header="Sync protocol (as in GenSync.h): 12
-fngprtSize: 12
-bucketSize: 4
-filterSize: SET_OPTIMAL
-maxKicks: 500
+# params_header="Sync protocol (as in GenSync.h): 12
+# fngprtSize: 7
+# bucketSize: 4
+# filterSize: SET_OPTIMAL
+# maxKicks: 500
+# Sketches:
+# --------------------------------------------------------------------------------"
+params_header="Sync protocol (as in GenSync.h): 5
+m_bar: 16
+bits: 64
+epsilon: 3
+partitions/pFactor(for InterCPISync): 3
+hashes: false
 Sketches:
 --------------------------------------------------------------------------------"
 

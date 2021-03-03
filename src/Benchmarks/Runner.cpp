@@ -16,7 +16,7 @@
 #include <thread>
 #include <unistd.h>
 
-static const string HELP = R"(Usage: ./Benchmarks -p PRAMS_FILE [OPTIONS]
+static const string HELP = R"(Usage: ./Benchmarks -p PARAMS_FILE [OPTIONS]
 
 Do not run multiple instances of -m server or -m client in the same
 directory at the same time. When server and client are run in two
@@ -25,11 +25,17 @@ directory.
 
 OPTIONS:
     -h print this message and exit
+    -p PARAMS_FILE to be used.
     -g whether to generate sets or to use those from PARAMS_FILE.
        In SERVER and CLIENT modes data from PARAMS_FILE is always used.
        The first set from PARAMS_FILE is loaded into the peer.
+    -i ADD_ELEM_CHUNK_SIZE add elements incrementally in chunks.
+       Synchronization is invoked after each chunk is added.
+       Can be used only when data is consumed from parameter files
+       and this script is run in either SERVER or CLIENT mode.
     -m MODE mode of operation (can be "server", "client", or "both")
-    -r PEER_HOSTNAME host name of the peer (requred when -m is client))" "\n";
+    -r PEER_HOSTNAME host name of the peer (requred when -m is client))"
+                           "\n";
 
 // When mode is client only, the client cannot start syncing until it
 // sees this file.
@@ -72,16 +78,18 @@ enum RunningMode { CLIENT, SERVER, BOTH };
 /**
  * Builds GenSync objects for syncing.
  * @param par The benchmark parameters objects that holds the details
+ * @param mode the running mode
+ * @param addAllElems whether to add all the elements to the GenSync objects
  * @param zipfElems If true, the elements are not taken from benchmark
  * parameters but are generated randomly from a Zipfian distribution
- * @param mode the running mode
  * @param peerHostname the hostname of the peer if mode is SERVER or CLIENT
  * @return The pair of generated GenSync objects. The first is the server, the
  * second is the client. If mode is SEVER or CLIENT, then the second one is
  * NULL.
  */
 GenSyncPair buildGenSyncs(const BenchParams &par, RunningMode mode,
-                          bool zipfElems = false, string peerHostname = "");
+                          bool addAllElems = true, bool zipfElems = false,
+                          string peerHostname = "");
 /**
  * Generates zipf distributed random numbers from 1 to n.
  * @param n The highest number
@@ -89,11 +97,13 @@ GenSyncPair buildGenSyncs(const BenchParams &par, RunningMode mode,
  * @return A number sampled from the distribution
  */
 int zipf(int n, double alpha = ZF_ALPHA);
+
 /**
  * Makes a new DataObject sampled from a uniform distribution.
  * @return The constructed object
  */
 inline shared_ptr<DataObject> makeObj();
+
 /**
  * Adds elements to the passed GenSync object. Handles the repetitions.
  * @param gs The GenSync object
@@ -102,6 +112,27 @@ inline shared_ptr<DataObject> makeObj();
 inline void addAnElemWithReps(shared_ptr<GenSync> gs,
                               shared_ptr<DataObject> obj);
 
+/**
+ * Invoke appropriate GenSync method.
+ * @param genSync the genSync object to work with
+ * @param ser if true, then invoke the server method, otherwise invoke the
+ * client method
+ */
+inline void callServerOrClientSyncBegin(shared_ptr<GenSync> genSync, bool ser);
+
+/**
+ * Adds the elements to genSync in chunks and invokes synchronization
+ * after each chunk is added.
+ * @param ser if true, invoke server sync begin, otherwise invoke the
+ * client version
+ * @param chunkSize the size of elements chunks to be added at once
+ * @param genSync the GenSync object to work with
+ * @param dataGen the source of elements to be added
+ */
+void invokeSyncIncrementally(bool serOrCli, size_t chunkSize,
+                             shared_ptr<GenSync> genSync,
+                             shared_ptr<DataObjectGenerator> dataGen);
+
 int main(int argc, char *argv[]) {
     /*********************** Parse command line options ***********************/
     int opt;
@@ -109,7 +140,10 @@ int main(int argc, char *argv[]) {
     string peerHostname = "";
     RunningMode mode = BOTH;
     bool generateSets = false;
-    while ((opt = getopt(argc, argv, "p:m:r:gh")) != -1) {
+    string incChunkStr = "";
+    size_t incChunk = 0;
+
+    while ((opt = getopt(argc, argv, "p:m:r:i:gh")) != -1) {
         switch (opt) {
         case 'p':
             paramFile = optarg;
@@ -134,6 +168,9 @@ int main(int argc, char *argv[]) {
         case 'g':
             generateSets = true;
             break;
+        case 'i':
+            incChunkStr = optarg;
+            break;
         case 'h':
             cout << HELP;
             return 0;
@@ -146,24 +183,39 @@ int main(int argc, char *argv[]) {
     // Options that make no sense.
     if (paramFile.empty()) {
         cerr << "You need to pass the parameters file.\n" << HELP;
-        return 0;
+        return 1;
     }
     if (peerHostname.empty() && mode == CLIENT) {
         cerr << "When mode is client, you need to pass the hostname of the "
                 "server.\n"
              << HELP;
-        return 0;
+        return 1;
     }
     if (mode != BOTH && generateSets) {
         cerr << "Sets can be generated only in both mode.\n" << HELP;
-        return 0;
+        return 1;
+    }
+    if (!incChunkStr.empty() && (paramFile.empty() || mode == BOTH)) {
+        cerr << "Incremental elements addition works only when -p is used"
+                " and mode is not BOTH."
+             << HELP;
+        return 1;
+    } else {
+        stringstream ss;
+        ss << incChunkStr;
+        try {
+            ss >> incChunk;
+        } catch (exception &e) {
+            cerr << ss.str() << " cannot be converted to integer.\n";
+            return 1;
+        }
     }
 
     /**************************** Create the peers ****************************/
 
     BenchParams bPar = BenchParams{paramFile};
     GenSyncPair genSyncs =
-        buildGenSyncs(bPar, mode, generateSets, peerHostname);
+        buildGenSyncs(bPar, mode, !incChunk, generateSets, peerHostname);
 
     Logger::gLog(Logger::TEST, "Sets are ready, reconciliation starts...");
 
@@ -172,7 +224,12 @@ int main(int argc, char *argv[]) {
         ofstream lock(LOCK_FILE);
 
         try {
-            genSyncs.first->serverSyncBegin(0);
+            if (incChunk) {
+                invokeSyncIncrementally(true, incChunk, genSyncs.first,
+                                        bPar.AElems);
+            } else {
+                genSyncs.first->serverSyncBegin(0);
+            }
         } catch (exception &e) {
             cout << "Sync exception: " << e.what() << "\n";
         }
@@ -199,7 +256,13 @@ int main(int argc, char *argv[]) {
                      "Client detects that the server is ready to start.");
 
         try {
-            genSyncs.first->clientSyncBegin(0);
+            if (incChunk) {
+                invokeSyncIncrementally(false, incChunk, genSyncs.first,
+                                        bPar.AElems);
+            } else {
+                genSyncs.first->clientSyncBegin(0);
+            }
+
         } catch (exception &e) {
             cout << "Sync exception: " << e.what() << "\n";
         }
@@ -225,7 +288,8 @@ int main(int argc, char *argv[]) {
 }
 
 GenSyncPair buildGenSyncs(const BenchParams &par, RunningMode mode,
-                          bool zipfElems, string peerHostname) {
+                          bool addAllElem, bool zipfElems,
+                          string peerHostname) {
     GenSync::Builder builderA = GenSync::Builder()
                                     .setComm(GenSync::SyncComm::socket)
                                     .setProtocol(par.syncProtocol);
@@ -279,7 +343,7 @@ GenSyncPair buildGenSyncs(const BenchParams &par, RunningMode mode,
         for (size_t ii = 0; ii < (cardB - common); ii++)
             addAnElemWithReps(genB, makeObj());
 
-    } else {
+    } else if (addAllElem) {
         for (auto elem : *par.AElems)
             genA->addElem(make_shared<DataObject>(elem));
 
@@ -347,4 +411,27 @@ shared_ptr<DataObject> makeObj() {
 void addAnElemWithReps(shared_ptr<GenSync> gs, shared_ptr<DataObject> obj) {
     for (size_t rep = 0; rep < zipf(MAX_CARD / REP_RATIO); rep++)
         gs->addElem(obj);
+}
+
+inline void callServerOrClientSyncBegin(shared_ptr<GenSync> genSync, bool ser) {
+    if (ser) {
+        genSync->serverSyncBegin(0);
+    } else {
+        genSync->clientSyncBegin(0);
+    }
+}
+
+void invokeSyncIncrementally(bool ser, size_t chunkSize,
+                             shared_ptr<GenSync> genSync,
+                             shared_ptr<DataObjectGenerator> dataGen) {
+    size_t currentlyAdded = 0;
+    for (auto elem : *dataGen) {
+        genSync->addElem(make_shared<DataObject>(elem));
+        currentlyAdded++;
+        if (currentlyAdded % chunkSize == 0)
+            callServerOrClientSyncBegin(genSync, ser);
+    }
+    // when inc_chunk does not divide the number of set elements
+    if (currentlyAdded % chunkSize != 0)
+        callServerOrClientSyncBegin(genSync, ser);
 }
