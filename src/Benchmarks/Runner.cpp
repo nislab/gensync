@@ -133,6 +133,18 @@ void invokeSyncIncrementally(bool serOrCli, size_t chunkSize,
                              shared_ptr<GenSync> genSync,
                              shared_ptr<DataObjectGenerator> dataGen);
 
+/**
+ * Checks whether element is already added to the SyncMethod under
+ * GenSync.  When we do incremental sync, the previous synchronization
+ * invocation may have already brought in some of the elements that we
+ * are adding. No need to add the same element twice (as we consider
+ * only sets here).
+ * @param genSync the GenSync object from which we obtain the SyncMethod
+ * @param elem the potentially new element we are adding
+ * @returns true if the element is already in the set
+ */
+bool alreadyThere(shared_ptr<GenSync> genSync, DataObject elem);
+
 int main(int argc, char *argv[]) {
     /*********************** Parse command line options ***********************/
     int opt;
@@ -220,49 +232,51 @@ int main(int argc, char *argv[]) {
     Logger::gLog(Logger::TEST, "Sets are ready, reconciliation starts...");
 
     if (mode == SERVER) { // run only server
-        // create the lock file to signalize that the server is ready
-        ofstream lock(LOCK_FILE);
-
         try {
             if (incChunk) {
+                // handles LOCK_FILE internally
                 invokeSyncIncrementally(true, incChunk, genSyncs.first,
                                         bPar.AElems);
             } else {
+                // create the lock file to signalize that the server is ready
+                ofstream lock(LOCK_FILE);
                 genSyncs.first->serverSyncBegin(0);
             }
         } catch (exception &e) {
             cout << "Sync exception: " << e.what() << "\n";
         }
     } else if (mode == CLIENT) { // run only client
-        // wait until the server is ready to start first
-        bool waitMsgPrinted = false;
-        while (true) {
-            ifstream lock(LOCK_FILE);
-            if (lock.good()) {
-                remove(LOCK_FILE.c_str());
-                break;
-            }
-
-            if (!waitMsgPrinted) {
-                Logger::gLog(Logger::TEST,
-                             "Waiting for the server to create the lock file.");
-                waitMsgPrinted = true;
-            }
-
-            this_thread::sleep_for(chrono::milliseconds(100));
-        }
-
-        Logger::gLog(Logger::TEST,
-                     "Client detects that the server is ready to start.");
-
         try {
             if (incChunk) {
+                // handles LOCK_FILE internally
                 invokeSyncIncrementally(false, incChunk, genSyncs.first,
                                         bPar.AElems);
             } else {
+                // wait until the server is ready to start first
+                bool waitMsgPrinted = false;
+                while (true) {
+                    ifstream lock(LOCK_FILE);
+                    if (lock.good()) {
+                        remove(LOCK_FILE.c_str());
+                        break;
+                    }
+
+                    if (!waitMsgPrinted) {
+                        Logger::gLog(
+                            Logger::TEST,
+                            "Waiting for the server to create the lock file.");
+                        waitMsgPrinted = true;
+                    }
+
+                    this_thread::sleep_for(chrono::milliseconds(100));
+                }
+
+                Logger::gLog(
+                    Logger::TEST,
+                    "Client detects that the server is ready to start.");
+
                 genSyncs.first->clientSyncBegin(0);
             }
-
         } catch (exception &e) {
             cout << "Sync exception: " << e.what() << "\n";
         }
@@ -414,24 +428,74 @@ void addAnElemWithReps(shared_ptr<GenSync> gs, shared_ptr<DataObject> obj) {
 }
 
 inline void callServerOrClientSyncBegin(shared_ptr<GenSync> genSync, bool ser) {
+    // Server always needs to make the lock file for the client to
+    // start the sync on its side.
     if (ser) {
+        ofstream lock(LOCK_FILE);
+
+        if (!lock.good()) {
+            cerr << "ERROR: Benchmarks for incremental sync: server did not "
+                    "create the lock.";
+            exit(1);
+        }
+
         genSync->serverSyncBegin(0);
     } else {
+        while (true) {
+            // Wait until the server is ready
+            ifstream lock(LOCK_FILE);
+            if (lock.good()) {
+                remove(LOCK_FILE.c_str());
+                break;
+            }
+
+            // this will be counted as idle time (in case of InterCPISync)
+            this_thread::sleep_for(chrono::milliseconds(10));
+        }
+
         genSync->clientSyncBegin(0);
     }
+}
+
+bool alreadyThere(shared_ptr<GenSync> genSync, DataObject elem) {
+    // We always consider only one SyncAgent in GenSync.
+    auto begin = genSync->getSyncAgt(0)->get()->beginElements();
+    auto end = genSync->getSyncAgt(0)->get()->endElements();
+
+    for (auto it = begin; it != end; it++)
+        if (elem == **it)
+            return true;
+
+    return false;
 }
 
 void invokeSyncIncrementally(bool ser, size_t chunkSize,
                              shared_ptr<GenSync> genSync,
                              shared_ptr<DataObjectGenerator> dataGen) {
+    // The process is as follows:
+    // 1. server adds chunkSize elements and
+    // creates the lock file when done. Then calls serverSyncBegin.
+    // In parallel, client also adds chunkSize and checks whether lock is there.
+    // 2. When client detects the lock, it deletes it and calls clientSyncBegin.
+    // 3. When sync is done, the process repeats from step 1.
+
     size_t currentlyAdded = 0;
     for (auto elem : *dataGen) {
+        // add only elements that are not already there
+        if (alreadyThere(genSync, elem))
+            continue;
+
         genSync->addElem(make_shared<DataObject>(elem));
         currentlyAdded++;
-        if (currentlyAdded % chunkSize == 0)
+
+        if (currentlyAdded % chunkSize == 0) {
+            stringstream ss;
+            ss << "[" << chrono::system_clock::now().time_since_epoch().count()
+               << "]: " << currentlyAdded << " elements added. Wants to sync!\n"
+               << std::flush;
+            Logger::gLog(Logger::TEST, ss.str());
+
             callServerOrClientSyncBegin(genSync, ser);
+        }
     }
-    // when inc_chunk does not divide the number of set elements
-    if (currentlyAdded % chunkSize != 0)
-        callServerOrClientSyncBegin(genSync, ser);
 }

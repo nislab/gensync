@@ -13,8 +13,8 @@
 #include <CPISync/Syncs/CPISync.h>
 #include <CPISync/Syncs/InterCPISync.h>
 
-bool InterCPISync::boundServerSocket = false;
-bool InterCPISync::boundClientSocket = false;
+bool InterCPISync::serverConnectedBefore = false;
+bool InterCPISync::clientConnectedBefore = false;
 
 InterCPISync::InterCPISync(long m_bar, long bits, int epsilon, int partition,bool Hashes /* = false*/)
 : maxDiff(m_bar), bitNum(bits), pFactor(partition), hashes(Hashes),
@@ -100,8 +100,8 @@ bool InterCPISync::addElem(shared_ptr<DataObject> newDatum) {
 
 bool InterCPISync::SyncClient(const shared_ptr<Communicant>& commSync, list<shared_ptr<DataObject>>& selfMinusOther, list<shared_ptr<DataObject>>& otherMinusSelf) {
     Logger::gLog(Logger::METHOD, "Entering InterCPISync::SyncClient");
-    if (!boundClientSocket) {
-        boundClientSocket = true;
+    if (!clientConnectedBefore) {
+        clientConnectedBefore = true;
 
         mySyncStats.timerStart(SyncStats::IDLE_TIME);
         commSync->commConnect();
@@ -189,12 +189,12 @@ bool InterCPISync::SyncServer(const shared_ptr<Communicant>& commSync, list<shar
 
     bool result = SyncMethod::SyncServer(commSync, selfMinusOther, otherMinusSelf);
 
-    if (!boundServerSocket) {
+    if (!serverConnectedBefore) {
         mySyncStats.timerStart(SyncStats::IDLE_TIME);
         commSync->commListen();
         mySyncStats.timerEnd(SyncStats::IDLE_TIME);
 
-        boundServerSocket = true;
+        serverConnectedBefore = true;
     }
 
     // 0. Set up communicants

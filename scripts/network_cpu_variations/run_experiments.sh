@@ -22,7 +22,7 @@ repeat=10
 # side).
 # CAUTION: Put only one server-client pair in params_dir or
 # provide server_params_file and client_params_file.
-# chunk_size=100
+chunk_size=100
 
 # Define either server and client files...
 # server_params_file=/home/novak/Desktop/CODE/cpisync/build/server_80_80.cpisync
@@ -30,7 +30,7 @@ repeat=10
 
 # ... or the directory where to find the data sets, and a .cpisync header
 # If params_header contains SET_OPTIMAL, the script tries to do so.
-params_dir=/home/novak/Desktop/CODE/btc-analysis/CPI_10K_set_K_diffs
+params_dir=data
 
 # params_header="Sync protocol (as in GenSync.h): 8
 # expected: SET_OPTIMAL
@@ -55,7 +55,7 @@ params_dir=/home/novak/Desktop/CODE/btc-analysis/CPI_10K_set_K_diffs
 # Sketches:
 # --------------------------------------------------------------------------------"
 params_header="Sync protocol (as in GenSync.h): 5
-m_bar: 256
+m_bar: 8
 bits: 64
 epsilon: 3
 partitions/pFactor(for InterCPISync): 3
@@ -64,11 +64,17 @@ Sketches:
 --------------------------------------------------------------------------------"
 
 # Network parameters
-latency=30
-bandwidth=18
-packet_loss=0.1
+latency=20
+bandwidth=35
+packet_loss=0.001
 cpu_server=100
 cpu_client=100
+
+# latency=30
+# bandwidth=18
+# packet_loss=0.1
+# cpu_server=100
+# cpu_client=100
 
 # Where to obtain needed executables
 mininet_path=~/Desktop/playground/mininet_exec/mininet_exec.py
@@ -279,8 +285,13 @@ print_common_el() {
 
 # Runs an experiment on the bare machine, ignoring mininet
 run_plain() {
-    $benchmarks_path -i $chunk_size -m "server" -p $1&
-    $benchmarks_path -i $chunk_size -m "client" -r localhost -p $2
+    if [[ $chunk_size ]]; then
+        $benchmarks_path -i $chunk_size -m "server" -p $1 &
+        $benchmarks_path -i $chunk_size -m "client" -r localhost -p $2
+    else
+        $benchmarks_path -m "server" -p $1 &
+        $benchmarks_path -m "client" -r localhost -p $2
+    fi
 }
 
 run_mininet_exec() {
@@ -303,7 +314,7 @@ run_mininet_exec() {
          --packet-loss $packet_loss    \
          --cpu-server $cpu_server      \
          --cpu-client $cpu_client      \
-         $server_script $client_script
+         "$server_script" "$client_script"
 }
 
 pull_from_remote() {
@@ -362,6 +373,15 @@ fi
 if ! [[ $we_are_on_remote ]]; then
     # When we are on remote, it is set appropriately in when_on_remote
     benchmarks_path=$cpisync_path/build/Benchmarks
+
+    # Parameters that do not make sense
+    if ! [[ ($server_params_file && $client_params_file) \
+                || ($params_dir && $params_header) ]]
+    then
+        echo "You either need to specify server_params_file and client_params_file,"
+        echo "or params_dir and params_header"
+        exit 1
+    fi
 fi
 
 if ! [[ -f $mininet_path ]]; then
@@ -370,13 +390,6 @@ if ! [[ -f $mininet_path ]]; then
 fi
 if ! [[ -f $python_path ]]; then
     echo "Python path does not exist: $python_path"
-    exit 1
-fi
-if ! [[ ($server_params_file && $client_params_file) \
-            || ($params_dir && $params_header) ]]
-then
-    echo "You either need to specify server_params_file and client_params_file,"
-    echo "or params_dir and params_header"
     exit 1
 fi
 
@@ -439,7 +452,7 @@ for p_file in $params_dir/*.cpisync; do
         # All the observations in .cpisync are after chunk_size added elements
         if [[ $chunk_size ]]; then
             if [[ -d .cpisync ]]; then
-                mv .cpisync .cpisync_rep_$i
+                mv .cpisync .cpisync_rep_${i}_chunks_${chunk_size}_${id}
             else
                 echo "run_experiments.sh: ERROR: No .cpisync after iteration $i. See .mnlog"
                 exit 1
@@ -450,7 +463,8 @@ for p_file in $params_dir/*.cpisync; do
     # post processing
     if [[ -d .cpisync ]]; then
         mv .cpisync .cpisync_$id
-    else
+    elif ! [[ $chunk_size ]]; then
+        # .cpisync is not there because it's already renamed above
         echo "run_experiments.sh: ERROR: No .cpisync directory, something went wrong. See .mnlog"
         exit 1
     fi
