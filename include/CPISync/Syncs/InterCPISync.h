@@ -147,6 +147,10 @@ protected:
 private:
     // METHODS
 
+  // TODO: Novak's quick fix. This is the wrong way to do this.
+  static bool boundServerSocket;
+  static bool boundClientSocket;
+
     /**
      * Deletes all memory associate with the given tree.
      * @param treeNode A pointer to the root of a tree.

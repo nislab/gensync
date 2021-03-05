@@ -13,6 +13,9 @@
 #include <CPISync/Syncs/CPISync.h>
 #include <CPISync/Syncs/InterCPISync.h>
 
+bool InterCPISync::boundServerSocket = false;
+bool InterCPISync::boundClientSocket = false;
+
 InterCPISync::InterCPISync(long m_bar, long bits, int epsilon, int partition,bool Hashes /* = false*/)
 : maxDiff(m_bar), bitNum(bits), pFactor(partition), hashes(Hashes),
 	probEps(conv<int>(ceil(-log10((RR_ONE - pow(RR_ONE - pow(RR_TWO,(RR) -epsilon),RR_ONE/ (RR_ONE+ pow(RR_TWO,(RR) bits) *
@@ -38,8 +41,10 @@ InterCPISync::InterCPISync(long m_bar, long bits, int epsilon, int partition,boo
 	ZZ_p::init(fieldSize);
 
 	treeNode = nullptr;
-	useExisting=false;
-	SyncID = SYNC_TYPE::Interactive_CPISync; // the synchronization type
+        // TODO: Novak's quick fix.
+        // useExisting=false;
+        useExisting=true;
+        SyncID = SYNC_TYPE::Interactive_CPISync; // the synchronization type
 }
 
 InterCPISync::~InterCPISync() {
@@ -95,6 +100,14 @@ bool InterCPISync::addElem(shared_ptr<DataObject> newDatum) {
 
 bool InterCPISync::SyncClient(const shared_ptr<Communicant>& commSync, list<shared_ptr<DataObject>>& selfMinusOther, list<shared_ptr<DataObject>>& otherMinusSelf) {
     Logger::gLog(Logger::METHOD, "Entering InterCPISync::SyncClient");
+    if (!boundClientSocket) {
+        boundClientSocket = true;
+
+        mySyncStats.timerStart(SyncStats::IDLE_TIME);
+        commSync->commConnect();
+        mySyncStats.timerEnd(SyncStats::IDLE_TIME);
+    }
+
     // 0. Set up communicants
     if(!useExisting) {
         mySyncStats.timerStart(SyncStats::IDLE_TIME);
@@ -175,6 +188,15 @@ bool InterCPISync::SyncServer(const shared_ptr<Communicant>& commSync, list<shar
     Logger::gLog(Logger::METHOD,"Entering InterCPISync::SyncServer");
 
     bool result = SyncMethod::SyncServer(commSync, selfMinusOther, otherMinusSelf);
+
+    if (!boundServerSocket) {
+        mySyncStats.timerStart(SyncStats::IDLE_TIME);
+        commSync->commListen();
+        mySyncStats.timerEnd(SyncStats::IDLE_TIME);
+
+        boundServerSocket = true;
+    }
+
     // 0. Set up communicants
     if(!useExisting) {
         mySyncStats.timerStart(SyncStats::IDLE_TIME);
@@ -524,7 +546,7 @@ void InterCPISync::createChildren(pTree * parentNode, pTree * tempTree, const ZZ
 		{
 			tempTree->child[ii] =  new pTree(new CPISync_ExistingConnection(maxDiff, bitNum, probEps, redundant_k,hashes),pFactor);//Create child nodes for parent
 			nodes[ii] = tempTree->child[ii]->getDatum();//Create references for the child nodes(used for insertion)
-		}	
+		}
 		CPISync * parent = parentNode->getDatum();//Get the parent node
 
 		for(auto elem = parent->beginElements();elem!=parent->endElements();elem++){    //Iterate through all parent information

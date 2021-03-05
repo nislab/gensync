@@ -17,13 +17,20 @@ set -e
 # How many times to repeat the same experiment
 repeat=10
 
+# When we do incremental reconciliation, reconciliation is invoked
+# after this much elelmenta insertions (on both server and client
+# side).
+# CAUTION: Put only one server-client pair in params_dir or
+# provide server_params_file and client_params_file.
+# chunk_size=100
+
 # Define either server and client files...
-# server_params_file=server_params_data_IBLTSync_optimal.cpisync
-# client_params_file=client_params_data_IBLTSync_optimal.cpisync
+# server_params_file=/home/novak/Desktop/CODE/cpisync/build/server_80_80.cpisync
+# client_params_file=/home/novak/Desktop/CODE/cpisync/build/client_80_80.cpisync
 
 # ... or the directory where to find the data sets, and a .cpisync header
 # If params_header contains SET_OPTIMAL, the script tries to do so.
-params_dir=/home/novak/Desktop/CODE/btc-analysis/CPI_10K_set
+params_dir=/home/novak/Desktop/CODE/btc-analysis/CPI_10K_set_K_diffs
 
 # params_header="Sync protocol (as in GenSync.h): 8
 # expected: SET_OPTIMAL
@@ -48,7 +55,7 @@ params_dir=/home/novak/Desktop/CODE/btc-analysis/CPI_10K_set
 # Sketches:
 # --------------------------------------------------------------------------------"
 params_header="Sync protocol (as in GenSync.h): 5
-m_bar: 16
+m_bar: 256
 bits: 64
 epsilon: 3
 partitions/pFactor(for InterCPISync): 3
@@ -79,6 +86,7 @@ help() {
     echo "    -pp PULL_REMOTE pull from here to my DATA/. Used to gather data from experimetns."
     echo "    -s used with -r when we only want to prepare an experiment on remote but not to run it."
     echo "    -q when this script is run on a remote set this."
+    echo "    -i ignore mininet and run the client and the server on bare machine."
     echo -e "\nEXAMPLES:"
     echo "    # runs locally"
     echo "    ./run_experiments.sh"
@@ -269,20 +277,33 @@ print_common_el() {
     echo -e "-------------------------------------------------------------------------------\n"
 }
 
+# Runs an experiment on the bare machine, ignoring mininet
+run_plain() {
+    $benchmarks_path -i $chunk_size -m "server" -p $1&
+    $benchmarks_path -i $chunk_size -m "client" -r localhost -p $2
+}
+
 run_mininet_exec() {
     # Assure that Mininet resources are cleaned
     sudo mn -c
     # echo -e "\n>>>>>>>>>>>>>>>>>>>> Sleeping for 10 seconds...\n"
     # sleep 10
 
-    sudo $python_path $mininet_path                         \
-         --latency $latency                                 \
-         --bandwidth $bandwidth                             \
-         --packet-loss $packet_loss                         \
-         --cpu-server $cpu_server                           \
-         --cpu-client $cpu_client                           \
-         "$benchmarks_path -p $1 -m server"                 \
-         "$benchmarks_path -p $2 -m client -r 192.168.1.1"
+    server_script="$benchmarks_path -p $1 -m server"
+    client_script="$benchmarks_path -p $2 -m client -r 192.168.1.1"
+
+    if [[ $chunk_size ]]; then
+        server_script="${server_script} -i $chunk_size"
+        client_script="${client_script} -i $chunk_size"
+    fi
+
+    sudo $python_path $mininet_path    \
+         --latency $latency            \
+         --bandwidth $bandwidth        \
+         --packet-loss $packet_loss    \
+         --cpu-server $cpu_server      \
+         --cpu-client $cpu_client      \
+         $server_script $client_script
 }
 
 pull_from_remote() {
@@ -306,7 +327,7 @@ pull_csv() {
 
 ################################ FUNCTIONS END #################################
 
-while getopts "hqsr:p:" option; do
+while getopts "hqsir:p:" option; do
     case $option in
         s) prepare_only=yes
            ;;
@@ -321,6 +342,8 @@ while getopts "hqsr:p:" option; do
         # When we are on remote, all the needed parts are in the same directory
         q) when_on_remote
            we_are_on_remote=yes
+           ;;
+        i) ignore_mininet=yes
            ;;
         h|*) help
              exit
@@ -406,7 +429,22 @@ for p_file in $params_dir/*.cpisync; do
     for i in `seq $repeat`
     do
         echo "%%%%%%%% Repetition #$i"
-        run_mininet_exec $server_params_file $client_params_file
+
+        if [[ $ignore_mininet ]]; then
+            run_plain $server_params_file $client_params_file
+        else
+            run_mininet_exec $server_params_file $client_params_file
+        fi
+
+        # All the observations in .cpisync are after chunk_size added elements
+        if [[ $chunk_size ]]; then
+            if [[ -d .cpisync ]]; then
+                mv .cpisync .cpisync_rep_$i
+            else
+                echo "run_experiments.sh: ERROR: No .cpisync after iteration $i. See .mnlog"
+                exit 1
+            fi
+        fi
     done
 
     # post processing
@@ -414,7 +452,8 @@ for p_file in $params_dir/*.cpisync; do
         mv .cpisync .cpisync_$id
     else
         echo "run_experiments.sh: ERROR: No .cpisync directory, something went wrong. See .mnlog"
+        exit 1
     fi
 done
 
-echo "Completed mininet_exec job!"
+echo "Completed run_experiments job!"
