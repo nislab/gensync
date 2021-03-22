@@ -22,7 +22,7 @@ repeat=10
 # side).
 # CAUTION: Put only one server-client pair in params_dir or
 # provide server_params_file and client_params_file.
-chunk_size=100
+# chunk_size=100
 
 # Define either server and client files...
 # server_params_file=/home/novak/Desktop/CODE/cpisync/build/server_80_80.cpisync
@@ -30,7 +30,7 @@ chunk_size=100
 
 # ... or the directory where to find the data sets, and a .cpisync header
 # If params_header contains SET_OPTIMAL, the script tries to do so.
-params_dir=data
+params_dir=/home/novak/Desktop/CODE/btc-analysis/art_unif_diff_10K_plain_stash
 
 # params_header="Sync protocol (as in GenSync.h): 8
 # expected: SET_OPTIMAL
@@ -47,44 +47,47 @@ params_dir=data
 # hashes: false
 # Sketches:
 # --------------------------------------------------------------------------------"
-# params_header="Sync protocol (as in GenSync.h): 12
-# fngprtSize: 7
-# bucketSize: 4
-# filterSize: SET_OPTIMAL
-# maxKicks: 500
-# Sketches:
-# --------------------------------------------------------------------------------"
-params_header="Sync protocol (as in GenSync.h): 5
-m_bar: 8
-bits: 64
-epsilon: 3
-partitions/pFactor(for InterCPISync): 3
-hashes: false
+params_header="Sync protocol (as in GenSync.h): 12
+fngprtSize: 7
+bucketSize: 4
+filterSize: SET_OPTIMAL
+maxKicks: 500
 Sketches:
 --------------------------------------------------------------------------------"
+# params_header="Sync protocol (as in GenSync.h): 5
+# m_bar: 32
+# bits: 64
+# epsilon: 3
+# partitions/pFactor(for InterCPISync): 3
+# hashes: false
+# Sketches:
+# --------------------------------------------------------------------------------"
 
 # Network parameters
-latency=20
-bandwidth=35
-packet_loss=0.001
-cpu_server=100
-cpu_client=100
-
-# latency=30
-# bandwidth=18
-# packet_loss=0.1
+# latency=20
+# bandwidth=35
+# packet_loss=0.001
 # cpu_server=100
 # cpu_client=100
+
+latency=30
+bandwidth=18
+packet_loss=0.1
+cpu_server=41
+cpu_client=41
+
+# CPU settings: 41, 83, 100
+# Network settings (30, 18, 0.1), (20, 35, 0.001)
 
 # Where to obtain needed executables
 mininet_path=~/Desktop/playground/mininet_exec/mininet_exec.py
 cpisync_path=~/Desktop/CODE/cpisync
-## When on remote, python_path is a path on remote
+# When on remote, python_path is a path on remote
 python_path=/home/novak/.virtualenvs/statistics/bin/python
 ################################ PARAMETERS END ################################
 
 help() {
-    echo -e "USAGE: ./run_experiments.sh [-q] [-s] [-r REMOTE_PATH] [-p EXPERIMENT_DIR] [-pp PULL_REMOTE]\n"
+    echo -e "USAGE: ./run_experiments.sh [-q] [-s] [-i] [-r REMOTE_PATH] [-p EXPERIMENT_DIR] [-pp PULL_REMOTE]\n"
     echo -e "See the beginning of this script to set the parameters for experiments.\n"
     echo "OPTIONS:"
     echo "    -r REMOTE_PATH the path on remote to copy all the needed parts."

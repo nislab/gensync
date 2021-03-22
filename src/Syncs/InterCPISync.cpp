@@ -529,6 +529,23 @@ bool InterCPISync::_SyncServer(const shared_ptr<Communicant> &commSync, list<sha
                 mySyncStats.timerStart(SyncStats::COMM_TIME);
                 commSync->commSend(SYNC_OK_FLAG);
                 mySyncStats.timerEnd(SyncStats::COMM_TIME);
+
+                // We need to accumulate the statistics in this case too
+                mySyncStats.increment(
+                    SyncStats::XMIT,
+                    node->mySyncStats.getStat(SyncStats::XMIT));
+                mySyncStats.increment(
+                    SyncStats::RECV,
+                    node->mySyncStats.getStat(SyncStats::RECV));
+                mySyncStats.increment(
+                    SyncStats::COMM_TIME,
+                    node->mySyncStats.getStat(SyncStats::COMM_TIME));
+                mySyncStats.increment(
+                    SyncStats::IDLE_TIME,
+                    node->mySyncStats.getStat(SyncStats::IDLE_TIME));
+                mySyncStats.increment(
+                    SyncStats::COMP_TIME,
+                    node->mySyncStats.getStat(SyncStats::COMP_TIME));
             }
             return true;
         }
