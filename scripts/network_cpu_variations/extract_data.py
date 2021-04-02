@@ -17,8 +17,8 @@ import pandas as pd
 
 OBSERV_SUFFIX = '_observ.cpisync'
 # The order MUST to match the order of lines the measurements appear in
-# _observ.cpisync files. Except for 'server' and 'client'.
-COLUMNS = ['server', 'client', 'success',
+# _observ.cpisync files. Except for 'server', 'client', and 'cardinality'.
+COLUMNS = ['server', 'client', 'cardinality', 'success',
            'bytes transmitted', 'bytes received',
            'communication time(s)', 'idle time(s)', 'computation time(s)']
 
@@ -41,7 +41,16 @@ if __name__ == '__main__':
             if not observ.endswith(OBSERV_SUFFIX):
                 continue
 
-            server, client = run.split('_')[-2:]
+            f_name_parts_count = len(run.split('_'))
+            if (f_name_parts_count == 3):
+                server, client = run.split('_')[-2:]
+                cardinality = ''
+            elif (f_name_parts_count == 4):
+                server, client, cardinality = run.split('_')[-3:]
+            else:
+                sys.exit('File name path has {} parts (only 3 and 4 allowed)'
+                         .format(f_name_parts_count))
+
             measurements = []
 
             with open(os.path.join(run_dir, observ), 'r') as obs_f:
@@ -51,7 +60,7 @@ if __name__ == '__main__':
                         break
 
                     # one line can match only one measure
-                    for measure in COLUMNS[2:]:
+                    for measure in COLUMNS[3:]:
                         if line.lower().startswith(measure):
                             # success is treated differently
                             if measure == 'success':
@@ -66,7 +75,8 @@ if __name__ == '__main__':
                             break
 
             # add a row
-            experiment_df.loc[len(experiment_df.index)] = [server, client] \
+            experiment_df.loc[
+                len(experiment_df.index)] = [server, client, cardinality] \
                 + measurements
 
     # write the data frame of this experiments_root_dir

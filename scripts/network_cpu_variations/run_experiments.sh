@@ -30,7 +30,7 @@ repeat=10
 
 # ... or the directory where to find the data sets, and a .cpisync header
 # If params_header contains SET_OPTIMAL, the script tries to do so.
-params_dir=/home/novak/Desktop/CODE/btc-analysis/art_unif_diff_10K_plain_stash
+params_dir=/home/novak/Desktop/CODE/btc-analysis/art_fix_d_2_I-CPI
 
 # params_header="Sync protocol (as in GenSync.h): 8
 # expected: SET_OPTIMAL
@@ -47,34 +47,34 @@ params_dir=/home/novak/Desktop/CODE/btc-analysis/art_unif_diff_10K_plain_stash
 # hashes: false
 # Sketches:
 # --------------------------------------------------------------------------------"
-params_header="Sync protocol (as in GenSync.h): 12
-fngprtSize: 7
-bucketSize: 4
-filterSize: SET_OPTIMAL
-maxKicks: 500
-Sketches:
---------------------------------------------------------------------------------"
-# params_header="Sync protocol (as in GenSync.h): 5
-# m_bar: 32
-# bits: 64
-# epsilon: 3
-# partitions/pFactor(for InterCPISync): 3
-# hashes: false
+# params_header="Sync protocol (as in GenSync.h): 12
+# fngprtSize: 7
+# bucketSize: 4
+# filterSize: SET_OPTIMAL
+# maxKicks: 500
 # Sketches:
 # --------------------------------------------------------------------------------"
+params_header="Sync protocol (as in GenSync.h): 5
+m_bar: 32
+bits: 64
+epsilon: 3
+partitions/pFactor(for InterCPISync): 3
+hashes: false
+Sketches:
+--------------------------------------------------------------------------------"
 
 # Network parameters
-# latency=20
-# bandwidth=35
-# packet_loss=0.001
-# cpu_server=100
-# cpu_client=100
+latency=20
+bandwidth=35
+packet_loss=0.001
+cpu_server=100
+cpu_client=100
 
-latency=30
-bandwidth=18
-packet_loss=0.1
-cpu_server=41
-cpu_client=41
+# latency=30
+# bandwidth=18
+# packet_loss=0.1
+# cpu_server=41
+# cpu_client=41
 
 # CPU settings: 41, 83, 100
 # Network settings (30, 18, 0.1), (20, 35, 0.001)
@@ -163,6 +163,27 @@ calc_set_optimal_subs() {
     esac
 }
 
+# Gets the id from the name of a .cpisync file (server or client) id
+# is normally the second part of the file name. For example
+# server_10_10_100 (number of differences "_", again, cardinality of
+# the sets)
+infer_id_from_f_name() {
+    f_name="$(basename $1)"
+    file_name_pts=`echo $f_name | awk -F'_' '{ print NF }'`
+    case $file_name_pts in
+        3) id="$(echo $f_name | awk -F'_' '{ print $(NF-1)"_"$NF }')"
+           ;;
+        # When there are 4 parts, then the last part is the
+        # cardinality of the sets
+        4) id="$(echo $f_name | awk -F'_' '{ print $(NF-2)"_"$(NF-1)"_"$NF }')"
+           ;;
+        *) echo ""
+    esac
+
+    id=${id//.cpisync/}
+    echo $id
+}
+
 # Third parameter is optional and determines whether the optimal
 # maximal number of mutual differences is used. It works only with
 # CPISync-based parameter headers.
@@ -194,8 +215,11 @@ prepend_params() {
             fi
 
             # find the corresponding client file
-            id="$(echo $file | awk -F'_' '{ print  $(NF-1)"_"$NF }')"
-            id=${id//.cpisync/}
+            id="$(infer_id_from_f_name $file)"
+            if [ -z "$id" ]; then
+                echo "infer_id_from_f_name failed."
+                exit 1
+            fi
             cli_f=$(find $params_dir -name "client_$id.cpisync")
 
             # Add to the server file
@@ -427,8 +451,11 @@ fi
 for p_file in $params_dir/*.cpisync; do
     # Obtain server-client .cpisync param file pairs
     if [[ $p_file == *"server"* ]]; then
-        id="$(echo $p_file | awk -F'_' '{ print $(NF-1)"_"$NF }')"
-        id=${id//.cpisync/}
+        id="$(infer_id_from_f_name $p_file)"
+        if [ -z "$id" ]; then
+            echo "infer_id_from_f_name failed."
+            exit 1
+        fi
         server_params_file=$p_file
         client_params_file=$(find $params_dir -name "*client*$id.cpisync")
     else
