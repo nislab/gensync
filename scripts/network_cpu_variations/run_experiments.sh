@@ -15,7 +15,7 @@ set -e
 
 ############################### PARAMETERS BEGIN ###############################
 # How many times to repeat the same experiment
-repeat=10
+repeat=100
 
 # When we do incremental reconciliation, reconciliation is invoked
 # after this much elelmenta insertions (on both server and client
@@ -27,10 +27,12 @@ repeat=10
 # Define either server and client files...
 # server_params_file=/home/novak/Desktop/CODE/cpisync/build/server_80_80.cpisync
 # client_params_file=/home/novak/Desktop/CODE/cpisync/build/client_80_80.cpisync
+# server_params_file=/home/novak/Desktop/CODE/cpisync/scripts/network_cpu_variations/test/server_1612585800_1612585800.cpisync
+# client_params_file=/home/novak/Desktop/CODE/cpisync/scripts/network_cpu_variations/test/client_1612585800_1612585800.cpisync
 
 # ... or the directory where to find the data sets, and a .cpisync header
 # If params_header contains SET_OPTIMAL, the script tries to do so.
-params_dir=/home/novak/Desktop/CODE/btc-analysis/art_fix_d_2_I-CPI
+params_dir=/home/novak/Desktop/CODE/btc-analysis/art_unif_diff_10K_plain_stash
 
 # params_header="Sync protocol (as in GenSync.h): 8
 # expected: SET_OPTIMAL
@@ -38,15 +40,14 @@ params_dir=/home/novak/Desktop/CODE/btc-analysis/art_fix_d_2_I-CPI
 # numElemChild: 0
 # Sketches:
 # --------------------------------------------------------------------------------"
-# params_header="
-# Sync protocol (as in GenSync.h): 1
-# m_bar: SET_OPTIMAL
-# bits: 64
-# epsilon: 3
-# partitions/pFactor(for InterCPISync): 0
-# hashes: false
-# Sketches:
-# --------------------------------------------------------------------------------"
+params_header="Sync protocol (as in GenSync.h): 1
+m_bar: SET_OPTIMAL
+bits: 64
+epsilon: 3
+partitions/pFactor(for InterCPISync): 0
+hashes: false
+Sketches:
+--------------------------------------------------------------------------------"
 # params_header="Sync protocol (as in GenSync.h): 12
 # fngprtSize: 7
 # bucketSize: 4
@@ -54,18 +55,18 @@ params_dir=/home/novak/Desktop/CODE/btc-analysis/art_fix_d_2_I-CPI
 # maxKicks: 500
 # Sketches:
 # --------------------------------------------------------------------------------"
-params_header="Sync protocol (as in GenSync.h): 5
-m_bar: 32
-bits: 64
-epsilon: 3
-partitions/pFactor(for InterCPISync): 3
-hashes: false
-Sketches:
---------------------------------------------------------------------------------"
+# params_header="Sync protocol (as in GenSync.h): 5
+# m_bar: 32
+# bits: 64
+# epsilon: 3
+# partitions/pFactor(for InterCPISync): 3
+# hashes: false
+# Sketches:
+# --------------------------------------------------------------------------------"
 
 # Network parameters
-latency=20
-bandwidth=35
+latency=10
+bandwidth="12/60"
 packet_loss=0.001
 cpu_server=100
 cpu_client=100
@@ -78,6 +79,8 @@ cpu_client=100
 
 # CPU settings: 41, 83, 100
 # Network settings (30, 18, 0.1), (20, 35, 0.001)
+# internet: (10, 60, 0.001)
+# internet asymmetric: (10, "12/60", 0.001)
 
 # Where to obtain needed executables
 mininet_path=~/Desktop/playground/mininet_exec/mininet_exec.py
@@ -90,12 +93,13 @@ help() {
     echo -e "USAGE: ./run_experiments.sh [-q] [-s] [-i] [-r REMOTE_PATH] [-p EXPERIMENT_DIR] [-pp PULL_REMOTE]\n"
     echo -e "See the beginning of this script to set the parameters for experiments.\n"
     echo "OPTIONS:"
-    echo "    -r REMOTE_PATH the path on remote to copy all the needed parts."
+    echo "    -r REMOTE_PATH the path on remote to copy all the needed parts to."
     echo "    -p EXPERIMENT_DIR make a csv file out of this dir, and pull it to the local working directory."
     echo "    -pp PULL_REMOTE pull from here to my DATA/. Used to gather data from experimetns."
     echo "    -s used with -r when we only want to prepare an experiment on remote but not to run it."
     echo "    -q when this script is run on a remote set this."
     echo "    -i ignore mininet and run the client and the server on bare machine."
+    echo "    -f force recreating param files' headers (works only with params_dir)."
     echo -e "\nEXAMPLES:"
     echo "    # runs locally"
     echo "    ./run_experiments.sh"
@@ -184,6 +188,16 @@ infer_id_from_f_name() {
     echo $id
 }
 
+# Remove header from the param file passed as the first parameter. If
+# there is no header, terminate the program.
+remove_header_from_param_file() {
+    grep_ret=`grep -E -n "\-{30,}" $1`  # 30 or more repetitions of "-"
+    grep_ret_parts=(${grep_ret//:/ })
+    line_num=${grep_ret_parts[0]}
+
+    sed -i -e "1,${line_num}d" $1
+}
+
 # Third parameter is optional and determines whether the optimal
 # maximal number of mutual differences is used. It works only with
 # CPISync-based parameter headers.
@@ -207,8 +221,9 @@ prepend_params() {
     echo "Adding headers to raw data sets in $1, if needed..."
 
     for file in $params_dir/server*.cpisync; do
-        # set only if not already set
-        if ! [[ $(head -n 1 $file) == "Sync protocol"* ]]; then
+        # set only if not already set, or when user forces it
+        if ! [[ $(head -n 1 $file) == "Sync protocol"* ]] \
+                || [[ $force_prepend_params ]]; then
             header_text=$2
             if [ "$infer_optimal" ]; then
                 header_text="$(calc_set_optimal_subs "$header_text" "$file")"
@@ -222,12 +237,18 @@ prepend_params() {
             fi
             cli_f=$(find $params_dir -name "client_$id.cpisync")
 
-            # Add to the server file
+            # if forcing is enabled, first remove the existing headers
+            if [[ $force_prepend_params ]]; then
+                remove_header_from_param_file $file
+                remove_header_from_param_file $cli_f
+            fi
+
+            # Add headers to the server file
             tmp_file=$(mktemp)
             echo -e "$header_text" | awk 'NF' | cat - $file > $tmp_file
             mv $tmp_file $file
 
-            # Add to the client file
+            # Add headers to the client file
             if [[ ("$sync_prot" == "12") && "$infer_optimal" ]]; then
                 # CPISync allows possibly different headers for server
                 # and client
@@ -365,7 +386,7 @@ pull_csv() {
 
 ################################ FUNCTIONS END #################################
 
-while getopts "hqsir:p:" option; do
+while getopts "hqsifr:p:" option; do
     case $option in
         s) prepare_only=yes
            ;;
@@ -382,6 +403,8 @@ while getopts "hqsir:p:" option; do
            we_are_on_remote=yes
            ;;
         i) ignore_mininet=yes
+           ;;
+        f) force_prepend_params=yes
            ;;
         h|*) help
              exit
@@ -471,7 +494,7 @@ for p_file in $params_dir/*.cpisync; do
     # Run experiment loop
     for i in `seq $repeat`
     do
-        echo "%%%%%%%% Repetition #$i"
+        echo "%%%%%%%% Repetition #$i [`date`]"
 
         if [[ $ignore_mininet ]]; then
             run_plain $server_params_file $client_params_file

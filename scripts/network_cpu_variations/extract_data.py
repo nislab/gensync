@@ -75,9 +75,9 @@ if __name__ == '__main__':
                             break
 
             # add a row
+            prefix = [server, client, cardinality]
             experiment_df.loc[
-                len(experiment_df.index)] = [server, client, cardinality] \
-                + measurements
+                len(experiment_df.index)] = prefix + measurements
 
     # write the data frame of this experiments_root_dir
     experiment_df.to_csv('{}.csv'.format(
