@@ -6,8 +6,6 @@
  * Created on July, 2020.
  */
 
-// TODO: Support dynamic set evolution while syncing
-
 #include <CPISync/Benchmarks/BenchParams.h>
 #include <CPISync/Syncs/GenSync.h>
 #include <assert.h>
