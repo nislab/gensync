@@ -204,7 +204,7 @@ OPTIONS:
 
 The *Runner* can invoke any *GenSync* algorithm on arbitrary data
 (provided in `PARAM_FILE`), or can generate the random data. It also
-supports two reconciliation types (*e.g.,* one-time, and
+supports two reconciliation types (*i.e.,* one-time and
 incremental). The *Runner* can run the client and the server on the
 same machine, or can be run on two remote machines.
 
@@ -257,13 +257,13 @@ framework and allows for easy benchmarking. Typical inputs to
    useful when we want to run many experiments as a batch job.
 2. Network parameters in the following form:
 ```
-latency=<INT>
-bandwidth="<INT_UPLOAD>/<INT_DOWNLOAD>"
-packet_loss=<DOUBLE>
+latency=<INT>  # in milliseconds
+bandwidth="<INT_UPLOAD>/<INT_DOWNLOAD>" | <INT>  # when <INT>, bandwidth is symmetrical
+packet_loss=<DOUBLE>  # for example, 0.01 for 0.01% packet loss
 ```
 3. Compute parameters of the nodes where each integer represents the compute power **relative to the single-thread score of the testbed machine** (you can find these scores at [cpubenchmark.net](https://www.cpubenchmark.net/) or any other place of your choice):
 ```
-cpu_server=<INT>
+cpu_server=<INT>  # for example, 33 for 33% of testbed CPU
 cpu_client=<INT>
 ```
 Please see the paper for more details on how we constrain the compute power of the nodes.
@@ -405,11 +405,18 @@ purposes, please see [*Runner*](#concepts_Runner),
 <a name="usage_compilation"></a>
 ### Compilation
 The only external dependency you will need here is
-[NTL](https://libntl.org/).
+[NTL](https://libntl.org/). Many Linux distributions already have NTL
+in their package archives (*e.g.,*
+[Debian](https://packages.debian.org/sid/libntl-dev),
+[Ubuntu](https://packages.ubuntu.com/bionic/libntl-dev),
+[Fedora](https://src.fedoraproject.org/rpms/ntl),
+[Arch](https://archlinux.org/packages/community/x86_64/ntl/)).
 
 To compile *GenSync* use:
 
 ``` shell
+$ git clone --recurse-submodules git@github.com:nislab/gensync.git
+$ cd gensync
 $ cmake -B build
 $ cmake --build build
 ```
@@ -420,9 +427,10 @@ standalone executables that you need for benchmarking.
 
 <a name="examples"></a>
 ## Examples
-You need a Linux machine with superuser privileges, Mininet, the
-*CPISync* dependencies installed, and *GenSync* compiled (as described
-above).
+For this to work you will need
+- Linux machine with superuser privileges,
+- Mininet with Python API (see [here](http://mininet.org/download/)), and
+- *GenSync* (compile as [above](#usage_compilation)).
 
 To try *GenSync*, you will need `PARAM_FILE`s. We provide the default
 ones in [`/example`](/example). The current version of the
@@ -435,7 +443,8 @@ $ ./run_experiments.sh
 ```
 
 See [`run_experiments`](#concepts_run_experiments) for more details on
-how to interpret the outputs.
+how to gauge the benchmark parameters and analyze the experimental
+observations.
 
 <a name="acknowledgments"></a>
 ## Acknowledgments
