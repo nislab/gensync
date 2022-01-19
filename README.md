@@ -45,6 +45,10 @@ ones (*BenchParams*, *BenchObserv*, *Runner*, `mininet_exec`, and
 `run_experiments`). Further we discuss the purpose and details of each
 concept.
 
+<img src="doc/figures/GenSyncUML.jpeg"
+     alt="Simplified UML diagram of the GenSync framework."
+     title="Simplified UML diagram of the GenSync framework." />
+
 <a name="concepts_GenSync"></a>
 ### *GenSync* Interface
 *GenSync* interface is the core abstraction of the *GenSync*
