@@ -119,7 +119,7 @@ Sync protocol (as in GenSync.h): <INTEGER_TO_IDENTIFY_PROTOCOL>
 <PROTOCOL_PARAMETERS>
 Sketches:
 --------------------------------------------------------------------------------
-<BASE64_ENCODED_DATA_POITS|REFERENCE_TO_OTHER_DATA_FILE>
+<BASE64_ENCODED_DATA_POINTS|REFERENCE_TO_OTHER_DATA_FILE>
 ```
 
 Each Protocol has unique set of parameters. For example:
