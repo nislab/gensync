@@ -14,20 +14,23 @@
 set -e
 
 # Global constants
-team_name=sync-edge
-base_image=srslte-20-04.tar.gz
-modified_image=gensync-colosseum
+team_name=sync-edge                     # Colosseum team name
+base_image=base-1604-nocuda.tar.gz      # base image when `-c`
+modified_image=gensync-colosseum        # name of produced image when `-c`
+instance=colosseum-instance             # temporary container name
+shared_path=/share/exec                 # where containers mount the shared NAS
+srn_user_passwd="Spiteful Corgi Bites"  # password for `root` and `srn_user` in containers
+
+# Calculated constants
 gensync_path="`cd ..; pwd`"
 gensync_basename="$(basename "$gensync_path")"
-srn_user_passwd="Spiteful Corgi Bites"
-shared_path=/share/exec              # where containers mount the shared NAS
 
 # Extended commands
 lxc="sudo lxc"
 
 help() {
     cat<<EOF
-USAGE: run_colosseum [-h] [-c] SERVER CLIENT
+USAGE: run_colosseum [-h] [-c] [-u IMAGE] SERVER CLIENT
 
 Executes GenSync synchornization on Colosseum wireless network simulator.
 
@@ -38,19 +41,30 @@ SERVER and CLIENT are hostnames of Colosseum SRN's.
 
 OPTIONS:
     -h Show this message and exit.
-    -c Create GenSync continar image '$modified_image.tar.gz' and exit.
+    -c Create GenSync container image '$modified_image.tar.gz' and exit.
+    -u Similar to -c but uploads GenSync code to an existing IMAGE instead of creating the new one.
 EOF
 }
 
 # Build `lxc` execution command.
-# First argument is container instance
+# No arguments
 get_lxc_exec() {
-    echo "$lxc exec $1 -- bash -c"
+    echo "$lxc exec $instance -- bash -c"
 }
 
-# Obtain the IP address of a host
+# Obtain the IP address of a host.
+# No arguments
 get_ip_cmd() {
-    echo "ifconfig | awk '/inet/ { print \$2 }' | head -n1"
+    echo "ifconfig | grep -A1 'col0: ' | awk '/inet/ { print \$2 }'"
+}
+
+# Obtain GenSync compile commands.
+# No arguments
+get_compile_cmd() {
+    echo "cd /$gensync_basename;
+          rm -rf build || true;
+          rm CMakeCache.txt || true;
+          mkdir build; cd build; cmake ../; make -j\$(nproc)"
 }
 
 # Obtain nanoseconds since epoch
@@ -58,12 +72,22 @@ get_current_date() {
     date +%N
 }
 
+# Stop the container and export it to a `.tar.gz` file as an image
+# $1 the instance to export
+# $2 the name for the modified image
+export_modified_image() {
+    $lxc stop "$1"
+    printf "\nPublishing '$2' ...\n"
+    $lxc publish "$1" --alias "$2"
+    printf "\nExporting '$2' ...\n"
+    $lxc image export "$2" "$2"
+}
+
 # Prepare a container image and upload it to Colosseum.
 # No arguments
 setup() {
-    local instance=colosseum-instance
     local image_remote_loc=file-proxy:/share/nas/"$team_name"/images
-    local lxc_exec="$(get_lxc_exec "$instance")"
+    local lxc_exec="$(get_lxc_exec)"
 
     if [ -e "$modified_image.tar.gz" ]; then
         printf "$modified_image.tar.gz already exists.\n"
@@ -86,7 +110,7 @@ setup() {
     $lxc launch colosseum-base "$instance"
 
     # Change the password of the `srn-user` and `root` users
-    printf "\nChanging 'srn-user' and 'root' passwords in the container to '$srn_user_passwd... \n"
+    printf "\nChanging 'srn-user' and 'root' passwords in the container to '$srn_user_passwd' ... \n"
     $lxc_exec "echo -e '$srn_user_passwd\n$srn_user_passwd' | passwd srn-user"
     $lxc_exec "echo -e '$srn_user_passwd\n$srn_user_passwd' | passwd root"
 
@@ -117,14 +141,20 @@ EOF
         esac
 
         # Update repositories and upgrade all packages
-        $lxc_exec "apt update -y && apt upgrade -y"
-        $lxc stop "$instance" && $lxc start "$instance"
+        $lxc_exec "apt update -y; apt upgrade -y"
+        $lxc stop "$instance"; $lxc start "$instance"
 
         # Upgrade to a newer Ubuntu version
-        $lxc exec "$instance" -- script /dev/null -c "do-release-upgrade -m server"
-        $lxc stop "$instance" && $lxc start "$instance"
+        $lxc exec "$instance" -- script /dev/null -c \
+             "sleep 2; apt update -y; do-release-upgrade -m server"
+        $lxc stop "$instance"; $lxc start "$instance"
 
-        exit
+        printf "\nContainer upgrade completed!\n\n"
+        $lxc_exec "lsb_release -a 2>/dev/null"
+        read -p "Do you want to proceed with this version of Ubuntu? (Y/n): " yn
+        case $yn in
+            [Nn]* ) exit
+        esac
     fi
 
     # Transfer GenSync codebase to the container
@@ -132,18 +162,9 @@ EOF
     $lxc_exec "rm -f /$gensync_basename/run/*.tar.gz || true"
 
     # Compile GenSync in the container
-    $lxc_exec \
-        "cd /$gensync_basename;
-            rm -rf build || true;
-            rm CMakeCache.txt || true;
-            mkdir build; cd build; cmake ../; make -j\$(nproc)"
+    $lxc_exec "$(get_compile_cmd)"
 
-    # Export modified container image
-    $lxc stop "$instance"
-    printf "\nPublishing '$modified_image' ...\n"
-    $lxc publish "$instance" --alias "$modified_image"
-    printf "\nExporting '$modified_image' ...\n"
-    $lxc image export "$modified_image" "$modified_image"
+    export_modified_image "$instance" "$modified_image"
 
     # Cleanup
     printf "\nCleanup ...\n"
@@ -154,7 +175,40 @@ EOF
     printf "\nUploading image to Colosseum testbed ...\n"
     rsync -Pv "$modified_image".tar.gz "$image_remote_loc"
     printf "\nFixing container permissions on Colosseum testbed ...\n"
-    ssh file-proxy "chmod 755 \"$image_remote_loc/$modified_image\""
+    ssh file-proxy "chmod 755 $image_remote_loc/$modified_image".tar.gz
+}
+
+# Load the image and refresh the GenSync version in it.
+# $1 the image name
+refresh_code() {
+    local image="$(basename "$1" .tar.gz)"
+    local lxc_exec="$(get_lxc_exec)"
+    local is_imported=$($lxc --format=csv image ls | awk -F, '{ print $1 }' | grep -c $image)
+
+    if [[ $is_imported -eq 0 ]]; then
+        # Image is not imported. Is it at least on the disk?
+        if [[ -e "$image".tar.gz ]]; then
+            printf "\nImporting '$image' ...\n"
+            $lxc image import "$image".tar.gz --alias "$image"
+        else
+            printf "\nCannot find '$image' image.\n"
+            exit
+        fi
+    fi
+
+    $lxc delete --force "$instance" 2>/dev/null || true
+    $lxc launch "$image" "$instance"
+
+    # Copy code and compile it in the container
+    $lxc_exec "rm -rf /$gensync_basename"
+    $lxc file push -rp "$gensync_path"/ "$instance"/
+    $lxc_exec "rm -f /$gensync_basename/run/*.tar.gz || true"
+    $lxc_exec "$(get_compile_cmd)"
+
+    export_modified_image "$instance" "$image"_"$(get_current_date)"
+
+    # Cleanup
+    $lxc delete --force "$instance"
 }
 
 # Execute GenSync experiments on Colosseum.
@@ -179,19 +233,23 @@ exec_on_colosseum() {
     # TODO 2: there should be an easier way to execute commands in a container
     sshpass -p "$srn_user_passwd" ssh srn-user@"$server_host" \
             "cd '$copy_dest';
-            nohup '$benchmark_path' -m server -p '$examples_path'/server_params_data.cpisync &"
+            '$benchmark_path' -m server -p '$examples_path'/server_params_data.cpisync" &
     sshpass -p "$srn_user_passwd" ssh srn-user@"$client_host" \
             "cd '$copy_dest';
+            ping -c 5 '$server_ip'
             '$benchmark_path' -m client -r '$server_ip' -p '$examples_path'/client_params_data.cpisync"
 }
 
-while getopts "hc" option; do
+while getopts "hcu:" option; do
     case $option in
         c) setup
            exit
            ;;
-        h) help
+        u) refresh_code "$OPTARG"
            exit
+           ;;
+        h|* ) help
+              exit
     esac
 done
 
