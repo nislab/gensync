@@ -6,4 +6,4 @@ RUN apt-get update -y && apt-get install -y build-essential cmake libntl-dev lib
 
 COPY . /gensync
 
-RUN cd gensync; rm -rf build/; cmake -B build; cmake --build build -j $(nproc)
+RUN cd gensync; rm -rf build/ || true; cmake -B build; cmake --build build -j $(nproc)
