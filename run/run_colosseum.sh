@@ -34,7 +34,7 @@ USAGE: run_colosseum [-h] [-c] [-u IMAGE] SERVER CLIENT
 
 Executes GenSync synchornization on Colosseum wireless network simulator.
 
-Requirements: sshpass, rsync, sudo, lxc, lxd.
+Requirements: sudo, ssh, sshpass, rsync, lxc, lxd.
 You need be behind Colosseum's VPN and have your Colosseum remotes set in ~/.ssh/config.
 
 SERVER and CLIENT are hostnames of Colosseum SRN's.
@@ -90,7 +90,7 @@ setup() {
     local lxc_exec="$(get_lxc_exec)"
 
     if [ -e "$modified_image.tar.gz" ]; then
-        printf "$modified_image.tar.gz already exists.\n"
+        printf "'$modified_image.tar.gz' already exists.\n"
         return
     fi
 
