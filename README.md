@@ -408,13 +408,22 @@ purposes, please see [*Runner*](#concepts_Runner),
 
 <a name="usage_compilation"></a>
 ### Compilation
-The only external dependency you will need here is
-[NTL](https://libntl.org/). Many Linux distributions already have NTL
-in their package archives (*e.g.,*
+The only external dependencies you will need to run GenSync are
+[NTL](https://libntl.org/) and [GNU GMP](https://gmplib.org/). Many
+Linux distributions already have NTL and GNU GMP in their package
+archives (*e.g.,*
 [Debian](https://packages.debian.org/sid/libntl-dev),
 [Ubuntu](https://packages.ubuntu.com/bionic/libntl-dev),
 [Fedora](https://src.fedoraproject.org/rpms/ntl),
 [Arch](https://archlinux.org/packages/community/x86_64/ntl/)).
+
+If you use Debian, or a derivative such as Ubuntu, you can install all
+dependencies using:
+
+``` shell
+$ apt-install -y libntl-dev libgmp3-dev  # NTL and GNU GMP dependencies
+$ apt-install -y build-essential cmake libcppunit-dev  # for building and testing
+```
 
 To compile *GenSync* use:
 
