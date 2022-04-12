@@ -42,7 +42,7 @@ SERVER and CLIENT are hostnames of Colosseum SRN's.
 
 OPTIONS:
     -h Show this message and exit.
-    -c Create GenSync container image '$modified_image.tar.gz' and exit.
+    -c Create GenSync container image '$modified_image.tar.gz' and exit (installs `colosseumcli` down the road).
     -u Similar to -c but uploads GenSync code to an existing IMAGE instead of creating the new one.
 EOF
 }
@@ -82,6 +82,27 @@ export_modified_image() {
     $lxc publish "$1" --alias "$2"
     printf "\nExporting '$2' ...\n"
     $lxc image export "$2" "$2"
+}
+
+# Install `colosseumcli` in the container (container must be running)
+# $1 the running instance name
+install_colosseumcli() {
+    local lxc_exec="$(get_lxc_exec)"
+    local cli_basename="$(basename "$colosseumcli_path")"
+
+    printf "\nInstalling 'colosseumcli' in '$1' container...\n"
+    $lxc file push -rp "$colosseumcli_path" "$1"/tmp/
+    $lxc_exec "cd /tmp/'$cli_basename'
+               tar zxvf colosseum_cli_prereqs.tar.gz
+               tar zxvf colosseumcli-18.05.0-3.tar.gz
+               cp -r colosseum_cli_prereqs /root/
+               cp -r colosseumcli-18.05.0 /root/
+               cd /root/colosseum_cli_prereqs
+               ./install_prereqs.sh
+               cd ../colosseumcli-18.05.0
+               python3 setup.py install
+               rm -rf /root/colosseum_cli_prereqs /root/colosseumcli-18.05.0"
+    printf "\n`colosseumcli successfully installed.`\n"
 }
 
 # Prepare a container image and upload it to Colosseum.
@@ -165,6 +186,8 @@ EOF
     # Compile GenSync in the container
     $lxc_exec "$(get_compile_cmd)"
 
+    install_colosseumcli "$instance"
+
     export_modified_image "$instance" "$modified_image"
 
     # Cleanup
@@ -185,7 +208,6 @@ refresh_code() {
     local image="$(basename "$1" .tar.gz)"
     local lxc_exec="$(get_lxc_exec)"
     local is_imported=$($lxc --format=csv image ls | awk -F, '{ print $1 }' | grep -c $image)
-    local cli_basename="$(basename "$colosseumcli_path")"
 
     if [[ $is_imported -eq 0 ]]; then
         # Image is not imported. Is it at least on the disk?
@@ -206,21 +228,6 @@ refresh_code() {
     $lxc file push -rp "$gensync_path"/ "$instance"/
     $lxc_exec "rm -f /$gensync_basename/run/*.tar.gz || true"
     $lxc_exec "$(get_compile_cmd)"
-
-    # Install `colosseumcli` within the container
-    printf "\nInstalling `colosseumcli` in the modified container...\n"
-    $lxc file push -rp "$colosseumcli_path" "$instance"/tmp/
-    $lxc_exec "cd /tmp/'$cli_basename'
-               tar zxvf colosseum_cli_prereqs.tar.gz
-               tar zxvf colosseumcli-18.05.0-3.tar.gz
-               cp -r colosseum_cli_prereqs /root/
-               cp -r colosseumcli-18.05.0 /root/
-               cd /root/colosseum_cli_prereqs
-               ./install_prereqs.sh
-               cd ../colosseumcli-18.05.0
-               python3 setup.py install
-               rm -rf /root/colosseum_cli_prereqs /root/colosseumcli-18.05.0"
-    printf "\n`colosseumcli successfully installed.`\n"
 
     export_modified_image "$instance" "$image"_"$(get_current_date)"
 
