@@ -202,3 +202,4 @@ fabric.properties
 /scripts/network_cpu_variations/DATA/
 /scripts/network_cpu_variations/.mypy_cache/
 *.tar.gz
+!/run/colosseumcli/*.tar.gz

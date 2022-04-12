@@ -20,6 +20,7 @@ modified_image=gensync-colosseum        # name of produced image when `-c`
 instance=colosseum-instance             # temporary container name
 shared_path=/share/exec                 # where containers mount the shared NAS
 srn_user_passwd="Spiteful Corgi Bites"  # password for `root` and `srn_user` in containers
+colosseumcli_path=colosseumcli          # path to `colosseumcli` install artifacts
 
 # Calculated constants
 gensync_path="`cd ..; pwd`"
@@ -149,7 +150,7 @@ EOF
              "sleep 2; apt update -y; do-release-upgrade -m server"
         $lxc stop "$instance"; $lxc start "$instance"
 
-        printf "\nContainer upgrade completed!\n\n"
+        printf "\nThis was my best effort. The container is now at:\n\n"
         $lxc_exec "lsb_release -a 2>/dev/null"
         read -p "Do you want to proceed with this version of Ubuntu? (Y/n): " yn
         case $yn in
@@ -184,6 +185,7 @@ refresh_code() {
     local image="$(basename "$1" .tar.gz)"
     local lxc_exec="$(get_lxc_exec)"
     local is_imported=$($lxc --format=csv image ls | awk -F, '{ print $1 }' | grep -c $image)
+    local cli_basename="$(basename "$colosseumcli_path")"
 
     if [[ $is_imported -eq 0 ]]; then
         # Image is not imported. Is it at least on the disk?
@@ -204,6 +206,20 @@ refresh_code() {
     $lxc file push -rp "$gensync_path"/ "$instance"/
     $lxc_exec "rm -f /$gensync_basename/run/*.tar.gz || true"
     $lxc_exec "$(get_compile_cmd)"
+
+    # Install `colosseumcli` within the container
+    printf "\nInstalling `colosseumcli` in the modified container...\n"
+    $lxc file push -rp "$colosseumcli_path" "$instance"/tmp/
+    $lxc_exec "cd /tmp/'$cli_basename';
+               tar zxvf colosseum_cli_prereqs.tar.gz;
+               tar zxvf colosseumcli-18.05.0-3.tar.gz;
+               cp -r colosseum_cli_prereqs /root/;
+               cp -r colosseumcli-18.05.0-3 /root/;
+               cd /colosseum_cli_prereqs;
+               ./install_prereqs.sh;
+               cd ../colosseumcli-18.05.0-3;
+               python3 setup.py install"
+    printf "\n`colosseumcli successfully installed.`\n"
 
     export_modified_image "$instance" "$image"_"$(get_current_date)"
 
