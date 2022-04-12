@@ -210,15 +210,16 @@ refresh_code() {
     # Install `colosseumcli` within the container
     printf "\nInstalling `colosseumcli` in the modified container...\n"
     $lxc file push -rp "$colosseumcli_path" "$instance"/tmp/
-    $lxc_exec "cd /tmp/'$cli_basename';
-               tar zxvf colosseum_cli_prereqs.tar.gz;
-               tar zxvf colosseumcli-18.05.0-3.tar.gz;
-               cp -r colosseum_cli_prereqs /root/;
-               cp -r colosseumcli-18.05.0-3 /root/;
-               cd /colosseum_cli_prereqs;
-               ./install_prereqs.sh;
-               cd ../colosseumcli-18.05.0-3;
-               python3 setup.py install"
+    $lxc_exec "cd /tmp/'$cli_basename'
+               tar zxvf colosseum_cli_prereqs.tar.gz
+               tar zxvf colosseumcli-18.05.0-3.tar.gz
+               cp -r colosseum_cli_prereqs /root/
+               cp -r colosseumcli-18.05.0 /root/
+               cd /root/colosseum_cli_prereqs
+               ./install_prereqs.sh
+               cd ../colosseumcli-18.05.0
+               python3 setup.py install
+               rm -rf /root/colosseum_cli_prereqs /root/colosseumcli-18.05.0"
     printf "\n`colosseumcli successfully installed.`\n"
 
     export_modified_image "$instance" "$image"_"$(get_current_date)"
