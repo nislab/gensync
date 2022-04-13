@@ -7,8 +7,21 @@ application and used to benchmark the implemented algorithms under a
 broad range of practical compute and network conditions (see below for
 the list of implemented [algorithms](#algorithms)).
 
-***This work is currently under review for IEEE Transactions on
-Network and Service Management***.
+If you use this software, please cite the following paper (pdf,
+[DOI](http://doi.org/10.1109/TNSM.2022.3164369)):
+
+``` bibtex
+@ARTICLE{gensync,
+  author={Boškov, Novak and Trachtenberg, Ari and Starobinski, David},
+  journal={IEEE Transactions on Network and Service Management},
+  title={GenSync: A New Framework for Benchmarking and Optimizing Reconciliation of Data},
+  year={2022},
+  volume={},
+  number={},
+  pages={1-1},
+  doi={10.1109/TNSM.2022.3164369}
+}
+```
 
 - - -
 

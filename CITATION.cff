@@ -1,0 +1,45 @@
+cff-version: 1.2.0
+title: >-
+       GenSync: A New Framework for Benchmarking and Optimizing Reconciliation of Data
+message: If you use this software, please cite the following paper.
+type: software
+date-released: 2022-04-01
+license: GPL-3.0
+repository-code: https://github.com/nislab/gensync
+authors:
+  - given-names: Novak
+    family-names: Boškov
+    email: boskov@bu.edu
+    affiliation: Boston University
+    orcid: 'https://orcid.org/0000-0003-3997-4139'
+  - given-names: Ari
+    family-names: Trachtenberg
+    email: trachten@bu.edu
+    affiliation: Boston University
+  - given-names: David
+    family-names: Starobinski
+    email: staro@bu.edu
+    affiliation: Boston University
+    orcid: 'https://orcid.org/0000-0002-8071-3865'
+preferred-citation:
+  type: article
+  journal: IEEE Transactions on Network and Service Management
+  title: >-
+         GenSync: A New Framework for Benchmarking and Optimizing Reconciliation of Data
+  year: 2022
+  doi: 10.1109/TNSM.2022.3164369
+  authors:
+  - given-names: Novak
+    family-names: Boškov
+    email: boskov@bu.edu
+    affiliation: Boston University
+    orcid: 'https://orcid.org/0000-0003-3997-4139'
+  - given-names: Ari
+    family-names: Trachtenberg
+    email: trachten@bu.edu
+    affiliation: Boston University
+  - given-names: David
+    family-names: Starobinski
+    email: staro@bu.edu
+    affiliation: Boston University
+    orcid: 'https://orcid.org/0000-0002-8071-3865'
