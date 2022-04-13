@@ -13,20 +13,29 @@
 
 set -e
 
-# Global constants
-team_name=sync-edge                     # Colosseum team name
-base_image=base-1604-nocuda.tar.gz      # base image when `-c`
-modified_image=gensync-colosseum        # name of produced image when `-c`
-instance=colosseum-instance             # temporary container name
-shared_path=/share/exec                 # where containers mount the shared NAS
-srn_user_passwd="Spiteful Corgi Bites"  # password for `root` and `srn_user` in containers
-colosseumcli_path=colosseumcli          # path to `colosseumcli` install artifacts
+######## Global constants
+default_team_name=sync-edge                 # Colosseum team name
+default_pass="Spiteful Corgi Bites"         # password for `root` and `srn_user` in containers
+default_base_image=base-1604-nocuda.tar.gz  # base image when `-c`
+default_modified_image=gensync-colosseum    # name of produced image when `-c`
+default_shared_path=/share/exec             # where containers mount the shared NAS
+default_colosseumcli_path=colosseumcli      # path to `colosseumcli` install artifacts
+default_instance=colosseum-instance         # temporary container name
 
-# Calculated constants
+######## Handle env variables
+team_name=${team_name:="$default_team_name"}
+srn_user_passwd=${srn_user_passwd:="$default_pass"}
+base_image=${base_image:="$default_base_image"}
+modified_image=${modified_image:="$default_modified_image"}
+shared_path=${shared_path:="$default_shared_path"}
+colosseumcli_path=${colosseumcli_path:="$default_colosseumcli_path"}
+instance=${instance:="$default_instance"}
+
+######## Calculated constants
 gensync_path="`cd ..; pwd`"
 gensync_basename="$(basename "$gensync_path")"
 
-# Extended commands
+######## Extended commands
 lxc="sudo lxc"
 
 help() {
@@ -42,7 +51,7 @@ SERVER and CLIENT are hostnames of Colosseum SRN's.
 
 OPTIONS:
     -h Show this message and exit.
-    -c Create GenSync container image '$modified_image.tar.gz' and exit (installs `colosseumcli` down the road).
+    -c Create GenSync container image '$modified_image.tar.gz' and exit (installs 'colosseumcli' down the road).
     -u Similar to -c but uploads GenSync code to an existing IMAGE instead of creating the new one.
 EOF
 }
@@ -73,7 +82,7 @@ get_current_date() {
     date +%N
 }
 
-# Stop the container and export it to a `.tar.gz` file as an image
+# Stop the container and export it to a `.tar.gz` file as an image.
 # $1 the instance to export
 # $2 the name for the modified image
 export_modified_image() {
@@ -84,15 +93,17 @@ export_modified_image() {
     $lxc image export "$2" "$2"
 }
 
-# Install `colosseumcli` in the container (container must be running)
+# Install `colosseumcli` in the container (container must be running).
 # $1 the running instance name
 install_colosseumcli() {
     local lxc_exec="$(get_lxc_exec)"
     local cli_basename="$(basename "$colosseumcli_path")"
 
-    printf "\nInstalling 'colosseumcli' in '$1' container...\n"
-    $lxc file push -rp "$colosseumcli_path" "$1"/tmp/
-    $lxc_exec "cd /tmp/'$cli_basename'
+    if ! $lxc_exec "command -v colosseumcli"; then
+        # In case `colosseumcli` is not already installed
+        printf "\nInstalling 'colosseumcli' in '$1' container...\n"
+        $lxc file push -rp "$colosseumcli_path" "$1"/tmp/
+        $lxc_exec "cd /tmp/'$cli_basename'
                tar zxvf colosseum_cli_prereqs.tar.gz
                tar zxvf colosseumcli-18.05.0-3.tar.gz
                cp -r colosseum_cli_prereqs /root/
@@ -102,7 +113,10 @@ install_colosseumcli() {
                cd ../colosseumcli-18.05.0
                python3 setup.py install
                rm -rf /root/colosseum_cli_prereqs /root/colosseumcli-18.05.0"
-    printf "\n`colosseumcli successfully installed.`\n"
+        printf "\n`colosseumcli successfully installed.`\n"
+    else
+        printf "\n'colosseumcli' already installed in '$1'.\n"
+    fi
 }
 
 # Prepare a container image and upload it to Colosseum.
@@ -162,13 +176,9 @@ EOF
             *) exit
         esac
 
-        # Update repositories and upgrade all packages
-        $lxc_exec "apt update -y; apt upgrade -y"
-        $lxc stop "$instance"; $lxc start "$instance"
-
         # Upgrade to a newer Ubuntu version
         $lxc exec "$instance" -- script /dev/null -c \
-             "sleep 2; apt update -y; do-release-upgrade -m server"
+             "apt update -y; apt upgrade-y; do-release-upgrade -m server"
         $lxc stop "$instance"; $lxc start "$instance"
 
         printf "\nThis was my best effort. The container is now at:\n\n"
