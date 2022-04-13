@@ -56,6 +56,19 @@ OPTIONS:
 EOF
 }
 
+# Echo green bold text
+# $1 the text
+echo_g() {
+    echo -e "\e[32;1m$1\e[0m"
+}
+
+# Echo red bold text
+# $1 the text
+echo_r() {
+    echo -e "\e[31;1m$1\e[0m"
+}
+
+
 # Build `lxc` execution command.
 # No arguments
 get_lxc_exec() {
@@ -113,7 +126,7 @@ install_colosseumcli() {
                cd ../colosseumcli-18.05.0
                python3 setup.py install
                rm -rf /root/colosseum_cli_prereqs /root/colosseumcli-18.05.0"
-        printf "\n`colosseumcli successfully installed.`\n"
+        echo_g "\n'colosseumcli' successfully installed.\n"
     else
         printf "\n'colosseumcli' already installed in '$1'.\n"
     fi
@@ -156,7 +169,7 @@ setup() {
         "for i in {1..3}; do lslocks | awk '/unattended-upgrades.lock/ { print \$2 }' | xargs kill -9; sleep 1; done || true"
 
     # Install NTL and its dependencies
-    $lxc_exec "apt install -y libntl-dev libgmp3-dev libcppunit-dev"
+    $lxc_exec "apt update -y; apt install -y libntl-dev libgmp3-dev libcppunit-dev"
 
     # If the image is older than Ubuntu 18.04, we can attempt an upgrade
     # TODO 1: communicate the issue with Colosseum folks and use newer images.
@@ -176,10 +189,14 @@ EOF
             *) exit
         esac
 
+        # Update and upgrade the current Ubuntu version
+        $lxc_exec "apt update -y; apt upgrade -y;"
+        $lxc restart "$instance"
+
         # Upgrade to a newer Ubuntu version
         $lxc exec "$instance" -- script /dev/null -c \
-             "apt update -y; apt upgrade-y; do-release-upgrade -m server"
-        $lxc stop "$instance"; $lxc start "$instance"
+             "sleep 5; apt update -y; apt upgrade -y; do-release-upgrade -m server"
+        $lxc restart "$instance"
 
         printf "\nThis was my best effort. The container is now at:\n\n"
         $lxc_exec "lsb_release -a 2>/dev/null"
@@ -225,7 +242,7 @@ refresh_code() {
             printf "\nImporting '$image' ...\n"
             $lxc image import "$image".tar.gz --alias "$image"
         else
-            printf "\nCannot find '$image' image.\n"
+            echo_r "\nCannot find '$image' image.\n"
             exit
         fi
     fi
