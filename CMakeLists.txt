@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.5)
 project(cpisync)
 set(CMAKE_CXX_STANDARD 11)
 
@@ -11,8 +11,8 @@ include(GNUInstallDirs)
 
 # include Apache Data Sketches as a header-only library
 include_directories(incubator-datasketches-cpp/common/include
-                    incubator-datasketches-cpp/hll/include
-                    incubator-datasketches-cpp/fi/include)
+  incubator-datasketches-cpp/hll/include
+  incubator-datasketches-cpp/fi/include)
 
 # some flags
 set(CMAKE_CXX_FLAGS "-std=c++11 -DDEFAULT_LOGLEVEL=TEST")
@@ -34,103 +34,107 @@ set(SYNC_DIR_INC ${INCLUDE}/Syncs)
 set(SYNC_BENCH_INC ${INCLUDE}/Benchmarks)
 
 # Test directory structure
-set(TEST_DIR tests)
-set(UNIT_TEST_DIR ${TEST_DIR}/unit)
-set(SYSLONG_TEST_DIR ${TEST_DIR}/sys/long)
-set(BENCHMARK_TEST_DIR ${TEST_DIR}/sys/benchmark)
+if ( NOT IGNORE_TEST )
+  set(TEST_DIR tests)
+  set(UNIT_TEST_DIR ${TEST_DIR}/unit)
+  set(SYSLONG_TEST_DIR ${TEST_DIR}/sys/long)
+  set(BENCHMARK_TEST_DIR ${TEST_DIR}/sys/benchmark)
 
-# Set location of the test runner
-set(TEST_RUNNER ${TEST_DIR}/testRunner.cpp)
+  # Set location of the test runner
+  set(TEST_RUNNER ${TEST_DIR}/testRunner.cpp)
+endif()
 
 # Set file config
 set(SOURCE_FILES
 
-        ${AUX_DIR}/Logger.cpp
-        ${AUX_DIR}/UID.cpp
-        ${AUX_DIR}/SyncMethod.cpp
-        ${AUX_DIR}/Sketches.cpp
+  ${AUX_DIR}/Logger.cpp
+  ${AUX_DIR}/UID.cpp
+  ${AUX_DIR}/SyncMethod.cpp
+  ${AUX_DIR}/Sketches.cpp
 
-        ${DATA_DIR}/DataObject.cpp
+  ${DATA_DIR}/DataObject.cpp
 
-        ${COMM_DIR}/CommSocket.cpp
-        ${COMM_DIR}/CommString.cpp
-        ${COMM_DIR}/Communicant.cpp
-        ${COMM_DIR}/CommDummy.cpp
+  ${COMM_DIR}/CommSocket.cpp
+  ${COMM_DIR}/CommString.cpp
+  ${COMM_DIR}/Communicant.cpp
+  ${COMM_DIR}/CommDummy.cpp
 
-        ${SYNC_DIR}/CPISync.cpp
-        ${SYNC_DIR}/GenSync.cpp
-        ${SYNC_DIR}/InterCPISync.cpp
-        ${SYNC_DIR}/probCPISync.cpp
-        ${SYNC_DIR}/HashSync.cpp
-        ${SYNC_DIR}/IBLT.cpp
-        ${SYNC_DIR}/IBLTMultiset.cpp
-        ${SYNC_DIR}/IBLTSync.cpp
-        ${SYNC_DIR}/IBLTSync_Multiset.cpp
-        ${SYNC_DIR}/IBLTSetOfSets.cpp
-        ${SYNC_DIR}/Compact2DBitArray.cpp
-        ${SYNC_DIR}/Cuckoo.cpp
-        ${SYNC_DIR}/CuckooSync.cpp
-        ${SYNC_DIR}/FullSync.cpp
+  ${SYNC_DIR}/CPISync.cpp
+  ${SYNC_DIR}/GenSync.cpp
+  ${SYNC_DIR}/InterCPISync.cpp
+  ${SYNC_DIR}/probCPISync.cpp
+  ${SYNC_DIR}/HashSync.cpp
+  ${SYNC_DIR}/IBLT.cpp
+  ${SYNC_DIR}/IBLTMultiset.cpp
+  ${SYNC_DIR}/IBLTSync.cpp
+  ${SYNC_DIR}/IBLTSync_Multiset.cpp
+  ${SYNC_DIR}/IBLTSetOfSets.cpp
+  ${SYNC_DIR}/Compact2DBitArray.cpp
+  ${SYNC_DIR}/Cuckoo.cpp
+  ${SYNC_DIR}/CuckooSync.cpp
+  ${SYNC_DIR}/FullSync.cpp
 
-        ${BENCH_DIR}/Runner.cpp
-        ${BENCH_DIR}/BenchParams.cpp
-        ${BENCH_DIR}/FromFileGen.cpp
+  ${BENCH_DIR}/Runner.cpp
+  ${BENCH_DIR}/BenchParams.cpp
+  ${BENCH_DIR}/FromFileGen.cpp
 
-        ${TOOLS_DIR}/EncodeJoin.cpp
+  ${TOOLS_DIR}/EncodeJoin.cpp
 
-        ${SRC_DIR}/main.cpp)
+  ${SRC_DIR}/main.cpp)
 
 set(HEADERS
 
-        ${AUX_DIR_INC}/Auxiliary.h
-        ${AUX_DIR_INC}/ConstantsAndTypes.h
-        ${AUX_DIR_INC}/Exceptions.h
-        ${AUX_DIR_INC}/ForkHandle.h
-        ${AUX_DIR_INC}/Logger.h
-        ${AUX_DIR_INC}/SyncMethod.h
-        ${AUX_DIR_INC}/UID.h
-        ${AUX_DIR_INC}/Sketches.h
+  ${AUX_DIR_INC}/Auxiliary.h
+  ${AUX_DIR_INC}/ConstantsAndTypes.h
+  ${AUX_DIR_INC}/Exceptions.h
+  ${AUX_DIR_INC}/ForkHandle.h
+  ${AUX_DIR_INC}/Logger.h
+  ${AUX_DIR_INC}/SyncMethod.h
+  ${AUX_DIR_INC}/UID.h
+  ${AUX_DIR_INC}/Sketches.h
 
-        ${DATA_DIR_INC}/DataFileC.h
-        ${DATA_DIR_INC}/DataMemC.h
-        ${DATA_DIR_INC}/DataObjC.h
-        ${DATA_DIR_INC}/DataObject.h
-        ${DATA_DIR_INC}/DataPriorityObject.h
+  ${DATA_DIR_INC}/DataFileC.h
+  ${DATA_DIR_INC}/DataMemC.h
+  ${DATA_DIR_INC}/DataObjC.h
+  ${DATA_DIR_INC}/DataObject.h
+  ${DATA_DIR_INC}/DataPriorityObject.h
 
-        ${COMM_DIR_INC}/CommSocket.h
-        ${COMM_DIR_INC}/CommString.h
-        ${COMM_DIR_INC}/Communicant.h
-        ${COMM_DIR_INC}/CommDummy.h
+  ${COMM_DIR_INC}/CommSocket.h
+  ${COMM_DIR_INC}/CommString.h
+  ${COMM_DIR_INC}/Communicant.h
+  ${COMM_DIR_INC}/CommDummy.h
 
-        ${SYNC_DIR_INC}/CPISync.h
-        ${SYNC_DIR_INC}/CPISync_ExistingConnection.h
-        ${SYNC_DIR_INC}/CPISync_HalfRound.h
-        ${SYNC_DIR_INC}/CPISync_HalfRound_Hashed.h
-        ${SYNC_DIR_INC}/CPISync_OneLessRound.h
-        ${SYNC_DIR_INC}/FullSync.h
-        ${SYNC_DIR_INC}/GenSync.h
-        ${SYNC_DIR_INC}/HashSync.h
-        ${SYNC_DIR_INC}/IBLT.h
-        ${SYNC_DIR_INC}/IBLTMultiset.h
-        ${SYNC_DIR_INC}/IBLTSync.h
-        ${SYNC_DIR_INC}/IBLTSetOfSets.h
-        ${SYNC_DIR_INC}/IBLTSync_HalfRound.h
-        ${SYNC_DIR_INC}/IBLTSync_Multiset.h
-        ${SYNC_DIR_INC}/Compact2DBitArray.h
-        ${SYNC_DIR_INC}/Cuckoo.h
-        ${SYNC_DIR_INC}/CuckooSync.h
-        ${SYNC_DIR_INC}/InterCPISync.h
-        ${SYNC_DIR_INC}/PrioCPISync.h
-        ${SYNC_DIR_INC}/ProbCPISync.h
+  ${SYNC_DIR_INC}/CPISync.h
+  ${SYNC_DIR_INC}/CPISync_ExistingConnection.h
+  ${SYNC_DIR_INC}/CPISync_HalfRound.h
+  ${SYNC_DIR_INC}/CPISync_HalfRound_Hashed.h
+  ${SYNC_DIR_INC}/CPISync_OneLessRound.h
+  ${SYNC_DIR_INC}/FullSync.h
+  ${SYNC_DIR_INC}/GenSync.h
+  ${SYNC_DIR_INC}/HashSync.h
+  ${SYNC_DIR_INC}/IBLT.h
+  ${SYNC_DIR_INC}/IBLTMultiset.h
+  ${SYNC_DIR_INC}/IBLTSync.h
+  ${SYNC_DIR_INC}/IBLTSetOfSets.h
+  ${SYNC_DIR_INC}/IBLTSync_HalfRound.h
+  ${SYNC_DIR_INC}/IBLTSync_Multiset.h
+  ${SYNC_DIR_INC}/Compact2DBitArray.h
+  ${SYNC_DIR_INC}/Cuckoo.h
+  ${SYNC_DIR_INC}/CuckooSync.h
+  ${SYNC_DIR_INC}/InterCPISync.h
+  ${SYNC_DIR_INC}/PrioCPISync.h
+  ${SYNC_DIR_INC}/ProbCPISync.h
 
-        ${SYNC_BENCH_INC}/BenchObserv.h
-        ${SYNC_BENCH_INC}/BenchParams.h
-        ${SYNC_BENCH_INC}/DataObjectGenerator.h
-        ${SYNC_BENCH_INC}/RandGen.h
-        ${SYNC_BENCH_INC}/FromFileGen.h)
+  ${SYNC_BENCH_INC}/BenchObserv.h
+  ${SYNC_BENCH_INC}/BenchParams.h
+  ${SYNC_BENCH_INC}/DataObjectGenerator.h
+  ${SYNC_BENCH_INC}/RandGen.h
+  ${SYNC_BENCH_INC}/FromFileGen.h)
 
 include_directories(include)
-include_directories(tests)
+if ( NOT IGNORE_TEST )
+  include_directories(tests)
+endif()
 
 include_directories(/usr/local/include)
 link_directories(/usr/local/lib)
@@ -161,26 +165,28 @@ target_link_libraries(Benchmarks cpisync ntl cppunit pthread gmp)
 add_executable(EncodeJoin ${TOOLS_DIR}/EncodeJoin.cpp)
 target_link_libraries(EncodeJoin cpisync ntl pthread gmp)
 
-# Define a macro for adding executables testing multiple files
-# @param dir The relative path to the folder containing test files to add
-# @param name The executable name
-macro(add_group_test dir name)
+if ( NOT IGNORE_TEST )
+  # Define a macro for adding executables testing multiple files
+  # @param dir The relative path to the folder containing test files to add
+  # @param name The executable name
+  macro(add_group_test dir name)
     FILE(GLOB testPaths ${dir}/*Test.cpp ${dir}/*Tests.cpp)
     ADD_EXECUTABLE(${name} ${TEST_RUNNER} ${testPaths})
 
     FOREACH(test ${testPaths})
-        GET_FILENAME_COMPONENT(testName ${test} NAME_WE)
-        TARGET_LINK_LIBRARIES(${name} cpisync ntl cppunit pthread gmp)
-        ADD_TEST(${testName} ${name})
+      GET_FILENAME_COMPONENT(testName ${test} NAME_WE)
+      TARGET_LINK_LIBRARIES(${name} cpisync ntl cppunit pthread gmp)
+      ADD_TEST(${testName} ${name})
     ENDFOREACH(test)
-endmacro()
+  endmacro()
 
-# Add test groups (note: executable will throw errors if there are no tests in the respective folder)
-add_group_test(${UNIT_TEST_DIR} UnitTest)
-#add_group_test(${SYSSHORT_TEST_DIR} SystemShortTests)
-add_group_test(${SYSLONG_TEST_DIR} SystemLongTest)
-#add_group_test(${SYSSHORT_TEST_DIR} SystemShortTests)
-add_group_test(${BENCHMARK_TEST_DIR} Benchmark)
+  # Add test groups (note: executable will throw errors if there are no tests in the respective folder)
+  add_group_test(${UNIT_TEST_DIR} UnitTest)
+  #add_group_test(${SYSSHORT_TEST_DIR} SystemShortTests)
+  add_group_test(${SYSLONG_TEST_DIR} SystemLongTest)
+  #add_group_test(${SYSSHORT_TEST_DIR} SystemShortTests)
+  add_group_test(${BENCHMARK_TEST_DIR} Benchmark)
+endif()
 
 #Packaging
 set(CPACK_GENERATOR "RPM;DEB")

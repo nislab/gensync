@@ -42,12 +42,12 @@ help() {
     cat<<EOF
 USAGE: run_colosseum [-h] [-c] [-u IMAGE] SERVER CLIENT
 
-Executes GenSync synchornization on Colosseum wireless network simulator.
+Executes GenSync synchornization on Colosseum wireless network emulator.
 
 Requirements: sudo, ssh, sshpass, rsync, lxc, lxd.
 You need be behind Colosseum's VPN and have your Colosseum remotes set in ~/.ssh/config.
 
-SERVER and CLIENT are hostnames of Colosseum SRN's.
+SERVER and CLIENT are the two hostnames of Colosseum SRN's among which you want to perform pair-wise sync.
 
 OPTIONS:
     -h Show this message and exit.
@@ -198,6 +198,14 @@ EOF
              "sleep 5; apt update -y; apt upgrade -y; do-release-upgrade -m server"
         $lxc restart "$instance"
 
+        # Fix the Python pip issues
+        echo -e "\nFixing Python pip issues and transitioning to python3.6...\n"
+        $lxc_exec "wget https://bootstrap.pypa.io/pip/3.6/get-pip.py
+                   python3 get-pip.py"
+        # Install the dependencies needed for `SCOPE`
+        echo -e "\nInstalling 'SCOPE' framework dependencies...\n"
+        $lxc_exec "pip install dill numpy"
+
         printf "\nThis was my best effort. The container is now at:\n\n"
         $lxc_exec "lsb_release -a 2>/dev/null"
         read -p "Do you want to proceed with this version of Ubuntu? (Y/n): " yn
@@ -205,6 +213,10 @@ EOF
             [Nn]* ) exit
         esac
     fi
+
+    # TODO: if still wants to stay with the old Ubuntu ... (16.04)
+    # apt-get install libgmp3-dev (only dependency of NTL)
+    # Compile ntl as in https://libntl.org/doc/tour-unix.html (wget https://libntl.org/ntl-10.5.0.tar.gz)
 
     # Transfer GenSync codebase to the container
     $lxc file push -rp "$gensync_path"/ "$instance"/
