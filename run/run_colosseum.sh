@@ -21,6 +21,7 @@ default_modified_image=gensync-colosseum    # name of produced image when `-c`
 default_shared_path=/share/exec             # where containers mount the shared NAS
 default_colosseumcli_path=colosseumcli      # path to `colosseumcli` install artifacts
 default_instance=colosseum-instance         # temporary container name
+default_net_interface=tr0                   # network interface in the container to sync through
 
 ######## Handle env variables
 team_name=${team_name:="$default_team_name"}
@@ -30,6 +31,7 @@ modified_image=${modified_image:="$default_modified_image"}
 shared_path=${shared_path:="$default_shared_path"}
 colosseumcli_path=${colosseumcli_path:="$default_colosseumcli_path"}
 instance=${instance:="$default_instance"}
+net_interface=${net_interface:="$default_net_interface"}
 
 ######## Calculated constants
 gensync_path="`cd ..; pwd`"
@@ -68,6 +70,12 @@ echo_r() {
     echo -e "\e[31;1m$1\e[0m"
 }
 
+# Echo grey bold text
+# $1 the text
+echo_o() {
+    echo -e "\e[33;1m$1\e[0m"
+}
+
 
 # Build `lxc` execution command.
 # No arguments
@@ -78,16 +86,17 @@ get_lxc_exec() {
 # Obtain the IP address of a host.
 # No arguments
 get_ip_cmd() {
-    echo "ifconfig | grep -A1 'col0: ' | awk '/inet/ { print \$2 }'"
+    echo "ifconfig | grep -A1 '$net_interface' | awk '/inet/ { print \$2 }' | sed 's/[^0-9.]//g'"
 }
 
 # Obtain GenSync compile commands.
 # No arguments
 get_compile_cmd() {
-    echo "cd /$gensync_basename;
-          rm -rf build || true;
-          rm CMakeCache.txt || true;
-          mkdir build; cd build; cmake ../; make -j\$(nproc)"
+    echo "cd /$gensync_basename
+          rm -rf build || true
+          rm CMakeCache.txt || true
+          mkdir build && cd build
+          cmake -DIGNORE_TEST=True ../ && make -j\$(nproc)"
 }
 
 # Obtain nanoseconds since epoch
@@ -132,6 +141,26 @@ install_colosseumcli() {
     fi
 }
 
+# Kill `unattended-upgrades` so we can obtain the lock when we need it.
+# $1 the number of repeated tries to kill unattended-upgrades
+get_rid_of_unattended_upgrades() {
+    local repeat=5
+    if ! [ -z $1 ]; then repeat=$1; fi
+
+    echo "for i in {1..$repeat}; do lslocks | awk '/unattended-upgrades.lock/ { print \$2 }' | xargs kill -9; sleep 1; done || true"
+}
+
+# Push GenSync codebase to the container, but try to make it a little faster.
+# $1 the path to dir that contains `.tar.gz` files to shuffle.
+lxc_file_push_with_fixup() {
+    local t=$(mktemp -d)
+
+    mv "$1"/*.tar.gz $t 2>/dev/null || true
+    $lxc file push -rp "$gensync_path"/ "$instance"/
+    mv $t/*.tar.gz "$1" 2>/dev/null || true
+    rm -r $t 2>/dev/null || true
+}
+
 # Prepare a container image and upload it to Colosseum.
 # No arguments
 setup() {
@@ -164,9 +193,8 @@ setup() {
     $lxc_exec "echo -e '$srn_user_passwd\n$srn_user_passwd' | passwd root"
 
     # Get rid of unattended-upgrades
-    printf "\nGetting rid of unattended-upgrades ...\n"
-    $lxc_exec \
-        "for i in {1..3}; do lslocks | awk '/unattended-upgrades.lock/ { print \$2 }' | xargs kill -9; sleep 1; done || true"
+    echo_o "\nGetting rid of unattended-upgrades ...\n"
+    $lxc_exec "$(get_rid_of_unattended_upgrades)"
 
     # Install NTL and its dependencies
     $lxc_exec "apt update -y; apt install -y libntl-dev libgmp3-dev libcppunit-dev"
@@ -202,7 +230,7 @@ EOF
         echo -e "\nFixing Python pip issues and transitioning to python3.6...\n"
         $lxc_exec "wget https://bootstrap.pypa.io/pip/3.6/get-pip.py
                    python3 get-pip.py"
-        # Install the dependencies needed for `SCOPE`
+        # Install dependencies needed for `SCOPE`
         echo -e "\nInstalling 'SCOPE' framework dependencies...\n"
         $lxc_exec "pip install dill numpy"
 
@@ -214,12 +242,8 @@ EOF
         esac
     fi
 
-    # TODO: if still wants to stay with the old Ubuntu ... (16.04)
-    # apt-get install libgmp3-dev (only dependency of NTL)
-    # Compile ntl as in https://libntl.org/doc/tour-unix.html (wget https://libntl.org/ntl-10.5.0.tar.gz)
-
     # Transfer GenSync codebase to the container
-    $lxc file push -rp "$gensync_path"/ "$instance"/
+    lxc_file_push_with_fixup "$gensync_path"/run
     $lxc_exec "rm -f /$gensync_basename/run/*.tar.gz || true"
 
     # Compile GenSync in the container
@@ -262,9 +286,25 @@ refresh_code() {
     $lxc delete --force "$instance" 2>/dev/null || true
     $lxc launch "$image" "$instance"
 
+    # Make sure that NTL is installed
+    found=$($lxc_exec "find / -type f -name libntl.a 2>/dev/null | wc -l")
+    if [ "$found" -eq "0" ]; then
+        echo_o "\nNTL is not installed in the '$image'. Installing now ...\n"
+        $lxc_exec "apt update -y"
+        $lxc_exec "$(get_rid_of_unattended_upgrades)"
+        echo -e "That was my best effort to kill 'unattended upgrades'.\n"
+        $lxc_exec "apt install -y libgmp3-dev
+                   wget https://libntl.org/ntl-10.5.0.tar.gz
+                   gunzip ntl-10.5.0.tar.gz
+                   tar xf ntl-10.5.0.tar
+                   cd ntl-10.5.0/src
+                   ./configure
+                   make -j\$(nproc) && make check && make install"
+    fi
+
     # Copy code and compile it in the container
     $lxc_exec "rm -rf /$gensync_basename"
-    $lxc file push -rp "$gensync_path"/ "$instance"/
+    lxc_file_push_with_fixup "$gensync_path"/run
     $lxc_exec "rm -f /$gensync_basename/run/*.tar.gz || true"
     $lxc_exec "$(get_compile_cmd)"
 
