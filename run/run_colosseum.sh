@@ -14,14 +14,14 @@
 set -e
 
 ######## Global constants
-default_team_name=sync-edge                 # Colosseum team name
-default_pass="Spiteful Corgi Bites"         # password for `root` and `srn_user` in containers
-default_base_image=base-1604-nocuda.tar.gz  # base image when `-c`
-default_modified_image=gensync-colosseum    # name of produced image when `-c`
-default_shared_path=/share/exec             # where containers mount the shared NAS
-default_colosseumcli_path=colosseumcli      # path to `colosseumcli` install artifacts
-default_instance=colosseum-instance         # temporary container name
-default_net_interface=tr0                   # network interface in the container to sync through
+default_team_name=sync-edge                     # Colosseum team name
+default_srn_user_passwd="Spiteful Corgi Bites"  # password for `root` and `srn_user` in containers
+default_base_image=base-1604-nocuda.tar.gz      # base image when `-c`
+default_modified_image=gensync-colosseum        # name of produced image when `-c`
+default_shared_path=/share/exec                 # where containers mount the shared NAS
+default_colosseumcli_path=colosseumcli          # path to `colosseumcli` install artifacts
+default_instance=colosseum-instance             # temporary container name
+default_net_interface=tr0                       # network interface in the container to sync through
 
 ######## Handle env variables
 team_name=${team_name:="$default_team_name"}
@@ -32,6 +32,9 @@ shared_path=${shared_path:="$default_shared_path"}
 colosseumcli_path=${colosseumcli_path:="$default_colosseumcli_path"}
 instance=${instance:="$default_instance"}
 net_interface=${net_interface:="$default_net_interface"}
+
+mapfile -t custom_vars \
+        < <(( set -o posix; set ) | grep 'default_' | sed 's/default_//g')
 
 ######## Calculated constants
 gensync_path="`cd ..; pwd`"
@@ -55,6 +58,9 @@ OPTIONS:
     -h Show this message and exit.
     -c Create GenSync container image '$modified_image.tar.gz' and exit (installs 'colosseumcli' down the road).
     -u Similar to -c but uploads GenSync code to an existing IMAGE instead of creating the new one.
+
+You can custmize the following script variables:
+$(for ((i = 0; i < ${#custom_vars[@]}; i++)) do echo ${custom_vars[$i]}; done)
 EOF
 }
 
@@ -86,7 +92,10 @@ get_lxc_exec() {
 # Obtain the IP address of a host.
 # No arguments
 get_ip_cmd() {
-    echo "ifconfig | grep -A1 '$net_interface' | awk '/inet/ { print \$2 }' | sed 's/[^0-9.]//g'"
+    echo "ifconfig
+          | grep -A1 '$net_interface'
+          | awk '/inet/ { print \$2 }'
+          | sed 's/[^0-9.]//g'"
 }
 
 # Obtain GenSync compile commands.
@@ -125,7 +134,8 @@ install_colosseumcli() {
         # In case `colosseumcli` is not already installed
         printf "\nInstalling 'colosseumcli' in '$1' container...\n"
         $lxc file push -rp "$colosseumcli_path" "$1"/tmp/
-        $lxc_exec "cd /tmp/'$cli_basename'
+        $lxc_exec \
+            "cd /tmp/'$cli_basename'
                tar zxvf colosseum_cli_prereqs.tar.gz
                tar zxvf colosseumcli-18.05.0-3.tar.gz
                cp -r colosseum_cli_prereqs /root/
