@@ -25,7 +25,7 @@ default_net_interface=tr0                       # network interface in the conta
 
 ######## Handle env variables
 team_name=${team_name:="$default_team_name"}
-srn_user_passwd=${srn_user_passwd:="$default_pass"}
+srn_user_passwd=${srn_user_passwd:="$default_srn_user_passwd"}
 base_image=${base_image:="$default_base_image"}
 modified_image=${modified_image:="$default_modified_image"}
 shared_path=${shared_path:="$default_shared_path"}
@@ -45,7 +45,7 @@ lxc="sudo lxc"
 
 help() {
     cat<<EOF
-USAGE: run_colosseum [-h] [-c] [-u IMAGE] SERVER CLIENT
+USAGE: run_colosseum [-h] [-c] [-u IMAGE] [-p SOURCE DESTINATION] SERVER CLIENT
 
 Executes GenSync synchornization on Colosseum wireless network emulator.
 
@@ -58,6 +58,7 @@ OPTIONS:
     -h Show this message and exit.
     -c Create GenSync container image '$modified_image.tar.gz' and exit (installs 'colosseumcli' down the road).
     -u Similar to -c but uploads GenSync code to an existing IMAGE instead of creating the new one.
+    -p Push SOURCE container image to DESTINATION (typically at file-proxy:).
 
 You can custmize the following script variables:
 $(for ((i = 0; i < ${#custom_vars[@]}; i++)) do echo ${custom_vars[$i]}; done)
@@ -171,10 +172,35 @@ lxc_file_push_with_fixup() {
     rm -r $t 2>/dev/null || true
 }
 
+# Change the password of the `srn-user` and `root` users
+# No arguments
+change_passwd() {
+    local lxc_exec="$(get_lxc_exec)"
+
+    printf "\nChanging 'srn-user' and 'root' passwords in the container to '$srn_user_passwd' ... \n"
+    $lxc_exec "echo -e '$srn_user_passwd\n$srn_user_passwd' | passwd srn-user"
+    $lxc_exec "echo -e '$srn_user_passwd\n$srn_user_passwd' | passwd root"
+}
+
+# Push the container image to the shared storage on Colosseum.
+# $1 the path to image file
+# $2 the path where to push it on remote
+push_image() {
+    local source="$modified_image".tar.gz
+    if ! [ -z "$1" ]; then source="$1"; fi
+    local image_remote_loc="file-proxy:/share/nas/$team_name/images"
+    if ! [ -z "$2" ]; then image_remote_loc="$2"; fi
+    local remote_path="$(echo $image_remote_loc | awk -F: '{ print $2 }')"
+
+    printf "Uploading image to Colosseum testbed @ $image_remote_loc ...\n"
+    rsync -Pv "$source" "$image_remote_loc"
+    printf "\nFixing container permissions on Colosseum testbed ...\n"
+    ssh file-proxy "chmod 755 $remote_path/$(basename $source)"
+}
+
 # Prepare a container image and upload it to Colosseum.
 # No arguments
 setup() {
-    local image_remote_loc=file-proxy:/share/nas/"$team_name"/images
     local lxc_exec="$(get_lxc_exec)"
 
     if [ -e "$modified_image.tar.gz" ]; then
@@ -197,10 +223,7 @@ setup() {
     $lxc delete --force "$instance" 2>/dev/null || true
     $lxc launch colosseum-base "$instance"
 
-    # Change the password of the `srn-user` and `root` users
-    printf "\nChanging 'srn-user' and 'root' passwords in the container to '$srn_user_passwd' ... \n"
-    $lxc_exec "echo -e '$srn_user_passwd\n$srn_user_passwd' | passwd srn-user"
-    $lxc_exec "echo -e '$srn_user_passwd\n$srn_user_passwd' | passwd root"
+    change_passwd
 
     # Get rid of unattended-upgrades
     echo_o "\nGetting rid of unattended-upgrades ...\n"
@@ -268,11 +291,7 @@ EOF
     $lxc delete --force "$instance"
     $lxc image delete colosseum-base "$modified_image"
 
-    # Upload the container to the Colosseum testbed
-    printf "\nUploading image to Colosseum testbed ...\n"
-    rsync -Pv "$modified_image".tar.gz "$image_remote_loc"
-    printf "\nFixing container permissions on Colosseum testbed ...\n"
-    ssh file-proxy "chmod 755 $image_remote_loc/$modified_image".tar.gz
+    push_image
 }
 
 # Load the image and refresh the GenSync version in it.
@@ -296,11 +315,13 @@ refresh_code() {
     $lxc delete --force "$instance" 2>/dev/null || true
     $lxc launch "$image" "$instance"
 
+    change_passwd
+
     # Make sure that NTL is installed
     found=$($lxc_exec "find / -type f -name libntl.a 2>/dev/null | wc -l")
     if [ "$found" -eq "0" ]; then
         echo_o "\nNTL is not installed in the '$image'. Installing now ...\n"
-        $lxc_exec "apt update -y"
+        $lxc_exec "sleep 2; apt update -y"
         $lxc_exec "$(get_rid_of_unattended_upgrades)"
         echo -e "That was my best effort to kill 'unattended upgrades'.\n"
         $lxc_exec "apt install -y libgmp3-dev
@@ -353,12 +374,15 @@ exec_on_colosseum() {
             '$benchmark_path' -m client -r '$server_ip' -p '$examples_path'/client_params_data.cpisync"
 }
 
-while getopts "hcu:" option; do
+while getopts "hcpu:" option; do
     case $option in
         c) setup
            exit
            ;;
         u) refresh_code "$OPTARG"
+           exit
+           ;;
+        p) push_image "$2" "$3"
            exit
            ;;
         h|* ) help
