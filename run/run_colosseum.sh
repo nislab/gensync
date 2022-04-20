@@ -12,6 +12,8 @@
 # THE SOFTWARE.
 
 set -e
+trap "exit 1" TERM
+export TOP_PID=$$
 
 ######## Global constants
 default_team_name=sync-edge                     # Colosseum team name
@@ -83,6 +85,13 @@ echo_o() {
     echo -e "\e[33;1m$1\e[0m"
 }
 
+# Echo the error message and exit.
+# $1 the error message
+err() {
+    echo_r "Error: $1"
+    kill -s TERM $TOP_PID
+    exit
+}
 
 # Build `lxc` execution command.
 # No arguments
@@ -390,4 +399,26 @@ while getopts "hcpu:" option; do
     esac
 done
 
-exec_on_colosseum "$1" "$2"
+# exec_on_colosseum "$1" "$2"
+
+# TODO:
+
+srsLTE_conf_dir=/root/radio_code/srslte_cofig/
+logs_dir=/logs
+
+# Return the srsLTE command to execute on a container.
+# $1 one of 'epc', 'ebs', or 'ue'
+get_srs_cmd() {
+    case $1 in
+        epc|ebs|ue) ;;
+        *) err "in 'get_srs_cmd()': \"$1\" not one of 'epc', 'ebs', 'ue'."
+    esac
+
+    echo "cd \"$srsLTE_conf_dir\";
+          srs$1 $1.conf 2>&1 | tee \"$logs_dir\"/colosseum_$1.log"
+}
+
+
+exit
+
+# open5g-forum-demo

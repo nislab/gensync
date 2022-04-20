@@ -51,14 +51,14 @@ ssh-many() {
 
 while getopts "hp" option; do
     case $option in
-        h) help
-           exit
-           ;;
         p) shift
            echo -n "SSH password for all: "
            read -s pass_all
            export SSHPASS="$pass_all"
            ssh_prefix="sshpass -e"
+           ;;
+        *) help
+           exit
            ;;
     esac
 done
