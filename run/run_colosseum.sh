@@ -23,7 +23,7 @@ default_modified_image=gensync-colosseum        # name of produced image when `-
 default_shared_path=/share/exec                 # where containers mount the shared NAS
 default_colosseumcli_path=colosseumcli          # path to `colosseumcli` install artifacts
 default_instance=colosseum-instance             # temporary container name
-default_net_interface=tr0                       # network interface in the container to sync through
+default_net_interface=srs                       # network interface in the container to sync through
 
 ######## Handle env variables
 team_name=${team_name:="$default_team_name"}
@@ -47,7 +47,7 @@ lxc="sudo lxc"
 
 help() {
     cat<<EOF
-USAGE: run_colosseum [-h] [-c] [-u IMAGE] [-p SOURCE DESTINATION] SERVER CLIENT
+USAGE: run_colosseum [-h] [-c] [-u IMAGE] [-p SOURCE DESTINATION] SERVER CLIENT BASE_STATION SCENARIO_ID
 
 Executes GenSync synchornization on Colosseum wireless network emulator.
 
@@ -55,6 +55,8 @@ Requirements: sudo, ssh, sshpass, rsync, lxc, lxd.
 You need be behind Colosseum's VPN and have your Colosseum remotes set in ~/.ssh/config.
 
 SERVER and CLIENT are the two hostnames of Colosseum SRN's among which you want to perform pair-wise sync.
+BASE_STATION is the hostmane of the base station node.
+SCENARIO_ID is the Colosseum scenario identifier.
 
 OPTIONS:
     -h Show this message and exit.
@@ -68,27 +70,27 @@ EOF
 }
 
 # Echo green bold text
-# $1 the text
+# $1 text to output to standard output
 echo_g() {
     echo -e "\e[32;1m$1\e[0m"
 }
 
 # Echo red bold text
-# $1 the text
+# $1 text to print to the standard output
 echo_r() {
     echo -e "\e[31;1m$1\e[0m"
 }
 
 # Echo grey bold text
-# $1 the text
+# $1t ext to print to standard output
 echo_o() {
     echo -e "\e[33;1m$1\e[0m"
 }
 
 # Echo the error message and exit.
-# $1 the error message
+# $1 error message
 err() {
-    echo_r "Error: $1"
+    if ! [ -z "$1" ]; then echo_r "Error: $1"; fi
     kill -s TERM $TOP_PID
     exit
 }
@@ -102,10 +104,7 @@ get_lxc_exec() {
 # Obtain the IP address of a host.
 # No arguments
 get_ip_cmd() {
-    echo "ifconfig
-          | grep -A1 '$net_interface'
-          | awk '/inet/ { print \$2 }'
-          | sed 's/[^0-9.]//g'"
+    echo "ifconfig | grep -A1 $net_interface | awk '/inet/ { print \$2 }' | sed 's/[^0-9.]//g'"
 }
 
 # Obtain GenSync compile commands.
@@ -124,7 +123,7 @@ get_current_date() {
 }
 
 # Stop the container and export it to a `.tar.gz` file as an image.
-# $1 the instance to export
+# $1 instance to export
 # $2 the name for the modified image
 export_modified_image() {
     $lxc stop "$1"
@@ -135,7 +134,7 @@ export_modified_image() {
 }
 
 # Install `colosseumcli` in the container (container must be running).
-# $1 the running instance name
+# $1 running instance name
 install_colosseumcli() {
     local lxc_exec="$(get_lxc_exec)"
     local cli_basename="$(basename "$colosseumcli_path")"
@@ -171,7 +170,7 @@ get_rid_of_unattended_upgrades() {
 }
 
 # Push GenSync codebase to the container, but try to make it a little faster.
-# $1 the path to dir that contains `.tar.gz` files to shuffle.
+# $1 path to dir that contains `.tar.gz` files to shuffle.
 lxc_file_push_with_fixup() {
     local t=$(mktemp -d)
 
@@ -192,19 +191,28 @@ change_passwd() {
 }
 
 # Push the container image to the shared storage on Colosseum.
-# $1 the path to image file
-# $2 the path where to push it on remote
+# $1 path to image file
+# $2 path where to push it on remote
+# $3 currently running container name. If passed, snapshot it into $1 and push it to $2.
 push_image() {
     local source="$modified_image".tar.gz
     if ! [ -z "$1" ]; then source="$1"; fi
+    local source_base_name="$(echo $source | cut -d . -f 1)"
     local image_remote_loc="file-proxy:/share/nas/$team_name/images"
     if ! [ -z "$2" ]; then image_remote_loc="$2"; fi
     local remote_path="$(echo $image_remote_loc | awk -F: '{ print $2 }')"
 
+    if ! [ -z "$3" ]; then
+        echo "Exporting '$3' into '$source_base_name'..."
+        $lxc stop "$3" || err
+        $lxc publish "$3" --alias "$source_base_name" || err
+        $lxc image export "$source_base_name" "$source_base_name" || err
+    fi
+
     printf "Uploading image to Colosseum testbed @ $image_remote_loc ...\n"
-    rsync -Pv "$source" "$image_remote_loc"
+    sshpass -e rsync -Pav "$source" "$image_remote_loc" || err
     printf "\nFixing container permissions on Colosseum testbed ...\n"
-    ssh file-proxy "chmod 755 $remote_path/$(basename $source)"
+    sshpass -e ssh file-proxy "chmod 755 $remote_path/$source" || err
 }
 
 # Prepare a container image and upload it to Colosseum.
@@ -304,7 +312,7 @@ EOF
 }
 
 # Load the image and refresh the GenSync version in it.
-# $1 the image name
+# $1 image name
 refresh_code() {
     local image="$(basename "$1" .tar.gz)"
     local lxc_exec="$(get_lxc_exec)"
@@ -354,30 +362,80 @@ refresh_code() {
     $lxc delete --force "$instance"
 }
 
+# Ask for Colosseum SSH password
+# $1 if passed, ask for the ssh password for that container
+ask_ssh_pass() {
+    if ! [ -z "$1" ]; then
+        echo_o "This script assumes that all '$1' containers have the same SSH password."
+        echo -n "Enter password: "
+    else
+        echo -n "This action will require your Colosseum SSH password: "
+    fi
+
+    read -s pass
+    echo -e "\n"
+    export SSHPASS="$pass"
+}
+
+# Setup scenario and srsLTE on Colosseum.
+# $1 host name through which we want to conduct configuration
+# $2 scenario identifier (when a call uses this argument, we're setting up a base station)
+setup_colosseum() {
+    local host="$1"
+    local scenario="$2"
+    local cmd="sshpass -e ssh root@$host"
+
+    if ! [ -z "$scenario" ]; then
+        $cmd "colosseumcli rf start $scenario -c"
+    fi
+
+    # Clean stale configuration
+    $cmd "cd /root/radio_code/scope_config && ./remove_experiment_data.sh || true"
+
+    # Run SCOPE
+    $cmd "cd /root/radio_api/ && python3 scope_start.py --config-file radio_interactive.conf 2>&1 | tee scope_start.log"
+}
+
 # Execute GenSync experiments on Colosseum.
-# $1 the server host
-# $2 the client host
+# $1 server host
+# $2 client host
+# $3 base station host
+# $4 scenario id
 exec_on_colosseum() {
+    set -x
+
     local server_host="$1"
     local client_host="$2"
+    local base_station_host="$3"
+    local scenario_id="$4"
     local copy_dest="$shared_path/gensync_$(get_current_date)"
     local benchmark_path="$copy_dest/build/Benchmarks"
     local examples_path="$copy_dest/example"
-    local server_ip="$(sshpass -p "$srn_user_passwd" ssh root@"$server_host" "$(get_ip_cmd)")"
+
+    setup_colosseum "$base_station_host" "$scenario_id"
+    setup_colosseum "$server_host"
+    setup_colosseum "$client_host"
+
+    # This has to happen after srsLTE setup
+    local server_ip="$(sshpass -e ssh root@"$server_host" "$(get_ip_cmd)")"
+
+    # Colosseum USRPs do not immediately hook up, they need some time.
+    echo_o "Sleeping for 10 seconds before invoking GenSync..."
+    sleep 10
 
     # Move the code to the shared location (it's enough to do that on the server only)
     printf "\nCopying artifacts to $copy_dest ...\n"
-    sshpass -p "$srn_user_passwd" ssh srn-user@"$server_host" \
+    sshpass -e ssh srn-user@"$server_host" \
             "mkdir -p '$copy_dest';
             cp -r /'$gensync_basename'/* '$copy_dest'/"
 
     printf "\n\nExecuting GenSync experiments. Server's IP is $server_ip ...\n"
 
     # TODO 2: there should be an easier way to execute commands in a container
-    sshpass -p "$srn_user_passwd" ssh srn-user@"$server_host" \
+    sshpass -e ssh srn-user@"$server_host" \
             "cd '$copy_dest';
             '$benchmark_path' -m server -p '$examples_path'/server_params_data.cpisync" &
-    sshpass -p "$srn_user_passwd" ssh srn-user@"$client_host" \
+    sshpass -e ssh srn-user@"$client_host" \
             "cd '$copy_dest';
             ping -c 5 '$server_ip'
             '$benchmark_path' -m client -r '$server_ip' -p '$examples_path'/client_params_data.cpisync"
@@ -385,13 +443,15 @@ exec_on_colosseum() {
 
 while getopts "hcpu:" option; do
     case $option in
-        c) setup
+        c) ask_ssh_pass
+           setup
            exit
            ;;
         u) refresh_code "$OPTARG"
            exit
            ;;
-        p) push_image "$2" "$3"
+        p) ask_ssh_pass
+           push_image "$2" "$3" "$4"
            exit
            ;;
         h|* ) help
@@ -399,26 +459,5 @@ while getopts "hcpu:" option; do
     esac
 done
 
-# exec_on_colosseum "$1" "$2"
-
-# TODO:
-
-srsLTE_conf_dir=/root/radio_code/srslte_cofig/
-logs_dir=/logs
-
-# Return the srsLTE command to execute on a container.
-# $1 one of 'epc', 'ebs', or 'ue'
-get_srs_cmd() {
-    case $1 in
-        epc|ebs|ue) ;;
-        *) err "in 'get_srs_cmd()': \"$1\" not one of 'epc', 'ebs', 'ue'."
-    esac
-
-    echo "cd \"$srsLTE_conf_dir\";
-          srs$1 $1.conf 2>&1 | tee \"$logs_dir\"/colosseum_$1.log"
-}
-
-
-exit
-
-# open5g-forum-demo
+ask_ssh_pass "$(echo $1 | cut -d'-' -f1,2)"
+exec_on_colosseum "$1" "$2" "$3" "$4"
