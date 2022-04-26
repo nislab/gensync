@@ -15,10 +15,12 @@ set -e
 trap "exit 1" TERM
 export TOP_PID=$$
 
+requirements=( sudo ssh sshpass rsync lxc lxd )
+
 ######## Global constants
 default_team_name=sync-edge                     # Colosseum team name
 default_srn_user_passwd="Spiteful Corgi Bites"  # password for `root` and `srn_user` in containers
-default_base_image=base-1604-nocuda.tar.gz      # base image when `-c`
+default_base_image=scope.tar.gz                 # base image when `-c`
 default_modified_image=gensync-colosseum        # name of produced image when `-c`
 default_shared_path=/share/exec                 # where containers mount the shared NAS
 default_colosseumcli_path=colosseumcli          # path to `colosseumcli` install artifacts
@@ -47,11 +49,11 @@ lxc="sudo lxc"
 
 help() {
     cat<<EOF
-USAGE: run_colosseum [-h] [-c] [-u IMAGE] [-p SOURCE DESTINATION] SERVER CLIENT BASE_STATION SCENARIO_ID
+USAGE: run_colosseum [-h] [-c] [-u IMAGE] [-p SOURCE DESTINATION [CONTAINER]] SERVER CLIENT BASE_STATION SCENARIO_ID
 
 Executes GenSync synchornization on Colosseum wireless network emulator.
 
-Requirements: sudo, ssh, sshpass, rsync, lxc, lxd.
+Requirements: ${requirements[@]}
 You need be behind Colosseum's VPN and have your Colosseum remotes set in ~/.ssh/config.
 
 SERVER and CLIENT are the two hostnames of Colosseum SRN's among which you want to perform pair-wise sync.
@@ -60,13 +62,26 @@ SCENARIO_ID is the Colosseum scenario identifier.
 
 OPTIONS:
     -h Show this message and exit.
-    -c Create GenSync container image '$modified_image.tar.gz' and exit (installs 'colosseumcli' down the road).
+    -c Create GenSync container image '$modified_image.tar.gz' and exit
+       (installs 'colosseumcli' down the road).
     -u Similar to -c but uploads GenSync code to an existing IMAGE instead of creating the new one.
     -p Push SOURCE container image to DESTINATION (typically at file-proxy:).
+       If CONTAINER is passed, it must be a running container's name to snapshopt into SOURCE
+       and push to DESTINATION.
 
 You can custmize the following script variables:
-$(for ((i = 0; i < ${#custom_vars[@]}; i++)) do echo ${custom_vars[$i]}; done)
+$( for ((i = 0; i < ${#custom_vars[@]}; i++)) do echo ${custom_vars[$i]}; done )
 EOF
+}
+
+# Make sure that all requirements are available
+# No arguments
+check_requirements() {
+    for r in ${requirements[@]}; do
+        if ! command -v $r 2>&1 >/dev/null; then
+            err "'$r' is not installed. Please install it."
+        fi
+    done
 }
 
 # Echo green bold text
@@ -88,7 +103,7 @@ echo_o() {
 }
 
 # Echo the error message and exit.
-# $1 error message
+# $1 error message (optional)
 err() {
     if ! [ -z "$1" ]; then echo_r "Error: $1"; fi
     kill -s TERM $TOP_PID
@@ -104,7 +119,10 @@ get_lxc_exec() {
 # Obtain the IP address of a host.
 # No arguments
 get_ip_cmd() {
-    echo "ifconfig | grep -A1 $net_interface | awk '/inet/ { print \$2 }' | sed 's/[^0-9.]//g'"
+    echo "ifconfig                      \
+          | grep -A1 $net_interface     \
+          | awk '/inet/ { print \$2 }'  \
+          | sed 's/[^0-9.]//g'"
 }
 
 # Obtain GenSync compile commands.
@@ -316,7 +334,7 @@ EOF
 refresh_code() {
     local image="$(basename "$1" .tar.gz)"
     local lxc_exec="$(get_lxc_exec)"
-    local is_imported=$($lxc --format=csv image ls | awk -F, '{ print $1 }' | grep -c $image)
+    local is_imported=$($lxc --format=csv image ls | awk -F, '{ print $1 }' | grep -c "^$image\$")
 
     if [[ $is_imported -eq 0 ]]; then
         # Image is not imported. Is it at least on the disk?
@@ -377,7 +395,7 @@ ask_ssh_pass() {
     export SSHPASS="$pass"
 }
 
-# Setup scenario and srsLTE on Colosseum.
+# Setup scenario and srsLTE on Colosseum using SCOPE
 # $1 host name through which we want to conduct configuration
 # $2 scenario identifier (when a call uses this argument, we're setting up a base station)
 setup_colosseum() {
@@ -385,15 +403,20 @@ setup_colosseum() {
     local scenario="$2"
     local cmd="sshpass -e ssh root@$host"
 
+    echo "Setting up SCOPE on '$host' ..."
+
     if ! [ -z "$scenario" ]; then
-        $cmd "colosseumcli rf start $scenario -c"
+        echo -e "$host is being set up as a base station.\nRunning scenario: $scenario"
+        $cmd "colosseumcli rf start $scenario -c; colosseumcli rf info"
     fi
 
-    # Clean stale configuration
-    $cmd "cd /root/radio_code/scope_config && ./remove_experiment_data.sh || true"
+    # Clear stale configuration
+    $cmd "cd /root/radio_code/scope_config;
+          ./remove_experiment_data.sh || true"
 
     # Run SCOPE
-    $cmd "cd /root/radio_api/ && python3 scope_start.py --config-file radio_interactive.conf 2>&1 | tee scope_start.log"
+    $cmd "cd /root/radio_api/;
+          python3 scope_start.py --config-file radio_interactive.conf 2>&1 | tee scope_start.log"
 }
 
 # Execute GenSync experiments on Colosseum.
@@ -402,44 +425,69 @@ setup_colosseum() {
 # $3 base station host
 # $4 scenario id
 exec_on_colosseum() {
-    set -x
-
     local server_host="$1"
     local client_host="$2"
     local base_station_host="$3"
     local scenario_id="$4"
     local copy_dest="$shared_path/gensync_$(get_current_date)"
+    local scenario_info_path="$copy_dest"/scenario.info
     local benchmark_path="$copy_dest/build/Benchmarks"
     local examples_path="$copy_dest/example"
 
-    setup_colosseum "$base_station_host" "$scenario_id"
-    setup_colosseum "$server_host"
-    setup_colosseum "$client_host"
+    # setup_colosseum "$base_station_host" "$scenario_id"
+    # setup_colosseum "$server_host"
+    # setup_colosseum "$client_host"
+
+    # echo_o "Waiting 15 seconds for radios to get set up ..."
+    # sleep 15
 
     # This has to happen after srsLTE setup
     local server_ip="$(sshpass -e ssh root@"$server_host" "$(get_ip_cmd)")"
+    if [ -z "$server_ip" ]; then
+        err "Server's IP is not detected for server host $server_host."
+    fi
+    echo -e "\nExecuting GenSync experiments. Server's IP is $server_ip ...\n"
 
-    # Colosseum USRPs do not immediately hook up, they need some time.
-    echo_o "Sleeping for 10 seconds before invoking GenSync..."
-    sleep 10
+    # Remember the scenario
+    echo_o "\nResults in $copy_dest, scenario:"
+    sshpass -e ssh srn-user@"$base_station_host" \
+            "mkdir -p $copy_dest;
+             colosseumcli rf info | tee $scenario_info_path"
 
     # Move the code to the shared location (it's enough to do that on the server only)
-    printf "\nCopying artifacts to $copy_dest ...\n"
+    echo -e "\nCopying artifacts to $copy_dest ...\n"
     sshpass -e ssh srn-user@"$server_host" \
-            "mkdir -p '$copy_dest';
-            cp -r /'$gensync_basename'/* '$copy_dest'/"
-
-    printf "\n\nExecuting GenSync experiments. Server's IP is $server_ip ...\n"
+            "cp -r /'$gensync_basename'/* '$copy_dest'/"
 
     # TODO 2: there should be an easier way to execute commands in a container
     sshpass -e ssh srn-user@"$server_host" \
-            "cd '$copy_dest';
+            "cd $copy_dest;
             '$benchmark_path' -m server -p '$examples_path'/server_params_data.cpisync" &
     sshpass -e ssh srn-user@"$client_host" \
-            "cd '$copy_dest';
+            "cd $copy_dest;
             ping -c 5 '$server_ip'
             '$benchmark_path' -m client -r '$server_ip' -p '$examples_path'/client_params_data.cpisync"
 }
+
+# Stop SCOPE and scenario on Colosseum.
+# $1 server host
+# $2 client host
+# $3 base station host
+stop_on_colosseum() {
+    local server_host="$1"
+    local client_host="$2"
+    local base_station_host="$3"
+    local stop_cmd="cd /root/radio_api/ && ./stop.sh"
+
+    echo_o "Stopping the scenario ..."
+    sshpass -e ssh root@$server_host "colosseumcli rf stop"
+    echo_o "Stopping server ..."
+    sshpass -e ssh root@$server_host "$stop_cmd"
+    echo_o "Stopping client ..."
+    sshpass -e ssh root@$client_host "$stop_cmd"
+}
+
+check_requirements
 
 while getopts "hcpu:" option; do
     case $option in
@@ -447,10 +495,18 @@ while getopts "hcpu:" option; do
            setup
            exit
            ;;
-        u) refresh_code "$OPTARG"
+        u) if [ $# -lt 1 ]; then
+               help
+               err "You need to pass at least 1 argument."
+           fi
+           refresh_code "$OPTARG"
            exit
            ;;
-        p) ask_ssh_pass
+        p) if [ $# -lt 2 ]; then
+               help
+               err "You need to pass at least 3 arguments."
+           fi
+           ask_ssh_pass
            push_image "$2" "$3" "$4"
            exit
            ;;
@@ -459,5 +515,15 @@ while getopts "hcpu:" option; do
     esac
 done
 
+if [ $# -lt 4 ]; then
+    help
+    err "You need to pass at least 4 arguments."
+fi
+
 ask_ssh_pass "$(echo $1 | cut -d'-' -f1,2)"
-exec_on_colosseum "$1" "$2" "$3" "$4"
+
+if [ "$4" == "stop" ]; then
+    stop_on_colosseum "$1" "$2" "$3"
+else
+    exec_on_colosseum "$1" "$2" "$3" "$4"
+fi
