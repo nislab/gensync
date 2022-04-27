@@ -1,28 +1,10 @@
 # Colosseum & SCOPE
 
 Table of Contents:
-- [Internal Questions](#questions)
 - [Public Questions](#public_questions)
+- [Internal Questions](#questions)
 - [Bugs](#bugs)
 - [Public Conversations](#conversations)
-
-<a name="questions"></a>
-## Internal Questions
-- Can we get some reasonable default SCOPE configurations from the
-  team at Northeastern to run scenarios with?
-  - [April 26th, 2022]: Yes, they have updated `/share/nas/common/scope.tar.gz`.
-- Once we get SCOPE working, will we be able to ping two UEs on
-  different BSs?
-  - Yes.
-- Can SCOPE run scenarios on its own or should we run them separately?
-  - No, it has to be done via `colosseumcli`.
-- Can scenarios take more than 600 seconds (as on SCOPEs [GitHub
-  repo](https://github.com/wineslab/colosseum-scope#scope-cellular-scenarios-for-colosseum-network-emulator))?
-  - Yes, they can be cycled using `-c` option.
-- Do certain scenarios assume certain numbers of nodes in the
-  reservation?
-  - No, we can run any number of nodes (in accordance with the SCOPE
-    config file we use).
 
 <a name="public_questions"></a>
 ## Public Questions
@@ -49,6 +31,24 @@ Specific questions:
   it possible to implement hardware health checks prior to SRN
   assignments such that a reservation always receives all functional
   SRNs (pairs of server/container + radio hardware).
+
+<a name="questions"></a>
+## Internal Questions
+- Can we get some reasonable default SCOPE configurations from the
+  team at Northeastern to run scenarios with?
+  - [April 26th, 2022]: Yes, they have updated `/share/nas/common/scope.tar.gz`.
+- Once we get SCOPE working, will we be able to ping two UEs on
+  different BSs?
+  - Yes.
+- Can SCOPE run scenarios on its own or should we run them separately?
+  - No, it has to be done via `colosseumcli`.
+- Can scenarios take more than 600 seconds (as on SCOPEs [GitHub
+  repo](https://github.com/wineslab/colosseum-scope#scope-cellular-scenarios-for-colosseum-network-emulator))?
+  - Yes, they can be cycled using `-c` option.
+- Do certain scenarios assume certain numbers of nodes in the
+  reservation?
+  - No, we can run any number of nodes (in accordance with the SCOPE
+    config file we use).
 
 <a name="bugs"></a>
 ## Bugs
@@ -110,4 +110,4 @@ out the possibility of getting the same nonfunctional SRN.
 
 <a name="conversations"></a>
 ## Public Conversations
-- Novak's Google Group [question](https://groups.google.com/g/colosseum-users/c/KauiPwqSWM0).
+- Novak's Google Groups [question](https://groups.google.com/g/colosseum-users/c/KauiPwqSWM0).
