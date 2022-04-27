@@ -424,7 +424,8 @@ setup_colosseum() {
           python3 scope_start.py --config-file radio_interactive.conf 2>&1 | tee scope_start.log"
 }
 
-# Discover first two working SRNs in the current reservation.
+# Discover the first two working SRNs in the current reservation. An SRN
+# is considered functional if `get_ip` returns something.
 # $1 array of length two where first is server host and second is client host
 # ${@:2} hosts to consider
 dicover_two_working_hosts() {
@@ -482,11 +483,12 @@ exec_on_colosseum() {
     if [ -z "$client_ip" ]; then
         err "Client's IP is not detected for client host '$client_host'."
     fi
-    echo -e "\nExecuting GenSync experiments with:"
-    echo -e "\tServer IP: '$server_ip'\n\tClient IP: '$client_ip'"
+    echo -e "\nExecuting GenSync experiments with:"              \
+            "\n\tServer IP: '$server_ip', HOST: '$server_host'"  \
+            "\n\tClient IP: '$client_ip', HOST: '$client_host'"
 
     # Remember the scenario
-    echo_o "\nResults in '$copy_dest', scenario:"
+    echo_o "\nResults will be placed in '$copy_dest', scenario:"
     sshpass -e ssh srn-user@"$base_station_host" \
             "mkdir -p $copy_dest;
              colosseumcli rf info | tee $scenario_info_path"

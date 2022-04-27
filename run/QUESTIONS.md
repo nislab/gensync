@@ -1,11 +1,12 @@
 # Colosseum & SCOPE
 
 Table of Contents:
-- [Questions](#questions)
+- [Internal Questions](#questions)
+- [Public Questions](#public_questions)
 - [Bugs](#bugs)
 
 <a name="questions"></a>
-## Questions
+## Internal Questions
 - Can we get some reasonable default SCOPE configurations from the
   team at Northeastern to run scenarios with?
   - [April 26th, 2022]: Yes, they have updated `/share/nas/common/scope.tar.gz`.
@@ -21,6 +22,32 @@ Table of Contents:
   reservation?
   - No, we can run any number of nodes (in accordance with the SCOPE
     config file we use).
+
+<a name="public_questions"></a>
+## Public Questions
+General questions:
+- Does RedHat have engineers dedicated to Colosseum development? If
+  so, will they be able to walk us through the technical aspects of
+  the Colosseum system?
+- What is a Colosseum scenario? What channel aspects does it capture?
+
+Specific questions:
+- If we want to emulate a scenario with "Number of Nodes: 50" and
+  "Number of Base Station Nodes: 10" in a reservation with only 4
+  nodes and 1 base station, what difference will it make with respect
+  to the emulated channel conditions? See the scenario specifications
+  [here](https://colosseumneu.freshdesk.com/support/solutions/articles/61000295793).
+- Is it advised to change radio scenarios during the same reservation?
+  If so, are there any general recommendations with regards to how to
+  check whether the scenario loading has completed?
+- Scenarios typically last for about 10 seconds and there is an option
+  to "cycle" them. What does the "cycling" mean in terms of emulated
+  channel conditions?
+- In some reservations, some SRNs fail to connect to the radio
+  hardware due to "Detected Radio-Link Failure" in srsLTE software. Is
+  it possible to implement hardware health checks prior to SRN
+  assignments such that a reservation always receives all functional
+  SRNs (pairs of server/container + radio hardware).
 
 <a name="bugs"></a>
 ## Bugs
