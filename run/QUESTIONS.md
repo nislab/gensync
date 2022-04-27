@@ -8,13 +8,19 @@ Table of Contents:
 ## Questions
 - Can we get some reasonable default SCOPE configurations from the
   team at Northeastern to run scenarios with?
+  - [April 26th, 2022]: Yes, they have updated `/share/nas/common/scope.tar.gz`.
 - Once we get SCOPE working, will we be able to ping two UEs on
   different BSs?
+  - Yes.
 - Can SCOPE run scenarios on its own or should we run them separately?
+  - No, it has to be done via `colosseumcli`.
 - Can scenarios take more than 600 seconds (as on SCOPEs [GitHub
   repo](https://github.com/wineslab/colosseum-scope#scope-cellular-scenarios-for-colosseum-network-emulator))?
+  - Yes, they can be cycled using `-c` option.
 - Do certain scenarios assume certain numbers of nodes in the
   reservation?
+  - No, we can run any number of nodes (in accordance with the SCOPE
+    config file we use).
 
 <a name="bugs"></a>
 ## Bugs
@@ -63,3 +69,13 @@ On April 25th at 3PM, this works. We indeed obtain IP addresses for
 each UE and the base station (IP's are `172.16.0.3` , `172.16.0.4`,
 `172.16.0.5` for UEs and `172.16.0.1` for the base station). `iperf`s
 to base station and `ping`s from UE to UE work.
+
+### Bug 2: Some USRPs just don't work
+This, for example, happens whenever we get `sync-edge-036` in a reservation.
+
+As a workaround, we need to make a reservation with more than 2 UEs
+and then pick two of them that can connect to USRP successfully.
+
+Once you get `sync-edge-036` (or other nonfunctional SRN), one may
+make another reservation (while the old one is still active) to rule
+out the possibility of getting the same nonfunctional SRN.

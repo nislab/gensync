@@ -26,6 +26,7 @@ default_shared_path=/share/exec                 # where containers mount the sha
 default_colosseumcli_path=colosseumcli          # path to `colosseumcli` install artifacts
 default_instance=colosseum-instance             # temporary container name
 default_net_interface=srs                       # network interface in the container to sync through
+default_sleep_before_gensync=30                 # seconds to wait for radio hardware to get set up
 
 ######## Handle env variables
 team_name=${team_name:="$default_team_name"}
@@ -36,6 +37,7 @@ shared_path=${shared_path:="$default_shared_path"}
 colosseumcli_path=${colosseumcli_path:="$default_colosseumcli_path"}
 instance=${instance:="$default_instance"}
 net_interface=${net_interface:="$default_net_interface"}
+sleep_before_gensync=${sleep_before_gensync:="$default_sleep_before_gensync"}
 
 mapfile -t custom_vars \
         < <(( set -o posix; set ) | grep 'default_' | sed 's/default_//g')
@@ -116,13 +118,16 @@ get_lxc_exec() {
     echo "$lxc exec $instance -- bash -c"
 }
 
-# Obtain the IP address of a host.
-# No arguments
-get_ip_cmd() {
-    echo "ifconfig                      \
-          | grep -A1 $net_interface     \
-          | awk '/inet/ { print \$2 }'  \
-          | sed 's/[^0-9.]//g'"
+# Obtain the IP address of a Colosseum host.
+# $1 host name
+get_ip() {
+    local host_name="$1"
+
+    sshpass -e ssh root@"$host_name"       \
+            "ifconfig                      \
+             | grep -A1 $net_interface     \
+             | awk '/inet/ { print \$2 }'  \
+             | sed 's/[^0-9.]//g'"
 }
 
 # Obtain GenSync compile commands.
@@ -403,7 +408,7 @@ setup_colosseum() {
     local scenario="$2"
     local cmd="sshpass -e ssh root@$host"
 
-    echo "Setting up SCOPE on '$host' ..."
+    echo_o "Setting up SCOPE on '$host' ..."
 
     if ! [ -z "$scenario" ]; then
         echo -e "$host is being set up as a base station.\nRunning scenario: $scenario"
@@ -419,43 +424,75 @@ setup_colosseum() {
           python3 scope_start.py --config-file radio_interactive.conf 2>&1 | tee scope_start.log"
 }
 
+# Discover first two working SRNs in the current reservation.
+# $1 array of length two where first is server host and second is client host
+# ${@:2} hosts to consider
+dicover_two_working_hosts() {
+    declare -n ret="$1"
+    ret=( )
+    local potential_hosts="${@:2}"
+
+    echo_o "Discovering two working SRNs in your reservation ..."
+
+    for h in ${potential_hosts[@]}; do
+        if [ "${#ret[@]}" -eq 2 ]; then break; fi
+        local ip="$(get_ip $h)"
+        if ! [ -z "$ip" ]; then
+            ret+=( "$h" )
+        fi
+    done
+
+    if [ "${#ret[@]}" -lt 2 ]; then
+        err "There are no two functional SRNs among: ${@:2}"
+    fi
+}
+
 # Execute GenSync experiments on Colosseum.
-# $1 server host
-# $2 client host
-# $3 base station host
-# $4 scenario id
+# $1 base station host
+# ${@:2:(( $# - 2 ))} other hosts (first working host is the server, the next is the client)
+# ${!#} scenario id
 exec_on_colosseum() {
-    local server_host="$1"
-    local client_host="$2"
-    local base_station_host="$3"
-    local scenario_id="$4"
-    local copy_dest="$shared_path/gensync_$(get_current_date)"
+    local base_station_host="$1"
+    local scenario_id="${!#}"
+    local other_hosts="${@:2:(( $# - 2 ))}"
+    local copy_dest="$shared_path/gensync_$(get_current_date)_$scenario_id"
     local scenario_info_path="$copy_dest"/scenario.info
     local benchmark_path="$copy_dest/build/Benchmarks"
     local examples_path="$copy_dest/example"
 
-    # setup_colosseum "$base_station_host" "$scenario_id"
-    # setup_colosseum "$server_host"
-    # setup_colosseum "$client_host"
+    # Setup base station and all other hosts
+    setup_colosseum "$base_station_host" "$scenario_id"
+    for h in ${other_hosts[@]}; do
+        setup_colosseum "$h"
+    done
 
-    # echo_o "Waiting 15 seconds for radios to get set up ..."
-    # sleep 15
+    echo_o "Waiting $sleep_before_gensync seconds for radios to get set up ..."
+    sleep $sleep_before_gensync
 
-    # This has to happen after srsLTE setup
-    local server_ip="$(sshpass -e ssh root@"$server_host" "$(get_ip_cmd)")"
+    dicover_two_working_hosts hosts "${other_hosts[@]}"
+    local server_host=${hosts[0]}
+    local client_host=${hosts[1]}
+
+    # Get server and client IPs
+    local server_ip="$(get_ip $server_host)"
+    local client_ip="$(get_ip $client_host)"
     if [ -z "$server_ip" ]; then
-        err "Server's IP is not detected for server host $server_host."
+        err "Server's IP is not detected for server host '$server_host'."
     fi
-    echo -e "\nExecuting GenSync experiments. Server's IP is $server_ip ...\n"
+    if [ -z "$client_ip" ]; then
+        err "Client's IP is not detected for client host '$client_host'."
+    fi
+    echo -e "\nExecuting GenSync experiments with:"
+    echo -e "\tServer IP: '$server_ip'\n\tClient IP: '$client_ip'"
 
     # Remember the scenario
-    echo_o "\nResults in $copy_dest, scenario:"
+    echo_o "\nResults in '$copy_dest', scenario:"
     sshpass -e ssh srn-user@"$base_station_host" \
             "mkdir -p $copy_dest;
              colosseumcli rf info | tee $scenario_info_path"
 
     # Move the code to the shared location (it's enough to do that on the server only)
-    echo -e "\nCopying artifacts to $copy_dest ...\n"
+    echo -e "\nCopying artifacts to '$copy_dest' ...\n"
     sshpass -e ssh srn-user@"$server_host" \
             "cp -r /'$gensync_basename'/* '$copy_dest'/"
 
@@ -474,6 +511,10 @@ exec_on_colosseum() {
 # $2 client host
 # $3 base station host
 stop_on_colosseum() {
+    # TODO 3: SCOPE's stop.sh does not allow us to start SCOPE again
+    # afterwards. Radios may fail to connect.
+    echo_o "Warning: 'stop_on_colosseum' does not ensure a clean slate.\n"
+
     local server_host="$1"
     local client_host="$2"
     local base_station_host="$3"
@@ -522,8 +563,8 @@ fi
 
 ask_ssh_pass "$(echo $1 | cut -d'-' -f1,2)"
 
-if [ "$4" == "stop" ]; then
-    stop_on_colosseum "$1" "$2" "$3"
+if [ "${!#}" == "stop" ]; then
+    stop_on_colosseum ${@:1:(( $# - 1 ))}  # pass all but last argument
 else
-    exec_on_colosseum "$1" "$2" "$3" "$4"
+    exec_on_colosseum $@  # pass all arguments
 fi
