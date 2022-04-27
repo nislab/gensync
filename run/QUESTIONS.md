@@ -4,6 +4,7 @@ Table of Contents:
 - [Internal Questions](#questions)
 - [Public Questions](#public_questions)
 - [Bugs](#bugs)
+- [Public Conversations](#conversations)
 
 <a name="questions"></a>
 ## Internal Questions
@@ -106,3 +107,7 @@ and then pick two of them that can connect to USRP successfully.
 Once you get `sync-edge-036` (or other nonfunctional SRN), one may
 make another reservation (while the old one is still active) to rule
 out the possibility of getting the same nonfunctional SRN.
+
+<a name="conversations"></a>
+## Public Conversations
+- Novak's Google Group [question](https://groups.google.com/g/colosseum-users/c/KauiPwqSWM0).
