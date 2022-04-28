@@ -12,6 +12,8 @@ General questions:
 - Does RedHat have engineers dedicated to Colosseum development? If
   so, will they be able to walk us through the technical aspects of
   the Colosseum system?
+- Can two SRNs on different base stations exchange TCP traffic (this
+  is the question of routing in the core network)?
 - What is a Colosseum scenario? What channel aspects does it capture?
 
 Specific questions:
@@ -39,7 +41,8 @@ Specific questions:
   - [April 26th, 2022]: Yes, they have updated `/share/nas/common/scope.tar.gz`.
 - Once we get SCOPE working, will we be able to ping two UEs on
   different BSs?
-  - Yes.
+  - Not sure yet. That would require some routing in the network core
+    (moved to public).
 - Can SCOPE run scenarios on its own or should we run them separately?
   - No, it has to be done via `colosseumcli`.
 - Can scenarios take more than 600 seconds (as on SCOPEs [GitHub
