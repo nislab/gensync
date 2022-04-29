@@ -14,8 +14,8 @@
 set -e
 
 ######## Global constants
-default_remote=novak@novaksXPS                           # remote where to push entire repository
-default_dest=/home/novak/Desktop/CODE/gensync_colosseum  # destination dir on destination host
+default_remote=novak@novaksXPS                 # remote where to push entire repository
+default_dest=/home/novak/Desktop/CODE/gensync  # destination dir on destination host
 
 ######## Handle env variables
 remote=${remote:="$default_remote"}

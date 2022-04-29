@@ -33,6 +33,11 @@ Specific questions:
   it possible to implement hardware health checks prior to SRN
   assignments such that a reservation always receives all functional
   SRNs (pairs of server/container + radio hardware).
+- Is it expected that some Colosseum scenarios are not available to
+  certain users? For example the scenario 1028 is listen on the
+  [website](https://colosseumneu.freshdesk.com/support/solutions/articles/61000295793)
+  but is actually not available to us via `colosseumcli rf scenario
+  list`.
 
 <a name="questions"></a>
 ## Internal Questions

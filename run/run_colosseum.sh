@@ -29,6 +29,7 @@ default_net_interface=srs                       # network interface in the conta
 default_sleep_before_gensync=30                 # seconds to wait for radio hardware to get set up
 default_data_loc=/share/gensync_data            # topmost dir of GenSync data input files
 default_experiment_rep=1                        # number of experiment repetitions for each GenSync data file
+default_gensync_port=8001                       # port GenSync server uses
 
 ######## Handle env variables
 team_name=${team_name:="$default_team_name"}
@@ -42,6 +43,7 @@ net_interface=${net_interface:="$default_net_interface"}
 sleep_before_gensync=${sleep_before_gensync:="$default_sleep_before_gensync"}
 data_loc=${data_loc:="$default_data_loc"}
 experiment_rep=${experiment_rep="$default_experiment_rep"}
+gensync_port=${gensync_port="$default_gensync_port"}
 
 mapfile -t custom_vars \
         < <(( set -o posix; set ) | grep 'default_' | sed 's/default_//g')
@@ -489,6 +491,20 @@ get_client_data_file_for() {
     fi
 }
 
+# Kill the processes that occupy the port we need for GenSync
+# $1 remote on which to clear the port
+clear_gensync_port() {
+    local remote="$1"
+    local port="$gensync_port"
+
+    sshpass -e ssh root@"$remote" \
+            "pid=\$(lsof -i:$port)
+             if ! [ -z \"\$pid\" ]; then
+                 echo \"PORT CLEARING needed. $port occupied by: \$pid\"
+                 kill -9 \$(lsof -t -i:$port)
+             fi"
+}
+
 # Execute GenSync experiments on Colosseum.
 # $1 base station host
 # ${@:2:(( $# - 2 ))} other hosts (first working host is the server, the next is the client)
@@ -502,14 +518,14 @@ exec_on_colosseum() {
     local benchmark_path="$copy_dest/build/Benchmarks"
     local examples_path="$copy_dest/example"
 
-    # # Setup base station and all other hosts
-    # setup_colosseum "$base_station_host" "$scenario_id"
-    # for h in ${other_hosts[@]}; do
-    #     setup_colosseum "$h"
-    # done
+    # Setup base station and all other hosts
+    setup_colosseum "$base_station_host" "$scenario_id"
+    for h in ${other_hosts[@]}; do
+        setup_colosseum "$h"
+    done
 
-    # echo_o "Waiting $sleep_before_gensync seconds for radios to get set up ..."
-    # sleep $sleep_before_gensync
+    echo_o "Waiting $sleep_before_gensync seconds for radios to get set up ..."
+    sleep $sleep_before_gensync
 
     dicover_two_working_hosts hosts "${other_hosts[@]}"
     local server_host=${hosts[0]}
@@ -555,15 +571,23 @@ exec_on_colosseum() {
         local suffix="${sf_path}_${sf_basename}"
 
         # Repeat experiments for the same parameter files
+        local server_cmd_pid=
         for rep in $(seq $experiment_rep); do
             echo "--------> Repetition $rep"
-            # TODO 2: there should be an easier way to execute commands in a container
+
+            clear_gensync_port "$server_host"
+
             sshpass -e ssh srn-user@"$server_host" \
                     "cd '$copy_dest'
                      '$benchmark_path' -m server -p '$server_f'" &
+
+            server_cmd_pid=$!
+
             sshpass -e ssh srn-user@"$client_host" \
                     "cd '$copy_dest'
                      '$benchmark_path' -m client -r '$server_ip' -p '$client_f'"
+
+            wait $server_cmd_pid
         done
 
         # Rename experimental observation directory
