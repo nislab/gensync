@@ -27,6 +27,8 @@ default_colosseumcli_path=colosseumcli          # path to `colosseumcli` install
 default_instance=colosseum-instance             # temporary container name
 default_net_interface=srs                       # network interface in the container to sync through
 default_sleep_before_gensync=30                 # seconds to wait for radio hardware to get set up
+default_data_loc=/share/gensync_data            # topmost dir of GenSync data input files
+default_experiment_rep=1                        # number of experiment repetitions for each GenSync data file
 
 ######## Handle env variables
 team_name=${team_name:="$default_team_name"}
@@ -38,6 +40,8 @@ colosseumcli_path=${colosseumcli_path:="$default_colosseumcli_path"}
 instance=${instance:="$default_instance"}
 net_interface=${net_interface:="$default_net_interface"}
 sleep_before_gensync=${sleep_before_gensync:="$default_sleep_before_gensync"}
+data_loc=${data_loc:="$default_data_loc"}
+experiment_rep=${experiment_rep="$default_experiment_rep"}
 
 mapfile -t custom_vars \
         < <(( set -o posix; set ) | grep 'default_' | sed 's/default_//g')
@@ -424,10 +428,11 @@ setup_colosseum() {
           python3 scope_start.py --config-file radio_interactive.conf 2>&1 | tee scope_start.log"
 }
 
-# Discover the first two working SRNs in the current reservation. An SRN
-# is considered functional if `get_ip` returns something.
+# Discover the first two working SRNs in the current reservation. An
+# SRN is considered functional if `get_ip` returns something.
 # $1 array of length two where first is server host and second is client host
 # ${@:2} hosts to consider
+# Return via $1
 dicover_two_working_hosts() {
     declare -n ret="$1"
     ret=( )
@@ -444,31 +449,65 @@ dicover_two_working_hosts() {
     done
 
     if [ "${#ret[@]}" -lt 2 ]; then
-        err "There are no two functional SRNs among: ${@:2}"
+        err "There are no two functional SRNs among: ${potential_hosts[@]}"
+    fi
+}
+
+# Return all GenSync server data files in the given directory on the container (recursively)
+# $1 container host name
+# $2 data dir location
+get_server_data_files() {
+    local host="$1"
+    local data_dir="$2"
+
+    sshpass -e ssh srn-user@"$host" \
+            "find '$data_dir' -type f -name '*server*.cpisync' 2>/dev/null"
+}
+
+# Find the GenSync client data file that corresponds to the given server data file
+# $1 container host name
+# $2 full server data file path
+# $3 full client data file path
+# Return via $3
+get_client_data_file_for() {
+    local host="$1"
+    local server_file_path="$2"
+    declare -n client="$3"
+
+    local sf_dir="$(dirname $server_file_path)"
+    local sf_name="$(basename $server_file_path)"
+    local sf_name_ne="${sf_name%.*}"
+    local sf_suffix="$(echo $sf_name_ne | cut -d '_' -f2,3)"
+    local find_cmd="find $sf_dir -type f -name 'client*${sf_suffix}.cpisync'"
+
+    client="$(sshpass -e ssh srn-user@$host "$find_cmd")"
+
+    if [ -z "$client" ]; then
+        err "There is no matching client file for $server_file_path"
     fi
 }
 
 # Execute GenSync experiments on Colosseum.
 # $1 base station host
 # ${@:2:(( $# - 2 ))} other hosts (first working host is the server, the next is the client)
-# ${!#} scenario id
+# ${@: -1} scenario id
 exec_on_colosseum() {
     local base_station_host="$1"
-    local scenario_id="${!#}"
+    local scenario_id="${@: -1}"
     local other_hosts="${@:2:(( $# - 2 ))}"
     local copy_dest="$shared_path/gensync_$(get_current_date)_$scenario_id"
     local scenario_info_path="$copy_dest"/scenario.info
     local benchmark_path="$copy_dest/build/Benchmarks"
     local examples_path="$copy_dest/example"
 
-    # Setup base station and all other hosts
-    setup_colosseum "$base_station_host" "$scenario_id"
-    for h in ${other_hosts[@]}; do
-        setup_colosseum "$h"
-    done
+    # # Setup base station and all other hosts
+    # setup_colosseum "$base_station_host" "$scenario_id"
+    # for h in ${other_hosts[@]}; do
+    #     setup_colosseum "$h"
+    # done
 
-    echo_o "Waiting $sleep_before_gensync seconds for radios to get set up ..."
-    sleep $sleep_before_gensync
+    # echo_o "Waiting $sleep_before_gensync seconds for radios to get set up ..."
+    # sleep $sleep_before_gensync
 
     dicover_two_working_hosts hosts "${other_hosts[@]}"
     local server_host=${hosts[0]}
@@ -483,9 +522,10 @@ exec_on_colosseum() {
     if [ -z "$client_ip" ]; then
         err "Client's IP is not detected for client host '$client_host'."
     fi
-    echo -e "\nExecuting GenSync experiments with:"              \
-            "\n\tServer IP: '$server_ip', HOST: '$server_host'"  \
-            "\n\tClient IP: '$client_ip', HOST: '$client_host'"
+    echo -e \
+         "\nExecuting GenSync experiments with:"              \
+         "\n\tServer IP: '$server_ip', HOST: '$server_host'"  \
+         "\n\tClient IP: '$client_ip', HOST: '$client_host'"
 
     # Remember the scenario
     echo_o "\nResults will be placed in '$copy_dest', scenario:"
@@ -493,19 +533,40 @@ exec_on_colosseum() {
             "mkdir -p $copy_dest;
              colosseumcli rf info | tee $scenario_info_path"
 
-    # Move the code to the shared location (it's enough to do that on the server only)
+    # Move the code to the shared location (it's enough to do this on the server only)
     echo -e "\nCopying artifacts to '$copy_dest' ...\n"
     sshpass -e ssh srn-user@"$server_host" \
             "cp -r /'$gensync_basename'/* '$copy_dest'/"
 
-    # TODO 2: there should be an easier way to execute commands in a container
-    sshpass -e ssh srn-user@"$server_host" \
-            "cd $copy_dest;
-            '$benchmark_path' -m server -p '$examples_path'/server_params_data.cpisync" &
-    sshpass -e ssh srn-user@"$client_host" \
-            "cd $copy_dest;
-            ping -c 5 '$server_ip'
-            '$benchmark_path' -m client -r '$server_ip' -p '$examples_path'/client_params_data.cpisync"
+    # Execute GenSync for all parameter files in `$data_loc`
+    local data_files="$(get_server_data_files $server_host $data_loc)"
+    for server_f in ${data_files[@]}; do
+        echo "----> Start GenSync for server data file: $server_f"
+
+        get_client_data_file_for "$server_host" "$server_f" client_f
+        echo "----> Matching client file: $client_f"
+
+        for rep in $(seq $experiment_rep); do
+            echo "--------> Repetition $rep"
+            # TODO 2: there should be an easier way to execute commands in a container
+            sshpass -e ssh srn-user@"$server_host" "ls $server_f" &
+                # "'$benchmark_path' -m server -p '$server_f'"
+            sshpass -e ssh srn-user@"$client_host" "ls $client_f"
+                    # "'$benchmark_path' -m client -r '$server_ip' -p '$client_f'"
+        done
+
+        # # Rename experimental observation directory
+        # local sf_basename_with_extension="$(basename $server_f)"
+        # local sf_basename=${sf_basename_with_extension%.*}
+        # local sf_dirname="$(dirname $server_f)"
+        # local sf_path="$(sed 's/\//_/g' < <(cd $sf_dirname; pwd))"
+        # local suffix="${sf_path}_${sf_basename}"
+        # local rename_cmd="mv .cpisync .cpisync_${suffix}"
+        # local copy_scenario_cmd="cp '$scenario_info_path' .cpisync_${suffix}/"
+        # sshpass -e ssh srn-user@"$server_host" "$rename_cmd; $copy_scenario_cmd"
+
+        echo "----> End GenSync for server data file $server_f"
+    done
 }
 
 # Stop SCOPE and scenario on Colosseum.
