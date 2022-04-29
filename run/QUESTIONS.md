@@ -132,6 +132,16 @@ I figured out that files owned by `sync-edge-admin` on `file-proxy`
 containers. Thus, if my containers want to use files from the shared
 NAS, the files need be owned by `sync-edge-admin`.
 
+#### Workaround
+To get around these privileges, one can:
+- make a reservation with single container,
+- copy files to `/share` within that container. For example:
+
+``` shell
+rsync -Pav DATA srn-user@sync-edge-034:/share/DATA
+```
+This works because `srn-user` in the container maps to `sync-edge-admin` on `file-proxy`.
+
 <a name="conversations"></a>
 ## Public Conversations
 - Novak's Google Groups [question](https://groups.google.com/g/colosseum-users/c/KauiPwqSWM0).
