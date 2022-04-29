@@ -111,6 +111,27 @@ Once you get `sync-edge-036` (or other nonfunctional SRN), one may
 make another reservation (while the old one is still active) to rule
 out the possibility of getting the same nonfunctional SRN.
 
+### Bug 3: UID/GUID mapping issues in containers
+All containers based on Ubuntu 16.04 have UID/GUID mapping issues
+(including `/share/nas/common/scope.tar.gz`).
+
+These are unprivileged containers but do not set up UID/GUID mapping
+properly. For example:
+
+``` shell
+srn-user@sync-edge-scope-gensync-srn34:~$ ls -ld /home/srn-user/
+drwxr-xr-x 2 nobody nogroup 5 Feb  8  2018 /home/srn-user/
+```
+
+Thus, nobody can write, read, or execute from the `/home/srn-user/`
+directory, while at the same time only `srn-user` can read from the
+shared storage (and container `root` does not).
+
+I figured out that files owned by `sync-edge-admin` on `file-proxy`
+(shared NAS server) map correctly to `srn-user` in the
+containers. Thus, if my container want to use files from the shared
+NAS, the files need be owned by `sync-edge-admin`.
+
 <a name="conversations"></a>
 ## Public Conversations
 - Novak's Google Groups [question](https://groups.google.com/g/colosseum-users/c/KauiPwqSWM0).
