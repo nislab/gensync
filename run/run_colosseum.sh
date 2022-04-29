@@ -145,6 +145,7 @@ get_compile_cmd() {
 }
 
 # Obtain nanoseconds since epoch
+# No arguments
 get_current_date() {
     date +%N
 }
@@ -453,7 +454,8 @@ dicover_two_working_hosts() {
     fi
 }
 
-# Return all GenSync server data files in the given directory on the container (recursively)
+# Return absolute paths to all GenSync server data files in the given
+# directory on the container (recursively).
 # $1 container host name
 # $2 data dir location
 get_server_data_files() {
@@ -500,14 +502,14 @@ exec_on_colosseum() {
     local benchmark_path="$copy_dest/build/Benchmarks"
     local examples_path="$copy_dest/example"
 
-    # # Setup base station and all other hosts
-    # setup_colosseum "$base_station_host" "$scenario_id"
-    # for h in ${other_hosts[@]}; do
-    #     setup_colosseum "$h"
-    # done
+    # Setup base station and all other hosts
+    setup_colosseum "$base_station_host" "$scenario_id"
+    for h in ${other_hosts[@]}; do
+        setup_colosseum "$h"
+    done
 
-    # echo_o "Waiting $sleep_before_gensync seconds for radios to get set up ..."
-    # sleep $sleep_before_gensync
+    echo_o "Waiting $sleep_before_gensync seconds for radios to get set up ..."
+    sleep $sleep_before_gensync
 
     dicover_two_working_hosts hosts "${other_hosts[@]}"
     local server_host=${hosts[0]}
@@ -541,31 +543,48 @@ exec_on_colosseum() {
     # Execute GenSync for all parameter files in `$data_loc`
     local data_files="$(get_server_data_files $server_host $data_loc)"
     for server_f in ${data_files[@]}; do
-        echo "----> Start GenSync for server data file: $server_f"
+        echo "----> [$(date)] Start GenSync for server data file: $server_f"
 
         get_client_data_file_for "$server_host" "$server_f" client_f
         echo "----> Matching client file: $client_f"
 
+        local server_f_bn="$(basename $server_f)"
+        local client_f_bn="$(basename $client_f)"
+        local sf_basename=${server_f_bn%.*}
+        local sf_dirname="$(dirname $server_f)"
+        local sf_path="$(echo $sf_dirname | sed 's/\//_/g')"
+        local suffix="${sf_path}_${sf_basename}"
+
+        # Temporarily move parameter files to `$copy_dest` and fix
+        # permissions (due to messed up permissions in the container)
+        sshpass -e ssh srn-user@"$server_host" \
+                "cd '$copy_dest'
+                 cp '$server_f' '$client_f' .
+                 chmod 777 '$server_f_bn' '$client_f_bn'"
+
+        # Repeat experiments for the same parameter files
         for rep in $(seq $experiment_rep); do
             echo "--------> Repetition $rep"
             # TODO 2: there should be an easier way to execute commands in a container
-            sshpass -e ssh srn-user@"$server_host" "ls $server_f" &
-                # "'$benchmark_path' -m server -p '$server_f'"
-            sshpass -e ssh srn-user@"$client_host" "ls $client_f"
-                    # "'$benchmark_path' -m client -r '$server_ip' -p '$client_f'"
+            sshpass -e ssh srn-user@"$server_host" \
+                    "cd '$copy_dest'
+                     '$benchmark_path' -m server -p '$server_f_bn'" &
+            sshpass -e ssh srn-user@"$client_host" \
+                    "cd '$copy_dest'
+                     '$benchmark_path' -m client -r '$server_ip' -p '$client_f_bn'"
         done
 
-        # # Rename experimental observation directory
-        # local sf_basename_with_extension="$(basename $server_f)"
-        # local sf_basename=${sf_basename_with_extension%.*}
-        # local sf_dirname="$(dirname $server_f)"
-        # local sf_path="$(sed 's/\//_/g' < <(cd $sf_dirname; pwd))"
-        # local suffix="${sf_path}_${sf_basename}"
-        # local rename_cmd="mv .cpisync .cpisync_${suffix}"
-        # local copy_scenario_cmd="cp '$scenario_info_path' .cpisync_${suffix}/"
-        # sshpass -e ssh srn-user@"$server_host" "$rename_cmd; $copy_scenario_cmd"
+        # Remove temporary parameter files
+        sshpass -e ssh srn-user@"$server_host" \
+                "cd '$copy_dest
+                 rm '$server_f_bn' '$client_f_bn'"
 
-        echo "----> End GenSync for server data file $server_f"
+        # Rename experimental observation directory
+        local rename_cmd="mv .cpisync .cpisync_${suffix}"
+        local copy_scenario_cmd="cp '$scenario_info_path' .cpisync_${suffix}/"
+        sshpass -e ssh srn-user@"$server_host" "$rename_cmd; $copy_scenario_cmd"
+
+        echo "----> [$(date)] End GenSync for server data file $server_f"
     done
 }
 

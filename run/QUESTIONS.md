@@ -129,7 +129,7 @@ shared storage (and container `root` does not).
 
 I figured out that files owned by `sync-edge-admin` on `file-proxy`
 (shared NAS server) map correctly to `srn-user` in the
-containers. Thus, if my container want to use files from the shared
+containers. Thus, if my containers want to use files from the shared
 NAS, the files need be owned by `sync-edge-admin`.
 
 <a name="conversations"></a>

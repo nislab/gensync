@@ -204,7 +204,8 @@ BenchParams::BenchParams(const string& fName) {
     ifstream is(fName);
     if (!is.is_open()) {
         stringstream ss;
-        ss << "File " << fName << " not found";
+        ss << "File " << fName << " failed to open due: "
+           << strerror(errno);
         throw runtime_error(ss.str());
     }
 
