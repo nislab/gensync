@@ -632,6 +632,8 @@ pull_data_as_csv() {
     local path="$nas_path"/"$team_name"/"$exec_dir"/"$data_dir"
     local temp_dir="$(mktemp -d)"
 
+    echo_o "Pulling data from 'file-proxy:$path' to '$temp_dir' ..."
+
     # we need to copy raw data locally since `file-proxy` does not
     # allow us to install Python packages.
     sshpass -e rsync -Pav file-proxy:"$path" "$temp_dir"/

@@ -43,7 +43,7 @@ def figure_out_algo_from_colosseum(run_path: str) -> Algo:
         return Algo.IBLT
     elif ('Cuckoo' in run):
         return Algo.Cuckoo
-    elif ('I_CPI' in run):
+    elif ('_I_CPI' in run):
         return Algo.I_CPI
     else:
         return Algo.CPI
