@@ -29,6 +29,7 @@ push_to_remote() {
           --exclude '*.tar.gz'             \
           --exclude '*.deb'                \
           --exclude '*.rpm'                \
+          --exclude '*/plain_data/'        \
           "$root_dir"/* "$remote":"$dest"
 }
 

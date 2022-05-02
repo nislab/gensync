@@ -30,6 +30,7 @@ default_sleep_before_gensync=30                 # seconds to wait for radio hard
 default_data_loc=/share/gensync_data            # topmost dir of GenSync data input files
 default_experiment_rep=1                        # number of experiment repetitions for each GenSync data file
 default_gensync_port=8001                       # port GenSync server uses
+default_nas_path=/share/nas                     # where are team-specific storage on shared NAS (file-proxy)
 
 ######## Handle env variables
 team_name=${team_name:="$default_team_name"}
@@ -44,6 +45,7 @@ sleep_before_gensync=${sleep_before_gensync:="$default_sleep_before_gensync"}
 data_loc=${data_loc:="$default_data_loc"}
 experiment_rep=${experiment_rep="$default_experiment_rep"}
 gensync_port=${gensync_port="$default_gensync_port"}
+nas_path=${nas_path="$default_nas_path"}
 
 mapfile -t custom_vars \
         < <(( set -o posix; set ) | grep 'default_' | sed 's/default_//g')
@@ -622,9 +624,26 @@ stop_on_colosseum() {
     sshpass -e ssh root@$client_host "$stop_cmd"
 }
 
+# Pull data from `file-proxy`.
+# $1 directory where data resides
+pull_data_as_csv() {
+    local data_dir="$(basename $1)"
+    local exec_dir="$(basename $shared_path)"
+    local path="$nas_path"/"$team_name"/"$exec_dir"/"$data_dir"
+    local temp_dir="$(mktemp -d)"
+
+    # we need to copy raw data locally since `file-proxy` does not
+    # allow us to install Python packages.
+    sshpass -e rsync -Pav file-proxy:"$path" "$temp_dir"/
+
+    python3 extract_data.py "$temp_dir"/"$data_dir" t
+
+    rm -rf "$temp_dir"
+}
+
 check_requirements
 
-while getopts "hcpu:" option; do
+while getopts "hcpu:g:" option; do
     case $option in
         c) ask_ssh_pass
            setup
@@ -643,6 +662,10 @@ while getopts "hcpu:" option; do
            fi
            ask_ssh_pass
            push_image "$2" "$3" "$4"
+           exit
+           ;;
+        g) ask_ssh_pass
+           pull_data_as_csv "$OPTARG"
            exit
            ;;
         h|* ) help
