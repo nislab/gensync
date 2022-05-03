@@ -59,7 +59,7 @@ lxc="sudo lxc"
 
 help() {
     cat<<EOF
-USAGE: run_colosseum [-h] [-c] [-u IMAGE] [-p SOURCE DESTINATION [CONTAINER]] SERVER CLIENT BASE_STATION SCENARIO_ID
+USAGE: run_colosseum [-h] [-c] [-u IMAGE] [-p SOURCE DESTINATION [CONTAINER]] [-g DATA_DIR] SERVER CLIENT BASE_STATION SCENARIO_ID
 
 Executes GenSync synchornization on Colosseum wireless network emulator.
 
@@ -78,6 +78,7 @@ OPTIONS:
     -p Push SOURCE container image to DESTINATION (typically at file-proxy:).
        If CONTAINER is passed, it must be a running container's name to snapshopt into SOURCE
        and push to DESTINATION.
+    -g Get CSV file from DATA_DIR on 'file-proxy' (shared NAS on Colosseum).
 
 You can custmize the following script variables:
 $( for ((i = 0; i < ${#custom_vars[@]}; i++)) do echo ${custom_vars[$i]}; done )
