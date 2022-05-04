@@ -10,7 +10,7 @@
 #include <CPISync/Aux/Exceptions.h>
 #include <CPISync/Syncs/IBLTSetOfSets.h>
 
-/** 
+/**
  * Construct T, the outer IBLT for transmission
  * @param expected Upper bound for # child sets in a parent set
  * @param eltSize size of a child IBLT after serialization
@@ -55,7 +55,7 @@ bool IBLTSetOfSets::SyncClient(const shared_ptr<Communicant> &commSync, list<sha
         }
 
         // send the outer IBLT to server
-        mySyncStats.timerStart(SyncStats::COMM_TIME);        
+        mySyncStats.timerStart(SyncStats::COMM_TIME);
         commSync->commSendIBLTNHash(myIBLT, true);
         mySyncStats.timerEnd(SyncStats::COMM_TIME);
 
@@ -64,7 +64,7 @@ bool IBLTSetOfSets::SyncClient(const shared_ptr<Communicant> &commSync, list<sha
             // Receive from server
             // OMS-> elements on the other side but not here, a list with pair {tarHash, missing elements}
             // SMO-> elements on this side but not the other
-            mySyncStats.timerStart(SyncStats::COMM_TIME);    
+            mySyncStats.timerStart(SyncStats::COMM_TIME);
             auto newOMS = commSync->commRecv_DataObject_List();
             auto newSMO = commSync->commRecv_DataObject_List();
             mySyncStats.timerEnd(SyncStats::COMM_TIME);
@@ -142,9 +142,15 @@ bool IBLTSetOfSets::SyncServer(const shared_ptr<Communicant> &commSync, list<sha
         SyncMethod::SyncServer(commSync, selfMinusOther, otherMinusSelf);
 
         // listen for client
+#ifndef IGNORE_SERVER_IDLE
         mySyncStats.timerStart(SyncStats::IDLE_TIME);
+#endif
+
         commSync->commListen();
+
+#ifndef IGNORE_SERVER_IDLE
         mySyncStats.timerEnd(SyncStats::IDLE_TIME);
+#endif
 
         // ensure that the IBLT size and eltSize equal those of the server otherwise fail and don't continue
         mySyncStats.timerStart(SyncStats::COMM_TIME);
@@ -185,7 +191,7 @@ bool IBLTSetOfSets::SyncServer(const shared_ptr<Communicant> &commSync, list<sha
         auto result = _decodeInnerIBLT(positiveChld,negativeChld);
         notOnThis = result.first;
         notOnThat = result.second;
-        
+
         // Rebuild otherMinusSelf
         // Iterate through each pair of combination to find if hash matches
         for (auto itr : notOnThis)
@@ -303,7 +309,7 @@ string IBLTSetOfSets::getName()
 }
 
 pair<list<shared_ptr<DataObject>>,list<shared_ptr<DataObject>>> IBLTSetOfSets::_decodeInnerIBLT(
-                                                            vector<pair<ZZ, ZZ>> &positiveChld, 
+                                                            vector<pair<ZZ, ZZ>> &positiveChld,
                                                             vector<pair<ZZ, ZZ>> &negativeChld)
 {
 

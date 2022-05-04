@@ -146,7 +146,7 @@ get_compile_cmd() {
           rm -rf build || true
           rm CMakeCache.txt || true
           mkdir build && cd build
-          cmake -DIGNORE_TEST=True ../ && make -j\$(nproc)"
+          cmake -DIGNORE_TEST=ON -DIGNORE_SERVER_IDLE=ON ../ && make -j\$(nproc)"
 }
 
 # Obtain nanoseconds since epoch

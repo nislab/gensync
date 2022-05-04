@@ -82,10 +82,16 @@ bool IBLTSync::SyncServer(const shared_ptr<Communicant>& commSync, list<shared_p
         // call parent method for bookkeeping
         SyncMethod::SyncServer(commSync, selfMinusOther, otherMinusSelf);
 
-        // listen for client
+#ifndef IGNORE_SERVER_IDLE
         mySyncStats.timerStart(SyncStats::IDLE_TIME);
+#endif
+
+        // listen for client
         commSync->commListen();
+
+#ifndef IGNORE_SERVER_IDLE
         mySyncStats.timerEnd(SyncStats::IDLE_TIME);
+#endif
 
         mySyncStats.timerStart(SyncStats::COMM_TIME);
         // ensure that the IBLT size and eltSize equal those of the server otherwise fail and don't continue

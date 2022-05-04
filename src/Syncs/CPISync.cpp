@@ -59,7 +59,7 @@ Logger::gLog(Logger::METHOD,"Entering CPISync::CPISync");
      *  a space of 2^x is bounded by roughly 1-exp(-2^(2*bits)/(2^(x+1)).  Setting
      *  this upper bounded by 2^-(epsilon+1) yields the above value
      */
-      
+
       epsilon = epsilon + 1; // half the prob. error for the sync failure probability below
       Logger::gLog(Logger::METHOD_DETAILS," ... upping bitNum to "+toStr(bitNum));
     }
@@ -179,7 +179,7 @@ bool CPISync::ratFuncInterp(const vec_ZZ_p& evals, long mA, long mB, vec_ZZ_p& P
         }
 
         // row-reduce the resulting matrix
-        rank = gauss(van_matrix, mAbar + mBbar); // the last column just goes along for the ride      
+        rank = gauss(van_matrix, mAbar + mBbar); // the last column just goes along for the ride
     }
 
     // store the solution to the linear system in coefficient_vec
@@ -377,7 +377,7 @@ void CPISync::RecvSyncParam(const shared_ptr<Communicant>& commSync, bool oneWay
     // take care of parent sync method
     SyncMethod::RecvSyncParam(commSync, oneWay);
 
-    // ... sync ID, mbar, bits, and epsilon        
+    // ... sync ID, mbar, bits, and epsilon
     byte theSyncID = commSync->commRecv_byte();
     long mbarClient = commSync->commRecv_long();
     long bitsClient = commSync->commRecv_long();
@@ -546,10 +546,15 @@ bool CPISync::SyncServer(const shared_ptr<Communicant>& commSync, list<shared_pt
         // Set up listening on the port
         Logger::gLog(Logger::METHOD, "Server: Started listening to: " + commSync->getName());
 
+#ifndef IGNORE_SERVER_IDLE
         mySyncStats.timerStart(SyncStats::IDLE_TIME);
-        commSync->commListen();
-        mySyncStats.timerEnd(SyncStats::IDLE_TIME);
+#endif
 
+        commSync->commListen();
+
+#ifndef IGNORE_SERVER_IDLE
+        mySyncStats.timerEnd(SyncStats::IDLE_TIME);
+#endif
 
         // ... verify sync parameters
         mySyncStats.timerStart(SyncStats::COMM_TIME);
@@ -575,11 +580,11 @@ bool CPISync::SyncServer(const shared_ptr<Communicant>& commSync, list<shared_pt
                 append(meta_other, recv_meta[currDiff + ii]);
                 append(meta_self, CPI_evals[currDiff + ii]);
         }
-        
+
         // attempt to reconcile with the presumed number of differences
         bool succeed = set_reconcile(otherSetSize, recv_meta, delta_self, delta_other);
         if (succeed) { // the node reconciliation might have been successful
-            
+
             // PERFORM some added checks
             vec_ZZ_p value_self = meta_self;
             vec_ZZ_p value_other = meta_other;
@@ -657,7 +662,7 @@ bool CPISync::SyncServer(const shared_ptr<Communicant>& commSync, list<shared_pt
         }
         meta_self.kill();
         meta_other.kill();
-    } while (result); //end of while	
+    } while (result); //end of while
 
 
     if (!keepAlive)
@@ -734,7 +739,7 @@ ZZ_p CPISync::_hash2(const long num) const {
 bool CPISync::addElem(shared_ptr<DataObject> datum) {
     Logger::gLog(Logger::METHOD,"Entering CPISync::addElem");
     int ii;
-    
+
     // call the parent class to take care of bookkeeping
     bool result = SyncMethod::addElem(datum);
 

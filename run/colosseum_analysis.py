@@ -22,7 +22,7 @@ def parse(path: str, summarize=False) -> pd.DataFrame:
         pair is server's and the second is client's perspective)
     """
     df = pd.read_csv(path)
-    df.drop(columns=['Unnamed: 0'])  # this column is index, redundant
+    df = df.drop(columns=['Unnamed: 0'])  # this column is index, redundant
 
     if not summarize:
         return df
@@ -64,3 +64,35 @@ def parse(path: str, summarize=False) -> pd.DataFrame:
         ret.loc[len(ret.index)] = row
 
     return ret
+
+
+class Violations:
+    """Validity information."""
+
+    def __init__(self):
+        """Construct a validity object."""
+        self.idle_time_outliers_even_index = []
+
+    def __str__(self):
+        """To string."""
+        return self.__dict__.__str__()
+
+
+def check_validity(data: pd.DataFrame) -> Violations:
+    """
+    Check validity of data.
+
+    Parameters
+    ----------
+    data : DataFrame
+        Data frame to check
+    """
+    it_s = 'idle time(s)'
+
+    prc_68 = data[it_s].mean() + data[it_s].std()
+    index_v = [x for x in data[data[it_s] > prc_68].index if x & 1]
+
+    v = Violations()
+    v.idle_time_outliers_even_index = index_v
+
+    return v

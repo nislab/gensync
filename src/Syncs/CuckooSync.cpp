@@ -89,10 +89,16 @@ bool CuckooSync::SyncServer(const shared_ptr<Communicant>& commSync,
         // call parent method for bookkeeping
         SyncMethod::SyncServer(commSync, selfMinusOther, otherMinusSelf);
 
-        // listen for client
+#ifndef IGNORE_SERVER_IDLE
         mySyncStats.timerStart(SyncStats::IDLE_TIME);
+#endif
+
+        // listen for client
         commSync->commListen();
+
+#ifndef IGNORE_SERVER_IDLE
         mySyncStats.timerEnd(SyncStats::IDLE_TIME);
+#endif
 
         // Receive their CF
         mySyncStats.timerStart(SyncStats::COMM_TIME);

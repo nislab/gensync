@@ -1,9 +1,9 @@
 /* This code is part of the CPISync project developed at Boston University.  Please see the README for use and references. */
 
-/* 
+/*
  * File:   InterCPI.cpp
  * Author: Ari Trachtenberg
- * 
+ *
  * Created on November 30, 2011, 10:46 PM
  */
 
@@ -190,18 +190,30 @@ bool InterCPISync::SyncServer(const shared_ptr<Communicant>& commSync, list<shar
     bool result = SyncMethod::SyncServer(commSync, selfMinusOther, otherMinusSelf);
 
     if (!serverConnectedBefore) {
+#ifndef IGNORE_SERVER_IDLE
         mySyncStats.timerStart(SyncStats::IDLE_TIME);
+#endif
+
         commSync->commListen();
+
+#ifndef IGNORE_SERVER_IDLE
         mySyncStats.timerEnd(SyncStats::IDLE_TIME);
+#endif
 
         serverConnectedBefore = true;
     }
 
     // 0. Set up communicants
     if(!useExisting) {
+#ifndef IGNORE_SERVER_IDLE
         mySyncStats.timerStart(SyncStats::IDLE_TIME);
+#endif
+
         commSync->commListen();
+
+#ifndef IGNORE_SERVER_IDLE
         mySyncStats.timerEnd(SyncStats::IDLE_TIME);
+#endif
     }
 
     mySyncStats.timerStart(SyncStats::COMM_TIME);

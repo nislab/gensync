@@ -6,7 +6,13 @@ set(CMAKE_CXX_STANDARD 11)
 # that can be used to reproduce exact sync behavior afterwards
 add_definitions(-DRECORD=".cpisync")
 # if enabled, no tests are built
-add_definitions(-DIGNORE_TEST=False)
+option(IGNORE_TEST "Do not build tests." OFF)
+# if enabled, GenSync servers do not count the time before the client
+# connects as idle time
+option(IGNORE_SERVER_IDLE "Ignore server idle time before client connects." OFF)
+if (IGNORE_SERVER_IDLE)
+  add_definitions(-DIGNORE_SERVER_IDLE)
+endif()
 
 include(CTest)
 include(GNUInstallDirs)
