@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 11)
 # if compiled with RECORD, GenSync server and client produce extensive log files
 # that can be used to reproduce exact sync behavior afterwards
 add_definitions(-DRECORD=".cpisync")
+# if enabled, no tests are built
+add_definitions(-DIGNORE_TEST=False)
 
 include(CTest)
 include(GNUInstallDirs)
