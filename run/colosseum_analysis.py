@@ -5,10 +5,21 @@ Author: Novak Boskov <boskov@bu.edu>
 Date: May 2022.
 """
 
+from typing import Optional
 import pandas as pd
 
 SUMMARY_COLUMNS = ['algorithm', 'diffs', 'cardinality',
                    'success', 'bytes exchanged', 'ttr']
+
+
+def sanity_check(data: pd.DataFrame) -> Optional[pd.DataFrame]:
+    """Raise exceptions if DataFrame has suspicious data."""
+    unsuccessful = data[~data['success']]
+
+    if unsuccessful.shape[0]:
+        raise ValueError(f"Unsuccessful syncs at: {unsuccessful.index}")
+
+    return data
 
 
 def parse(path: str, summarize=False) -> pd.DataFrame:
@@ -23,9 +34,10 @@ def parse(path: str, summarize=False) -> pd.DataFrame:
     """
     df = pd.read_csv(path)
     df = df.drop(columns=['Unnamed: 0'])  # this column is index, redundant
+    df['success'] = df['success'].astype(bool)
 
     if not summarize:
-        return df
+        return sanity_check(df)
 
     if len(df.index) % 2:
         raise ValueError(
@@ -44,10 +56,7 @@ def parse(path: str, summarize=False) -> pd.DataFrame:
         this_bre = float(df['bytes received'][i])
         next_btr = float(df['bytes transmitted'][i + 1])
         next_bre = float(df['bytes received'][i + 1])
-        if this_btr + this_bre >= next_btr + next_bre:
-            bts = this_btr + this_bre
-        else:
-            bts = next_btr + next_bre
+        bts = max(this_btr + this_bre, next_btr + next_bre)
 
         this_cmt = float(df['communication time(s)'][i])
         this_it = float(df['idle time(s)'][i])
@@ -55,15 +64,14 @@ def parse(path: str, summarize=False) -> pd.DataFrame:
         next_cmt = float(df['communication time(s)'][i + 1])
         next_it = float(df['idle time(s)'][i + 1])
         next_ptt = float(df['computation time(s)'][i + 1])
-        if this_cmt + this_it + this_ptt >= next_cmt + next_it + next_ptt:
-            ttr = this_cmt + this_it + this_ptt
-        else:
-            ttr = next_cmt + next_it + next_ptt
+        ttr = max(this_cmt + this_it + this_ptt, next_cmt + next_it + next_ptt)
 
         row = [algo, diffs, card, succ, bts, ttr]
         ret.loc[len(ret.index)] = row
 
-    return ret
+    ret['success'] = ret['success'].astype(bool)
+
+    return sanity_check(ret)
 
 
 class Violations:
@@ -81,6 +89,8 @@ class Violations:
 def check_validity(data: pd.DataFrame) -> Violations:
     """
     Check validity of data.
+
+    Primarily performs a sanity check for unusually high idle times.
 
     Parameters
     ----------
