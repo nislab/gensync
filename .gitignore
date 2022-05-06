@@ -197,6 +197,7 @@ fabric.properties
 # End of https://www.gitignore.io/api/clion
 
 *.csv
+!/run/plain_data/*.csv
 /scripts/.mypy_cache/
 *.mnlog
 /scripts/network_cpu_variations/DATA/
