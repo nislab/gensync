@@ -106,3 +106,29 @@ def check_validity(data: pd.DataFrame) -> Violations:
     v.idle_time_outliers_even_index = index_v
 
     return v
+
+
+def fix(original: pd.DataFrame, fix: pd.DataFrame) -> pd.DataFrame:
+    """
+    Replace data points from `original` with those in `fix`.
+
+    Parameters
+    ----------
+    original: DataFrame
+        Original data that will be modified
+    fix: DataFrame
+        Data with same columns as `original` whole rows will be
+        embedded in `original`
+    """
+    assert original.columns.tolist() == fix.columns.tolist()
+
+    criteria = 'algorithm'
+    criteria_values = fix[criteria].unique()
+
+    assert len(criteria_values) == 1
+
+    original = original.drop(
+        original[original[criteria] == criteria_values[0]].index)
+    original = pd.concat([original, fix], ignore_index=True)
+
+    return original
