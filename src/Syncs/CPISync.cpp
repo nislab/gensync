@@ -525,7 +525,10 @@ bool CPISync::SyncClient(const shared_ptr<Communicant>& commSync, list<shared_pt
 
 bool CPISync::SyncServer(const shared_ptr<Communicant>& commSync, list<shared_ptr<DataObject>>& selfMinusOther, list<shared_ptr<DataObject>>& otherMinusSelf) {
     Logger::gLog(Logger::METHOD,"Entering CPISync::SyncServer");
-    mySyncStats.timerStart(SyncStats::COMP_TIME); //This is total sync time
+
+#ifndef IGNORE_SERVER_IDLE
+    mySyncStats.timerStart(SyncStats::COMP_TIME); // This is total sync time
+#endif
 
     //Reset currDiff to 1 at the start of the sync so that the correct upper bound can be found if the dataset has changed
 	if(probCPI) currDiff = 1;
@@ -556,10 +559,20 @@ bool CPISync::SyncServer(const shared_ptr<Communicant>& commSync, list<shared_pt
         mySyncStats.timerEnd(SyncStats::IDLE_TIME);
 #endif
 
+#ifdef IGNORE_SERVER_IDLE
+        mySyncStats.timerStart(SyncStats::COMP_TIME);
+#endif
+
         // ... verify sync parameters
         mySyncStats.timerStart(SyncStats::COMM_TIME);
         RecvSyncParam(commSync, oneWay);
         mySyncStats.timerEnd(SyncStats::COMM_TIME);
+    } else {
+        // We need to start the COMP_TIME timer here only if it's not started
+        // before (i.e., if the IGNORE_SERVER_IDLE compile option is enabled).
+#ifdef IGNORE_SERVER_IDLE
+        mySyncStats.timerStart(SyncStats::COMP_TIME);
+#endif
     }
 
 
