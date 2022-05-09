@@ -59,6 +59,13 @@ Specific questions:
     config file we use).
 
 <a name="bugs"></a>
+
+## Limitations of Colosseum
+- Colosseum team currently does not support running "fast" (~ 5 m/s)
+  movements in any scenario. The reason behind this is that such
+  scenarios require substantial disk space (more in the [Google
+  group](https://groups.google.com/g/colosseum-users/c/mHvmtfo-cMs/m/8P1eQpHrDwAJ)).
+
 ## Bugs
 
 ### Bug 1: Basic SCOPE not operational
