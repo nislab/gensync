@@ -7,6 +7,7 @@ Date: May 2022.
 
 from typing import Optional
 import pandas as pd
+import json
 
 SUMMARY_COLUMNS = ['algorithm', 'diffs', 'cardinality',
                    'success', 'bytes exchanged', 'ttr']
@@ -24,7 +25,7 @@ def sanity_check(data: pd.DataFrame) -> Optional[pd.DataFrame]:
 
 def parse(path: str, summarize=False) -> pd.DataFrame:
     """
-    Parse CSV file into a DataFrame.
+    Parse GenSync experimental observations CSV file into a DataFrame.
 
     Parameters
     ----------
@@ -132,3 +133,43 @@ def fix(original: pd.DataFrame, fix: pd.DataFrame) -> pd.DataFrame:
     original = pd.concat([original, fix], ignore_index=True)
 
     return original
+
+
+def parse_ping(f_name: str) -> pd.DataFrame:
+    """
+    Parse ping output into a Data Frame.
+
+    ----------
+    f_name : str
+        Path to the f_name to parse
+    """
+    time_s = 'time='
+
+    ret = pd.DataFrame(columns=['rtt'])
+    with open(f_name, 'r') as f:
+        while True:
+            line = f.readline()
+            if not line:
+                break
+            if time_s not in line:
+                continue
+            val = float(line.split(time_s)[1].split(' ')[0])
+            ret.loc[len(ret.index)] = [val]
+
+    return ret
+
+
+def parse_iperf(f_name: str) -> pd.DataFrame:
+    """
+    Parse iperf3 json output into a DataFrame.
+
+    ----------
+    f_name : str
+        Path to the json file
+    """
+    with open(f_name, 'r') as f:
+        plain = json.load(f)
+
+    sums = [inter['sum'] for inter in plain['intervals']]
+
+    return pd.DataFrame.from_dict(sums)
