@@ -672,7 +672,7 @@ benchmark_net() {
     local scenario="$5"
     local is_latency="$6"
 
-    local out_file_dir="$shared_path/benchmark_net_$(get_current_date)"
+    local out_file_dir="$shared_path/benchmark_net_$(get_current_date)_$(scenario)"
     local client_file="$out_file_dir/iperf_client_to_server.json"
     local server_file="$out_file_dir/iperf_server_to_client.json"
     local ping_file="$out_file_dir/ping.txt"
