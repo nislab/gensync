@@ -31,6 +31,8 @@ default_data_loc=/share/gensync_data            # topmost dir of GenSync data in
 default_experiment_rep=1                        # number of experiment repetitions for each GenSync data file
 default_gensync_port=8001                       # port GenSync server uses
 default_nas_path=/share/nas                     # where are team-specific storage on shared NAS (file-proxy)
+default_iperf_each=1                            # -i option in iperf3
+default_iperf_onedir_dur=1800                   # duration (seconds) of iperf in one direction
 
 ######## Handle env variables
 team_name=${team_name:="$default_team_name"}
@@ -43,9 +45,11 @@ instance=${instance:="$default_instance"}
 net_interface=${net_interface:="$default_net_interface"}
 sleep_before_gensync=${sleep_before_gensync:="$default_sleep_before_gensync"}
 data_loc=${data_loc:="$default_data_loc"}
-experiment_rep=${experiment_rep="$default_experiment_rep"}
-gensync_port=${gensync_port="$default_gensync_port"}
-nas_path=${nas_path="$default_nas_path"}
+experiment_rep=${experiment_rep:="$default_experiment_rep"}
+gensync_port=${gensync_port:="$default_gensync_port"}
+nas_path=${nas_path:="$default_nas_path"}
+iperf_each=${iperf_each:="$default_iperf_each"}
+iperf_onedir_dur=${iperf_onedir_dur:="$default_iperf_onedir_dur"}
 
 mapfile -t custom_vars \
         < <(( set -o posix; set ) | grep 'default_' | sed 's/default_//g')
@@ -59,7 +63,7 @@ lxc="sudo lxc"
 
 help() {
     cat<<EOF
-USAGE: run_colosseum [-h] [-c] [-u IMAGE] [-p SOURCE DESTINATION [CONTAINER]] [-g DATA_DIR] SERVER CLIENT BASE_STATION SCENARIO_ID
+USAGE: run_colosseum [-h] [-c] [-u IMAGE] [-p SOURCE DESTINATION [CONTAINER]] [-g DATA_DIR] [-b BASE_STATION SERVER CLIENT FOURTH SCENARIO_ID [latency]] SERVER CLIENT BASE_STATION SCENARIO_ID
 
 Executes GenSync synchornization on Colosseum wireless network emulator.
 
@@ -79,6 +83,9 @@ OPTIONS:
        If CONTAINER is passed, it must be a running container's name to snapshopt into SOURCE
        and push to DESTINATION.
     -g Get CSV file from DATA_DIR on 'file-proxy' (shared NAS on Colosseum).
+    -b Benchmark network performance. Arguments are the 4 nodes from the reservation followed
+       by the scenario identifier. There is optional argument after SCENARIO_ID, if passed
+       measure latency with 'ping', if not measure bandwidth with 'iperf3'.
 
 You can custmize the following script variables:
 $( for ((i = 0; i < ${#custom_vars[@]}; i++)) do echo ${custom_vars[$i]}; done )
@@ -439,7 +446,7 @@ setup_colosseum() {
 # $1 array of length two where first is server host and second is client host
 # ${@:2} hosts to consider
 # Return via $1
-dicover_two_working_hosts() {
+discover_two_working_hosts() {
     declare -n ret="$1"
     ret=( )
     local potential_hosts="${@:2}"
@@ -508,6 +515,12 @@ clear_gensync_port() {
              fi"
 }
 
+# Wait until the radios are set up.
+wait_for_radios() {
+    echo_o "Waiting $sleep_before_gensync seconds for radios to get set up ..."
+    sleep $sleep_before_gensync
+}
+
 # Execute GenSync experiments on Colosseum.
 # $1 base station host
 # ${@:2:(( $# - 2 ))} other hosts (first working host is the server, the next is the client)
@@ -527,10 +540,8 @@ exec_on_colosseum() {
         setup_colosseum "$h"
     done
 
-    echo_o "Waiting $sleep_before_gensync seconds for radios to get set up ..."
-    sleep $sleep_before_gensync
-
-    dicover_two_working_hosts hosts "${other_hosts[@]}"
+    wait_for_radios
+    discover_two_working_hosts hosts "${other_hosts[@]}"
     local server_host=${hosts[0]}
     local client_host=${hosts[1]}
 
@@ -644,9 +655,70 @@ pull_data_as_csv() {
     rm -rf "$temp_dir"
 }
 
+# Benchmark latency and bandwidth for the given scenario. Reservations
+# for iperf3 need at least 80 minutes, ping reservations need at least
+# 50 minutes.
+# $1 base station
+# $2 server SRN
+# $3 client SRN
+# $4 the fourth node (if first two SRNs work, this won't be used, but need to get set up)
+# $5 scenario
+# $6 if passed, measure latency (ping) instead of bandwidth (iperf3)
+benchmark_net() {
+    local base_st="$1"
+    local server="$2"
+    local client="$3"
+    local the_fourth="$4"
+    local scenario="$5"
+    local is_latency="$6"
+
+    local out_file_dir="$shared_path/benchmark_net_$(get_current_date)"
+    local client_file="$out_file_dir/iperf_client_to_server.json"
+    local server_file="$out_file_dir/iperf_server_to_client.json"
+    local ping_file="$out_file_dir/ping.txt"
+
+    setup_colosseum "$base_st" "$scenario"
+    setup_colosseum "$server"
+    setup_colosseum "$client"
+    setup_colosseum "$the_fourth"
+
+    wait_for_radios
+    discover_two_working_hosts hosts "$server" "$client" "$the_fourth"
+    local server_host=${hosts[0]}
+    local client_host=${hosts[1]}
+
+    local server_ip="$(get_ip $server_host)"
+    echo -e "\nInferred server IP is: $server_ip\n"
+
+    local ser_cmd="iperf3 -s -i $iperf_each --daemon"
+    local cli_cmd="iperf3 -c $server_ip -t $iperf_onedir_dur -i $iperf_each -J"
+
+    sshpass -e ssh srn-user@"$server_host" "mkdir -p $out_file_dir"
+    echo "Results will be stored in $out_file_dir"
+
+    if [ "$is_latency" ]; then
+        echo "[$(date)]: Starting ping ..."
+        sshpass -e ssh srn-user@"$client_host" \
+                "ping $server_ip -w $iperf_onedir_dur > $ping_file"
+        echo "[$(date)]: ping ended."
+    else
+        echo "[$(date)]: Starting iperf3 measurements ..."
+
+        sshpass -e ssh srn-user@"$server_host" "$ser_cmd"
+        echo -e "--------> iperf3 server has started as a daemon\n"
+        sshpass -e ssh srn-user@"$client_host" "$cli_cmd > '$client_file'"
+
+        echo "[$(date)]: Client to server ended, starting server to client transmission ..."
+
+        sshpass -e ssh srn-user@"$client_host" "$cli_cmd --reverse > '$server_file'"
+
+        echo "[$(date)]: iperf3 ended."
+    fi
+}
+
 check_requirements
 
-while getopts "hcpu:g:" option; do
+while getopts "hcpbu:g:" option; do
     case $option in
         c) ask_ssh_pass
            setup
@@ -669,6 +741,15 @@ while getopts "hcpu:g:" option; do
            ;;
         g) ask_ssh_pass
            pull_data_as_csv "$OPTARG"
+           exit
+           ;;
+        b) benchmark_net_params=( "${@:2:(( $# - 1 ))}" )
+           if [ "${#benchmark_net_params[@]}" -lt 5 ]; then
+               err "You need at least 5 arguments."
+               help
+           fi
+           ask_ssh_pass "$(echo $2 | cut -d'-' -f1,2)"
+           benchmark_net "${benchmark_net_params[@]}"
            exit
            ;;
         h|* ) help
