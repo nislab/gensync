@@ -18,13 +18,15 @@
 #include <CPISync/Syncs/IBLTSetOfSets.h>
 #include <CPISync/Syncs/CuckooSync.h>
 
+#include <CPISync/Benchmarks/AuxMeasurements.h>
+
 #if defined (RECORD)
-#include <CPISync/Benchmarks/BenchParams.h>
 #include <CPISync/Benchmarks/BenchObserv.h>
+#include <CPISync/Benchmarks/BenchParams.h>
+#include <dirent.h>
+#include <iomanip>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <iomanip>
-#include <dirent.h>
 #endif
 
 using namespace std::chrono;
@@ -424,7 +426,10 @@ string GenSync::printStats(int syncIndex) const{
     returnStream << "Idle Time(s): " << getIdleTime(syncIndex) << endl;
     returnStream << "Computation Time(s): " <<  getCompTime(syncIndex) << endl;
 
-	return returnStream.str();
+    if (auxMeasuremetns)
+        returnStream << *auxMeasuremetns << endl;
+
+    return returnStream.str();
 }
 
 int GenSync::getPort(int commIndex) {
@@ -435,6 +440,11 @@ int GenSync::getPort(int commIndex) {
         return -1;
     }
 
+}
+
+
+void GenSync::setAuxMeasurements(shared_ptr<AuxMeasurements> aux) {
+    auxMeasuremetns = aux;
 }
 
 // Builder methods
@@ -469,7 +479,7 @@ GenSync GenSync::Builder::build() {
 
     // set default post process function pointer
     _postProcess = SyncMethod::postProcessing_SET;
-    
+
     switch (proto)
     {
         case SyncProtocol::CPISync:

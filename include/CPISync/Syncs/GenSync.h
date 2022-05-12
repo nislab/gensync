@@ -15,6 +15,7 @@
 #include <CPISync/Data/DataObject.h>
 #include <CPISync/Aux/Auxiliary.h>
 #include <CPISync/Aux/SyncMethod.h>
+#include <CPISync/Benchmarks/AuxMeasurements.h>
 
 // namespace info
 using std::string;
@@ -39,7 +40,7 @@ using std::shared_ptr;
  * in a manner that is designed for efficient synchronization.
  * This is a generic container that is subclassed by different types of
  * synchronization options.
- * 
+ *
  * A Generic Synchronization object contains:
  * 0.  One or more communicants, which govern(s) the targets of data synchronization with this object (and includes a means of communicating with them).
  * 1.  One or more synchronization methods, which govern(s) the protocol through which synchronization is carried out.
@@ -65,7 +66,7 @@ public:
      * @param data       The initial data with which to populate the data structure.  The data is added element by element
      *                      so that synchronization method metadata can be properly maintained.  Initilizes to the empty list
      *                      if not specified.
-     * 
+     *
      */
     GenSync(
             const vector<shared_ptr<Communicant>> &cVec,
@@ -166,7 +167,7 @@ public:
     void delComm(int index);
 
     /**
-     * @return The number of communicants currently registered. 
+     * @return The number of communicants currently registered.
      */
     int numComm();
 
@@ -194,7 +195,7 @@ public:
     void delSyncAgt(int index);
 
     /**
-     * 
+     *
      * @param index The index of the agent to return
      * @return The ii-th Sync Agent attached to this object
      */
@@ -283,10 +284,16 @@ public:
      * */
     int getPort(int commIndex);
 
-    /**
-     * Displays some internal information about this method
-     */
-    virtual string getName() {
+  /**
+   * Sets the auxiliary measurements.
+   * @param aux The object.
+   */
+  void setAuxMeasurements(shared_ptr<AuxMeasurements>);
+
+        /**
+         * Displays some internal information about this method
+         */
+        virtual string getName() {
         return "I am a GenSync object";
     }
 
@@ -299,7 +306,7 @@ public:
      * Structures
      */
 
-    /* 
+    /*
      * Builder design for creating GenSync objects
      */
     class Builder;
@@ -369,6 +376,9 @@ private:
                       list<shared_ptr<DataObject>> selfMinusOther,
                       list<shared_ptr<DataObject>> otherMinusSelf,
                       bool success, const string& eception) const;
+
+  /** Pointer to the auxiliary measurements object.  */
+  shared_ptr<AuxMeasurements> auxMeasuremetns;
 #endif
 };
 

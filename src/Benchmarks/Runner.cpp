@@ -11,8 +11,11 @@
 #include <assert.h>
 #include <chrono>
 #include <random>
+#include <stdio.h>
 #include <thread>
 #include <unistd.h>
+
+using namespace std::chrono;
 
 static const string HELP = R"(Usage: ./Benchmarks -p PARAMS_FILE [OPTIONS]
 
@@ -143,7 +146,24 @@ void invokeSyncIncrementally(bool serOrCli, size_t chunkSize,
  */
 bool alreadyThere(shared_ptr<GenSync> genSync, DataObject elem);
 
-int main(int argc, char *argv[]) {
+#ifdef NETWORK_PROBING
+/**
+ * Estimate the latency and bandwidth of the network and set the
+ * AuxMeasurements of the passed GenSync object.
+ * @param genSync The * GenSync object whose AuxMeasurements will be set.
+ * @param peerIP The IP address of the peer.
+ * @return The indicator of success.
+ */
+bool estimateNetwork(shared_ptr<GenSync> genSync, string &peerIP);
+
+/**
+ * Start iperf3 server on the GenSync server side to make network
+ * probing possible.
+ */
+void startIperfServer();
+#endif
+
+    int main(int argc, char *argv[]) {
     /*********************** Parse command line options ***********************/
     int opt;
     string paramFile = "";
@@ -236,9 +256,12 @@ int main(int argc, char *argv[]) {
                 invokeSyncIncrementally(true, incChunk, genSyncs.first,
                                         bPar.AElems);
             } else {
-                // create the lock file to signalize that the server is ready
-                ofstream lock(LOCK_FILE);
-                genSyncs.first->serverSyncBegin(0);
+#ifdef NETWORK_PROBING
+              startIperfServer();
+#endif
+              // create the lock file to signalize that the server is ready
+              ofstream lock(LOCK_FILE);
+              genSyncs.first->serverSyncBegin(0);
             }
         } catch (exception &e) {
             cout << "Sync exception: " << e.what() << "\n";
@@ -273,6 +296,11 @@ int main(int argc, char *argv[]) {
                     Logger::TEST,
                     "Client detects that the server is ready to start.");
 
+#ifdef NETWORK_PROBING
+                auto ret = estimateNetwork(genSyncs.first, peerHostname);
+                if (!ret)
+                  Logger::gLog(Logger::TEST, "Network estimation on the client has failed.");
+#endif
                 genSyncs.first->clientSyncBegin(0);
             }
         } catch (exception &e) {
@@ -497,3 +525,67 @@ void invokeSyncIncrementally(bool ser, size_t chunkSize,
         }
     }
 }
+
+#ifdef NETWORK_PROBING
+#define BUFF_SIZE 128
+bool estimateNetwork(shared_ptr<GenSync> genSync, string &peerIP) {
+    size_t chunks_read;
+    char ping_out[BUFF_SIZE], iperf_out[BUFF_SIZE];
+    stringstream ss_ping, ss_iperf;
+
+    // Build the external commands
+    ss_ping
+        << "ping -c 1 " << peerIP
+        << " | awk '/time=/ {split($(NF-1), parts, \"=\"); print parts[2]}'";
+    ss_iperf << "iperf3 -c " << peerIP << " -t 1"
+             << " | awk 'NR==4 {printf \"%s %s\", $(NF - 4), $(NF - 3)}'";
+
+    // Start timer to measure the time needed to estimate the network
+    // performance.
+    auto start = high_resolution_clock::now();
+
+    FILE *iperf = popen(ss_iperf.str().c_str(), "r");
+    FILE *ping = popen(ss_ping.str().c_str(), "r");
+
+    chunks_read = fread(ping_out, 1, BUFF_SIZE, ping);
+    if (!iperf || !chunks_read)
+        return false;
+    chunks_read = fread(iperf_out, 1, BUFF_SIZE, iperf);
+    if (!iperf || !chunks_read)
+        return false;
+
+    // Handle K, M, and G in iperf output string
+    float iperf_val;
+    string iperf_out_s(iperf_out);
+    string fst_prt = iperf_out_s.substr(0, iperf_out_s.find(" "));
+    if (iperf_out_s.find("Kbits") != string::npos) {
+      iperf_val = stof(fst_prt) * 1024;
+    } else if (iperf_out_s.find("Mbits") != string::npos) {
+      iperf_val = stof(fst_prt) * 1024 * 1024;
+    } else if (iperf_out_s.find("Gbits") != string::npos) {
+      iperf_val = stof(fst_prt) * 1024 * 1024 * 1024;
+    }
+
+    // Stop the timer and log the time it took to estimate the
+    // network conditions
+    auto end = high_resolution_clock::now();
+    stringstream durlog;
+    durlog << "NETWORK PROBING succeeded and took: "
+           << duration_cast<milliseconds>(end - start).count()
+           << " milliseconds.";
+    Logger::gLog(Logger::TEST, durlog.str());
+
+    // Update genSync object
+    auto shm =
+        make_shared<AuxMeasurements>(stof(ping_out), iperf_val, 0.0);
+    genSync->setAuxMeasurements(shm);
+
+    return true;
+}
+
+void startIperfServer() {
+  FILE *iperf_s_ret = popen("iperf3 -s --one-off", "r");
+  if (!iperf_s_ret)
+    Logger::gLog(Logger::TEST, "iperf3 server has failed.");
+}
+#endif

@@ -13,6 +13,10 @@ option(IGNORE_SERVER_IDLE "Ignore server idle time before client connects." OFF)
 if (IGNORE_SERVER_IDLE)
   add_definitions(-DIGNORE_SERVER_IDLE)
 endif()
+option(NETWORK_PROBING "Use ping and iperf to estimate network performance" ON)
+if (NETWORK_PROBING)
+  add_definitions(-DNETWORK_PROBING)
+endif()
 
 include(CTest)
 include(GNUInstallDirs)
@@ -85,6 +89,7 @@ set(SOURCE_FILES
   ${BENCH_DIR}/Runner.cpp
   ${BENCH_DIR}/BenchParams.cpp
   ${BENCH_DIR}/FromFileGen.cpp
+  ${BENCH_DIR}/AuxMeasurements.cpp
 
   ${TOOLS_DIR}/EncodeJoin.cpp
 
@@ -137,7 +142,8 @@ set(HEADERS
   ${SYNC_BENCH_INC}/BenchParams.h
   ${SYNC_BENCH_INC}/DataObjectGenerator.h
   ${SYNC_BENCH_INC}/RandGen.h
-  ${SYNC_BENCH_INC}/FromFileGen.h)
+  ${SYNC_BENCH_INC}/FromFileGen.h
+  ${SYNC_BENCH_INC}/AuxMeasurements.h)
 
 include_directories(include)
 if ( NOT IGNORE_TEST )
