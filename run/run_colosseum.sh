@@ -250,7 +250,7 @@ push_image() {
     fi
 
     printf "Uploading image to Colosseum testbed @ $image_remote_loc ...\n"
-    sshpass -e rsync -Pav "$source" "$image_remote_loc" || err
+    sshpass -e rsync -Pazv "$source" "$image_remote_loc" || err
     printf "\nFixing container permissions on Colosseum testbed ...\n"
     sshpass -e ssh file-proxy "chmod 755 $remote_path/$source" || err
 }
@@ -570,6 +570,12 @@ exec_on_colosseum() {
     sshpass -e ssh srn-user@"$server_host" \
             "cp -r /'$gensync_basename'/* '$copy_dest'/"
 
+    # # DEBUG: make sure that iperf3 server is running here
+    # echo_o "Running iperf3 server on $server_host."
+    # sshpass -e ssh root@"$server_host" \
+    #         "iperf3 -s -D --logfile=iperf_server.log; echo pgrep iperf3 is: \$(pgrep iperf3)"
+    # echo_o "iperf3 server command sent."
+
     # Execute GenSync for all parameter files in `$data_loc`
     local data_files="$(get_server_data_files $server_host $data_loc)"
     for server_f in ${data_files[@]}; do
@@ -672,7 +678,7 @@ benchmark_net() {
     local scenario="$5"
     local is_latency="$6"
 
-    local out_file_dir="$shared_path/benchmark_net_$(get_current_date)_$(scenario)"
+    local out_file_dir="$shared_path/benchmark_net_$(get_current_date)_${scenario}"
     local client_file="$out_file_dir/iperf_client_to_server.json"
     local server_file="$out_file_dir/iperf_server_to_client.json"
     local ping_file="$out_file_dir/ping.txt"

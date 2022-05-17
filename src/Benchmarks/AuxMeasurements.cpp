@@ -14,7 +14,8 @@ ostream &operator<<(ostream &os, const AuxMeasurements &aux) {
     os << AuxMeasurements::announcerString
        << "Latency: " << aux.latBeforeSync << endl
        << "uBandwidth: " << aux.uBBeforeSync << endl
-       << "dBandwidth: " << aux.dBBeforeSync << endl;
+       << "dBandwidth: " << aux.dBBeforeSync << endl
+       << "MeasuremntsDuration: " << aux.mesDur << endl;
 
     return os;
 }

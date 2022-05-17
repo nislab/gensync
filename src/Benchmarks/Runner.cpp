@@ -41,6 +41,16 @@ OPTIONS:
 // When mode is client only, the client cannot start syncing until it
 // sees this file.
 static const string LOCK_FILE = ".cpisync_benchmarks_server_lock";
+#ifdef NETWORK_PROBING
+// Where iperf3 server writes it outputs for debug.
+static const string IPERF_SERVER_LOGFILE = "/share/iperf_server.log";
+static const int SLEEP_BETWEEN_IPERF_MILLIS = 500;
+#endif
+
+#ifdef NETWORK_PROBING
+// Duration of one iperf3 session.
+static const int iperf_dur_s = 1;
+#endif
 
 using namespace std;
 using GenSyncPair = pair<shared_ptr<GenSync>, shared_ptr<GenSync>>;
@@ -163,7 +173,7 @@ bool estimateNetwork(shared_ptr<GenSync> genSync, string &peerIP);
 void startIperfServer();
 #endif
 
-    int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
     /*********************** Parse command line options ***********************/
     int opt;
     string paramFile = "";
@@ -257,11 +267,14 @@ void startIperfServer();
                                         bPar.AElems);
             } else {
 #ifdef NETWORK_PROBING
-              startIperfServer();
+                startIperfServer();
 #endif
-              // create the lock file to signalize that the server is ready
-              ofstream lock(LOCK_FILE);
-              genSyncs.first->serverSyncBegin(0);
+                // create the lock file to signalize that the server is ready
+                ofstream lock(LOCK_FILE);
+                lock.flush();
+                lock.close(); // TODO:
+
+                genSyncs.first->serverSyncBegin(0);
             }
         } catch (exception &e) {
             cout << "Sync exception: " << e.what() << "\n";
@@ -299,7 +312,9 @@ void startIperfServer();
 #ifdef NETWORK_PROBING
                 auto ret = estimateNetwork(genSyncs.first, peerHostname);
                 if (!ret)
-                  Logger::gLog(Logger::TEST, "Network estimation on the client has failed.");
+                    Logger::gLog(
+                        Logger::TEST,
+                        "Network estimation on the client has failed.");
 #endif
                 genSyncs.first->clientSyncBegin(0);
             }
@@ -527,65 +542,183 @@ void invokeSyncIncrementally(bool ser, size_t chunkSize,
 }
 
 #ifdef NETWORK_PROBING
-#define BUFF_SIZE 128
+#define BUFF_SIZE 4096
+
+/**
+ * Handle iperf3 output.
+ * @param s The string output of iperf3
+ * @param reverse If enabled, then the function parses the output of iperf with
+ * '-R' option.
+ */
+inline float handleIperfOutput(string &s, bool reverse = false) {
+    if (s.find("error") != string::npos)
+        return -1;
+
+    float iperf_val;
+
+    // get the right line
+    size_t right_line = reverse ? 4 : 3;
+    size_t line_cnt = 0;
+    istringstream s_lines(s);
+    string line;
+    while (getline(s_lines, line))
+        if (line_cnt++ == right_line)
+            break;
+    // get the right fields
+    auto right_fields = {6, 7};
+    vector<string> fields;
+    istringstream s_fields(line);
+    string field, data;
+    while (getline(s_fields, field, ' '))
+        if (!all_of(field.begin(), field.end(),
+                    [](char c) { return isspace(c); }))
+            fields.push_back(field);
+    for (auto rf : right_fields)
+        data += fields.at(rf) + ' ';
+
+    // convert to bits/sec
+    string iperf_out_s(data);
+    string fst_prt = iperf_out_s.substr(0, iperf_out_s.find(" "));
+    if (iperf_out_s.find("Kbits") != string::npos) {
+        iperf_val = stof(fst_prt) * 1024;
+    } else if (iperf_out_s.find("Mbits") != string::npos) {
+        iperf_val = stof(fst_prt) * 1024 * 1024;
+    } else if (iperf_out_s.find("Gbits") != string::npos) {
+        iperf_val = stof(fst_prt) * 1024 * 1024 * 1024;
+    }
+
+    return iperf_val;
+}
+
+/**
+ * Handle the output of ping.
+ * @param s The output.
+ * @returns ping time in milliseconds.
+ */
+inline float handlePingOutput(string &s) {
+    if (s.find("error") != string::npos)
+        return -1;
+
+    size_t time_pos = s.find("time=");
+    string part = s.substr(time_pos);
+    size_t space_pos = part.find(" ");
+
+    return stof(part.substr(5, space_pos - time_pos));
+}
+
+inline void log_external_fail(string text, int stat_code) {
+    Logger::gLog(Logger::TEST, "Popen fail: " + text +
+                                   "\nstatus code: " + to_string(stat_code));
+}
+
+inline void log_external_run(string &text) {
+    Logger::gLog(Logger::TEST, "Popen run: " + text);
+}
+
 bool estimateNetwork(shared_ptr<GenSync> genSync, string &peerIP) {
-    size_t chunks_read;
-    char ping_out[BUFF_SIZE], iperf_out[BUFF_SIZE];
-    stringstream ss_ping, ss_iperf;
+    array<char, BUFF_SIZE> buff;
+    string ping_cmd, iperf_u_cmd, iperf_d_cmd, ping_out, iperf_u_out,
+        iperf_d_out;
+    float iperf_u_val, iperf_d_val, ping_val;
 
     // Build the external commands
-    ss_ping
-        << "ping -c 1 " << peerIP
-        << " | awk '/time=/ {split($(NF-1), parts, \"=\"); print parts[2]}'";
-    ss_iperf << "iperf3 -c " << peerIP << " -t 1"
-             << " | awk 'NR==4 {printf \"%s %s\", $(NF - 4), $(NF - 3)}'";
+    ping_cmd = "ping -c 1 " + peerIP;
+    iperf_u_cmd = "iperf3 -c " + peerIP + " -t " + to_string(iperf_dur_s);
+    iperf_d_cmd =
+        "iperf3 -c " + peerIP + " -t " + to_string(iperf_dur_s) + " -R";
 
     // Start timer to measure the time needed to estimate the network
     // performance.
     auto start = high_resolution_clock::now();
 
-    FILE *iperf = popen(ss_iperf.str().c_str(), "r");
-    FILE *ping = popen(ss_ping.str().c_str(), "r");
-
-    chunks_read = fread(ping_out, 1, BUFF_SIZE, ping);
-    if (!iperf || !chunks_read)
+    log_external_run(iperf_u_cmd);
+    FILE *iperf_u = popen(iperf_u_cmd.c_str(), "r");
+    if (iperf_u == nullptr) {
+        log_external_fail("First iperf failed", pclose(iperf_u));
         return false;
-    chunks_read = fread(iperf_out, 1, BUFF_SIZE, iperf);
-    if (!iperf || !chunks_read)
-        return false;
-
-    // Handle K, M, and G in iperf output string
-    float iperf_val;
-    string iperf_out_s(iperf_out);
-    string fst_prt = iperf_out_s.substr(0, iperf_out_s.find(" "));
-    if (iperf_out_s.find("Kbits") != string::npos) {
-      iperf_val = stof(fst_prt) * 1024;
-    } else if (iperf_out_s.find("Mbits") != string::npos) {
-      iperf_val = stof(fst_prt) * 1024 * 1024;
-    } else if (iperf_out_s.find("Gbits") != string::npos) {
-      iperf_val = stof(fst_prt) * 1024 * 1024 * 1024;
     }
+    while (fgets(buff.data(), BUFF_SIZE, iperf_u) != nullptr)
+        iperf_u_out += buff.data();
+    // make sure we wait until the first iperf call ends, then wait a
+    // little more before sending the second iperf call to give the
+    // server a chance to get ready.
+    pclose(iperf_u);
+    this_thread::sleep_for(chrono::milliseconds(SLEEP_BETWEEN_IPERF_MILLIS));
+    iperf_u_val = handleIperfOutput(iperf_u_out);
+
+    log_external_run(iperf_d_cmd);
+    FILE *iperf_d = popen(iperf_d_cmd.c_str(), "r");
+    log_external_run(ping_cmd);
+    FILE *ping = popen(ping_cmd.c_str(), "r");
+    if (iperf_d == nullptr) {
+        log_external_fail("Second iperf failed", pclose(iperf_d));
+        return false;
+    }
+    while (fgets(buff.data(), BUFF_SIZE, iperf_d) != nullptr)
+        iperf_d_out += buff.data();
+
+    if (ping == nullptr) {
+        log_external_fail("Ping failed", pclose(ping));
+        return false;
+    }
+    while (fgets(buff.data(), BUFF_SIZE, ping) != nullptr)
+        ping_out += buff.data();
+    pclose(iperf_d);
+    pclose(ping);
+    iperf_d_val = handleIperfOutput(iperf_d_out, true);
+    ping_val = handlePingOutput(ping_out);
 
     // Stop the timer and log the time it took to estimate the
     // network conditions
     auto end = high_resolution_clock::now();
-    stringstream durlog;
-    durlog << "NETWORK PROBING succeeded and took: "
-           << duration_cast<milliseconds>(end - start).count()
-           << " milliseconds.";
-    Logger::gLog(Logger::TEST, durlog.str());
+    size_t duration = duration_cast<milliseconds>(end - start).count();
+    Logger::gLog(Logger::TEST,
+                 "NETWORK PROBING succeeded and took: " + to_string(duration));
 
     // Update genSync object
-    auto shm =
-        make_shared<AuxMeasurements>(stof(ping_out), iperf_val, 0.0);
-    genSync->setAuxMeasurements(shm);
+    auto ams = make_shared<AuxMeasurements>(ping_val, iperf_u_val, iperf_d_val,
+                                            duration);
+    genSync->setAuxMeasurements(ams);
 
     return true;
 }
 
 void startIperfServer() {
-  FILE *iperf_s_ret = popen("iperf3 -s --one-off", "r");
-  if (!iperf_s_ret)
-    Logger::gLog(Logger::TEST, "iperf3 server has failed.");
+    string is_already_running_cmd = "pgrep iperf3";
+    string run_cmd = "iperf3 -s -D --logfile=" + IPERF_SERVER_LOGFILE;
+    stringstream ss;
+    int run_ret;
+
+    // We need to remove the log file since iperf3 --logfile appends
+    // to file and we want it fresh.
+    if (remove(IPERF_SERVER_LOGFILE.c_str()) != 0)
+        Logger::gLog(Logger::TEST,
+                     IPERF_SERVER_LOGFILE +
+                         " failed to remove with errno: " + to_string(errno));
+
+    int ret = system(is_already_running_cmd.c_str());
+    switch (ret) {
+    case 1:
+    case 256:
+        run_ret = system(run_cmd.c_str());
+        ss << "'" << run_cmd << "' run with status code " << run_ret << endl;
+        Logger::gLog(Logger::TEST, ss.str());
+        break;
+    case 0:
+        Logger::gLog(Logger::TEST, "iperf3 server is already running.");
+        break;
+    case -1:
+        throw runtime_error(
+            "Shell process cannot be created or its status code "
+            "cannot be obtained.");
+        break;
+    case 127:
+        throw runtime_error("Shell cannot be executed.");
+        break;
+    default:
+        ss << "Status code " << ret << " is unexpected as a return value of '"
+           << is_already_running_cmd << "'";
+        throw logic_error(ss.str());
+    }
 }
 #endif

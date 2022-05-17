@@ -20,18 +20,19 @@ class AuxMeasurements {
     AuxMeasurements() = default;
     ~AuxMeasurements();
 
-    AuxMeasurements(double lat, double uBand, double dBand)
-        : latBeforeSync(lat), uBBeforeSync(uBand), dBBeforeSync(dBand) {}
+  AuxMeasurements(double lat, double uBand, double dBand, double mDur)
+    : latBeforeSync(lat), uBBeforeSync(uBand), dBBeforeSync(dBand), mesDur(mDur) {}
 
     friend ostream& operator<<(ostream&, const AuxMeasurements&);
 
   private:
-    double latBeforeSync; /** Estimated network latency before the
-                            clientSyncBegin or serverSyncBegin call */
-    double uBBeforeSync;  /** Estimated upload bandwidth before the
-                           * clientSyncBegin or serverSyncBegin call */
-    double dBBeforeSync;  /** Estimated download bandwidth before the
-                           * clientSyncBegin or  serverSyncBegin call */
+    double latBeforeSync;   /** Estimated network latency before the
+                                clientSyncBegin or serverSyncBegin call */
+    double uBBeforeSync;    /** Estimated upload bandwidth before the
+                                clientSyncBegin or serverSyncBegin call */
+    double dBBeforeSync;    /** Estimated download bandwidth before the
+                                clientSyncBegin or  serverSyncBegin call */
+    double mesDur;          /** Duration of the measurements themselves */
 };
 
 #endif // AUXMEASUREMENTS_H
