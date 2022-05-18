@@ -26,6 +26,7 @@ COLOSSEUM_DEFAULT_CARDINALITY = 10000
 COLUMNS = ['server', 'client', 'cardinality', 'success',
            'bytes transmitted', 'bytes received',
            'communication time(s)', 'idle time(s)', 'computation time(s)']
+AUX_COLUMNS = ['latency', 'uBandwidth', 'dBandwidth', 'measuremntsDuration']
 
 
 class Algo(Enum):
@@ -62,6 +63,7 @@ if __name__ == '__main__':
 
     if is_colosseum:
         COLUMNS.insert(0, 'algorithm')
+        COLUMNS += AUX_COLUMNS
         columns_to_match = COLUMNS[4:]
     else:
         columns_to_match = COLUMNS[3:]
@@ -104,7 +106,7 @@ if __name__ == '__main__':
 
                     # one line can match only one measure
                     for measure in columns_to_match:
-                        if line.lower().startswith(measure):
+                        if line.lower().startswith(measure.lower()):
                             # success is treated differently
                             if measure == 'success':
                                 if 'true' in line or '1' in line:
@@ -117,10 +119,19 @@ if __name__ == '__main__':
                             measurements.append(val)
                             break
 
-            # add a row
             prefix = [server, client, cardinality]
             if is_colosseum:
                 prefix.insert(0, algo)
+
+            # Fix server _observ measurements for Colosseum data. This
+            # is needed because only the server _observ file holds the
+            # auxiliary measurements.
+            needed_cols = len(COLUMNS) - len(prefix)
+            if is_colosseum and len(measurements) < needed_cols:
+                more = needed_cols - len(measurements)
+                measurements += [float('NaN')] * more
+
+            # add a row
             experiment_df.loc[
                 len(experiment_df.index)] = prefix + measurements
 
