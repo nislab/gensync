@@ -551,8 +551,12 @@ void invokeSyncIncrementally(bool ser, size_t chunkSize,
  * '-R' option.
  */
 inline float handleIperfOutput(string &s, bool reverse = false) {
-    if (s.find("error") != string::npos)
+    if (s.find("error") != string::npos) {
+        Logger::gLog(Logger::TEST, "handleIperfOutput error:\n" + s +
+                                       "\nreverse: " + to_string(reverse));
+
         return -1;
+    }
 
     float iperf_val;
 
@@ -578,7 +582,14 @@ inline float handleIperfOutput(string &s, bool reverse = false) {
 
     // convert to bits/sec
     string iperf_out_s(data);
-    string fst_prt = iperf_out_s.substr(0, iperf_out_s.find(" "));
+    size_t space_pos = iperf_out_s.find(" ");
+    if (space_pos == string::npos) {
+        Logger::gLog(Logger::TEST, "handleIperfOutput error: no space in '" +
+                                       data + "' obtained from:\n" + s +
+                                       "\nreverse: " + to_string(reverse));
+        return -1;
+    }
+    string fst_prt = iperf_out_s.substr(0, space_pos);
     if (iperf_out_s.find("Kbits") != string::npos) {
         iperf_val = stof(fst_prt) * 1024;
     } else if (iperf_out_s.find("Mbits") != string::npos) {
@@ -596,14 +607,21 @@ inline float handleIperfOutput(string &s, bool reverse = false) {
  * @returns ping time in milliseconds.
  */
 inline float handlePingOutput(string &s) {
-    if (s.find("error") != string::npos)
+    if (s.find("error") != string::npos) {
+        Logger::gLog(Logger::TEST, "handlePingOutput error:\n" + s);
         return -1;
+    }
 
     size_t time_pos = s.find("time=");
+    if (time_pos == string::npos) {
+        Logger::gLog(Logger::TEST,
+                     "handlePingOutput error: no 'time=' in:\n" + s);
+        return -1;
+    }
     string part = s.substr(time_pos);
     size_t space_pos = part.find(" ");
 
-    return stof(part.substr(5, space_pos - time_pos));
+    return stof(part.substr(5, space_pos - 5));
 }
 
 inline void log_external_fail(string text, int stat_code) {
@@ -673,8 +691,9 @@ bool estimateNetwork(shared_ptr<GenSync> genSync, string &peerIP) {
     auto end = high_resolution_clock::now();
     size_t duration = duration_cast<milliseconds>(end - start).count();
     Logger::gLog(Logger::TEST,
-                 "NETWORK PROBING succeeded and took: " + to_string(duration));
-
+                 "NETWORK PROBING succeeded and took: " + to_string(duration) +
+                     "ms @ SLEEP_BETWEEN_IPERF_MILLIS: " +
+                     to_string(SLEEP_BETWEEN_IPERF_MILLIS));
     // Update genSync object
     auto ams = make_shared<AuxMeasurements>(ping_val, iperf_u_val, iperf_d_val,
                                             duration);
