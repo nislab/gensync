@@ -593,7 +593,7 @@ exec_on_colosseum() {
         # Repeat experiments for the same parameter files
         local server_cmd_pid=
         for rep in $(seq $experiment_rep); do
-            echo "--------> Repetition $rep"
+            echo "--------> [$(date)] Repetition $rep"
 
             clear_gensync_port "$server_host"
 

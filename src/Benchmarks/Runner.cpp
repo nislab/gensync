@@ -86,6 +86,17 @@ static uniform_int_distribution<size_t> elem(0, MAX_DOBJ);
  */
 enum RunningMode { CLIENT, SERVER, BOTH };
 
+#ifdef NETWORK_PROBING
+/**
+ * Error codes for external ping and iperf3 call outputs.
+ */
+enum NetErrCode { NO_ERROR = 0, GENERAL = -1, UNABLE_CONN = -2 };
+
+static map<NetErrCode, string> netErrToStr = {
+    {NetErrCode::GENERAL, "error"},
+    {NetErrCode::UNABLE_CONN, "error - unable to connect"}};
+#endif
+
 /**
  * Builds GenSync objects for syncing.
  * @param par The benchmark parameters objects that holds the details
@@ -544,6 +555,16 @@ void invokeSyncIncrementally(bool ser, size_t chunkSize,
 #ifdef NETWORK_PROBING
 #define BUFF_SIZE 4096
 
+inline NetErrCode get_net_err(const string &s) {
+    if (s.find(netErrToStr[NetErrCode::UNABLE_CONN]) != string::npos) {
+        return NetErrCode::UNABLE_CONN;
+    } else if (s.find(netErrToStr[NetErrCode::GENERAL]) != string::npos) {
+        return NetErrCode::GENERAL;
+    }
+
+    return NetErrCode::NO_ERROR;
+};
+
 /**
  * Handle iperf3 output.
  * @param s The string output of iperf3
@@ -551,11 +572,10 @@ void invokeSyncIncrementally(bool ser, size_t chunkSize,
  * '-R' option.
  */
 inline float handleIperfOutput(string &s, bool reverse = false) {
-    if (s.find("error") != string::npos) {
+    if (auto err = get_net_err(s)) {
         Logger::gLog(Logger::TEST, "handleIperfOutput error:\n" + s +
                                        "\nreverse: " + to_string(reverse));
-
-        return -1;
+        return err;
     }
 
     float iperf_val;
@@ -607,16 +627,16 @@ inline float handleIperfOutput(string &s, bool reverse = false) {
  * @returns ping time in milliseconds.
  */
 inline float handlePingOutput(string &s) {
-    if (s.find("error") != string::npos) {
+    if (auto err = get_net_err(s)) {
         Logger::gLog(Logger::TEST, "handlePingOutput error:\n" + s);
-        return -1;
+        return err;
     }
 
     size_t time_pos = s.find("time=");
     if (time_pos == string::npos) {
         Logger::gLog(Logger::TEST,
                      "handlePingOutput error: no 'time=' in:\n" + s);
-        return -1;
+        return NetErrCode::GENERAL;
     }
     string part = s.substr(time_pos);
     size_t space_pos = part.find(" ");
@@ -639,11 +659,14 @@ bool estimateNetwork(shared_ptr<GenSync> genSync, string &peerIP) {
         iperf_d_out;
     float iperf_u_val, iperf_d_val, ping_val;
 
+    static const string err_redir = " 2>&1";
+
     // Build the external commands
-    ping_cmd = "ping -c 1 " + peerIP;
-    iperf_u_cmd = "iperf3 -c " + peerIP + " -t " + to_string(iperf_dur_s);
-    iperf_d_cmd =
-        "iperf3 -c " + peerIP + " -t " + to_string(iperf_dur_s) + " -R";
+    ping_cmd = "ping -c 1 " + peerIP + err_redir;
+    iperf_u_cmd =
+        "iperf3 -c " + peerIP + " -t " + to_string(iperf_dur_s) + err_redir;
+    iperf_d_cmd = "iperf3 -c " + peerIP + " -t " + to_string(iperf_dur_s) +
+                  " -R" + err_redir;
 
     // Start timer to measure the time needed to estimate the network
     // performance.

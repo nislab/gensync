@@ -1,11 +1,21 @@
 #!/usr/bin/env bash
 
 ################ BEGIN PARAMETERS ################
-experiments=( "sync-edge-033 sync-edge-034 sync-edge-037 sync-edge-038 1017 8:49pm"
-              "sync-edge-039 sync-edge-041 sync-edge-043 sync-edge-044 1018 8:55pm"
-              "sync-edge-045 sync-edge-046 sync-edge-047 sync-edge-048 1019 8:55pm" )
+experiments=( # "sync-edge-033 sync-edge-034 sync-edge-037 sync-edge-038 1017 8:49pm"
+              # "sync-edge-039 sync-edge-041 sync-edge-043 sync-edge-044 1018 8:55pm"
+              # "sync-edge-045 sync-edge-046 sync-edge-047 sync-edge-048 1019 8:55pm"
+              # # Boston
+              # "sync-edge-033 sync-edge-034 sync-edge-037 sync-edge-038 1031 12:55am"
+              # "sync-edge-049 sync-edge-051 sync-edge-052 sync-edge-053 1033 12:55am"
+              # "sync-edge-039 sync-edge-041 sync-edge-043 sync-edge-044 1024 12:59am"
+              # # Utah
+              # "sync-edge-066 sync-edge-067 sync-edge-068 sync-edge-069 1025 1:40am"
+              # "sync-edge-070 sync-edge-071 sync-edge-072 sync-edge-073 1026 1:45am"
+    # "sync-edge-074 sync-edge-075 sync-edge-076 sync-edge-077 1027 1:47am"
 
-log_dir=start_experiments_at
+    "sync-edge-033 sync-edge-034 sync-edge-037 sync-edge-047 1026 8:03pm" )
+
+log_dir=start_experiments_at_long
 containers_pass='Spiteful Corgi Bites'
 ################ END PARAMETERS ################
 
@@ -43,7 +53,9 @@ get_cmd() {
     local log_name="$(echo $scenario $hosts | sed 's/ /_/g')"
     local log_path="$log_dir"/"$log_name"-"$(date +%N)".log
 
-    echo "script $log_path -c \"echo '$containers_pass' | sleep_before_gensync=60 experiment_rep=10 ./run_colosseum.sh $hosts $scenario\""
+    # TODO: remove data_loc
+    echo "script $log_path -c \"echo '$containers_pass' \
+          | data_loc=/share/gensync_data_CPI_only sleep_before_gensync=60 experiment_rep=10 ./run_colosseum.sh $hosts $scenario\""
 }
 
 check_requirements
