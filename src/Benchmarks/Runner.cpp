@@ -90,7 +90,7 @@ enum RunningMode { CLIENT, SERVER, BOTH };
 /**
  * Error codes for external ping and iperf3 call outputs.
  */
-enum NetErrCode { NO_ERROR = 0, GENERAL = -1, UNABLE_CONN = -2 };
+enum NetErrCode { NO_ERROR = 0, EMPTY = -1, GENERAL = -2, UNABLE_CONN = -3 };
 
 static map<NetErrCode, string> netErrToStr = {
     {NetErrCode::GENERAL, "error"},
@@ -553,10 +553,12 @@ void invokeSyncIncrementally(bool ser, size_t chunkSize,
 }
 
 #ifdef NETWORK_PROBING
-#define BUFF_SIZE 4096
+#define BUFF_SIZE 8
 
-inline NetErrCode get_net_err(const string &s) {
-    if (s.find(netErrToStr[NetErrCode::UNABLE_CONN]) != string::npos) {
+inline NetErrCode getNetErr(const string &s) {
+    if (s.empty()) {
+        return NetErrCode::EMPTY;
+    } else if (s.find(netErrToStr[NetErrCode::UNABLE_CONN]) != string::npos) {
         return NetErrCode::UNABLE_CONN;
     } else if (s.find(netErrToStr[NetErrCode::GENERAL]) != string::npos) {
         return NetErrCode::GENERAL;
@@ -572,7 +574,7 @@ inline NetErrCode get_net_err(const string &s) {
  * '-R' option.
  */
 inline float handleIperfOutput(string &s, bool reverse = false) {
-    if (auto err = get_net_err(s)) {
+    if (auto err = getNetErr(s)) {
         Logger::gLog(Logger::TEST, "handleIperfOutput error:\n" + s +
                                        "\nreverse: " + to_string(reverse));
         return err;
@@ -627,7 +629,7 @@ inline float handleIperfOutput(string &s, bool reverse = false) {
  * @returns ping time in milliseconds.
  */
 inline float handlePingOutput(string &s) {
-    if (auto err = get_net_err(s)) {
+    if (auto err = getNetErr(s)) {
         Logger::gLog(Logger::TEST, "handlePingOutput error:\n" + s);
         return err;
     }
@@ -653,11 +655,17 @@ inline void log_external_run(string &text) {
     Logger::gLog(Logger::TEST, "Popen run: " + text);
 }
 
+inline void log_exit_code(string &cmd, int exit_code) {
+    Logger::gLog(Logger::TEST,
+                 "'" + cmd + "' exited with: " + to_string(exit_code));
+}
+
 bool estimateNetwork(shared_ptr<GenSync> genSync, string &peerIP) {
     array<char, BUFF_SIZE> buff;
     string ping_cmd, iperf_u_cmd, iperf_d_cmd, ping_out, iperf_u_out,
         iperf_d_out;
     float iperf_u_val, iperf_d_val, ping_val;
+    int iperf_u_exit, iperf_d_exit, ping_exit;
 
     static const string err_redir = " 2>&1";
 
@@ -683,31 +691,30 @@ bool estimateNetwork(shared_ptr<GenSync> genSync, string &peerIP) {
     // make sure we wait until the first iperf call ends, then wait a
     // little more before sending the second iperf call to give the
     // server a chance to get ready.
-    pclose(iperf_u);
-    this_thread::sleep_for(chrono::milliseconds(SLEEP_BETWEEN_IPERF_MILLIS));
+    log_exit_code(iperf_u_cmd, pclose(iperf_u));
     iperf_u_val = handleIperfOutput(iperf_u_out);
+    this_thread::sleep_for(chrono::milliseconds(SLEEP_BETWEEN_IPERF_MILLIS));
 
-    log_external_run(iperf_d_cmd);
-    FILE *iperf_d = popen(iperf_d_cmd.c_str(), "r");
     log_external_run(ping_cmd);
     FILE *ping = popen(ping_cmd.c_str(), "r");
-    if (iperf_d == nullptr) {
-        log_external_fail("Second iperf failed", pclose(iperf_d));
-        return false;
-    }
-    while (fgets(buff.data(), BUFF_SIZE, iperf_d) != nullptr)
-        iperf_d_out += buff.data();
-
+    log_external_run(iperf_d_cmd);
+    FILE *iperf_d = popen(iperf_d_cmd.c_str(), "r");
     if (ping == nullptr) {
         log_external_fail("Ping failed", pclose(ping));
         return false;
     }
     while (fgets(buff.data(), BUFF_SIZE, ping) != nullptr)
         ping_out += buff.data();
-    pclose(iperf_d);
-    pclose(ping);
-    iperf_d_val = handleIperfOutput(iperf_d_out, true);
+    if (iperf_d == nullptr) {
+        log_external_fail("Second iperf failed", pclose(iperf_d));
+        return false;
+    }
+    while (fgets(buff.data(), BUFF_SIZE, iperf_d) != nullptr)
+        iperf_d_out += buff.data();
+    log_exit_code(ping_cmd, pclose(ping));
     ping_val = handlePingOutput(ping_out);
+    log_exit_code(iperf_d_cmd, pclose(iperf_d));
+    iperf_d_val = handleIperfOutput(iperf_d_out, true);
 
     // Stop the timer and log the time it took to estimate the
     // network conditions

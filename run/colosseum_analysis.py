@@ -11,6 +11,8 @@ import json
 
 SUMMARY_COLUMNS = ['algorithm', 'diffs', 'cardinality',
                    'success', 'bytes exchanged', 'ttr']
+EXTENDED_COLUMNS = ['latency', 'uBandwidth', 'dBandwidth',
+                    'measuremntsDuration']
 
 
 def sanity_check(data: pd.DataFrame) -> Optional[pd.DataFrame]:
@@ -44,7 +46,12 @@ def parse(path: str, summarize=False) -> pd.DataFrame:
         raise ValueError(
             f"DataFrame.shape is {df.shape}. Rows number not even.")
 
-    ret = pd.DataFrame(columns=SUMMARY_COLUMNS)
+    if all(c in df.columns for c in EXTENDED_COLUMNS):
+        ret = pd.DataFrame(columns=SUMMARY_COLUMNS + EXTENDED_COLUMNS)
+        is_extended = True
+    else:
+        ret = pd.DataFrame(columns=SUMMARY_COLUMNS)
+
     for i in df.index[::2]:
         algo = df['algorithm'][i]
         assert df['server'][i] == df['client'][i + 1]
@@ -68,6 +75,11 @@ def parse(path: str, summarize=False) -> pd.DataFrame:
         ttr = max(this_cmt + this_it + this_ptt, next_cmt + next_it + next_ptt)
 
         row = [algo, diffs, card, succ, bts, ttr]
+        if is_extended:
+            for col in EXTENDED_COLUMNS:
+                col_val = float(df[col][i + 1])
+                row += [col_val]
+
         ret.loc[len(ret.index)] = row
 
     ret['success'] = ret['success'].astype(bool)
