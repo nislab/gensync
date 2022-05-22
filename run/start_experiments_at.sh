@@ -13,7 +13,7 @@ experiments=( # "sync-edge-033 sync-edge-034 sync-edge-037 sync-edge-038 1017 8:
               # "sync-edge-070 sync-edge-071 sync-edge-072 sync-edge-073 1026 1:45am"
     # "sync-edge-074 sync-edge-075 sync-edge-076 sync-edge-077 1027 1:47am"
 
-    "sync-edge-033 sync-edge-034 sync-edge-037 sync-edge-047 1026 8:03pm" )
+    "sync-edge-033 sync-edge-034 sync-edge-037 sync-edge-038 1026 6:08pm" )
 
 log_dir=start_experiments_at_long
 containers_pass='Spiteful Corgi Bites'
@@ -53,9 +53,8 @@ get_cmd() {
     local log_name="$(echo $scenario $hosts | sed 's/ /_/g')"
     local log_path="$log_dir"/"$log_name"-"$(date +%N)".log
 
-    # TODO: remove data_loc
-    echo "script $log_path -c \"echo '$containers_pass' \
-          | data_loc=/share/gensync_data_CPI_only sleep_before_gensync=60 experiment_rep=10 ./run_colosseum.sh $hosts $scenario\""
+    echo "script $log_path -f -c \"echo '$containers_pass' \
+          | sleep_before_gensync=60 experiment_rep=10 ./run_colosseum.sh $hosts $scenario\""
 }
 
 check_requirements

@@ -15,6 +15,7 @@ Date: Feb, 2021.
 
 import sys
 import os
+import datetime
 from enum import Enum
 import pandas as pd
 
@@ -26,7 +27,8 @@ COLOSSEUM_DEFAULT_CARDINALITY = 10000
 COLUMNS = ['server', 'client', 'cardinality', 'success',
            'bytes transmitted', 'bytes received',
            'communication time(s)', 'idle time(s)', 'computation time(s)']
-AUX_COLUMNS = ['latency', 'uBandwidth', 'dBandwidth', 'measuremntsDuration']
+AUX_COLUMNS = ['latency', 'uBandwidth', 'dBandwidth', 'measuremntsDuration',
+               'MasurementsStartedAt']
 
 
 class Algo(Enum):
@@ -113,6 +115,12 @@ if __name__ == '__main__':
                                     measurements.append(True)
                                 else:
                                     measurements.append(False)
+                                break
+                            # measurements start time is treated differently
+                            if measure == 'MasurementsStartedAt':
+                                str_t = line.split(':')[-1].strip()
+                                d_t = datetime.datetime.strptime(str_t, '%c')
+                                measurements.append(d_t)
                                 break
 
                             val = float(line.split(':')[-1].strip())

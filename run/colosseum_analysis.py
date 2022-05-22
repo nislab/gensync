@@ -8,11 +8,14 @@ Date: May 2022.
 from typing import Optional
 import pandas as pd
 import json
+import datetime
 
 SUMMARY_COLUMNS = ['algorithm', 'diffs', 'cardinality',
                    'success', 'bytes exchanged', 'ttr']
 EXTENDED_COLUMNS = ['latency', 'uBandwidth', 'dBandwidth',
-                    'measuremntsDuration']
+                    'measuremntsDuration', 'MasurementsStartedAt']
+# Data format used to convert date strings to `datetime.datetime`
+DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 
 def sanity_check(data: pd.DataFrame) -> Optional[pd.DataFrame]:
@@ -77,12 +80,22 @@ def parse(path: str, summarize=False) -> pd.DataFrame:
         row = [algo, diffs, card, succ, bts, ttr]
         if is_extended:
             for col in EXTENDED_COLUMNS:
-                col_val = float(df[col][i + 1])
+                c_bare = df[col][i + 1]
+                # measurement start date treated differently
+                if col == 'MasurementsStartedAt':
+                    col_val = datetime.datetime.strptime(c_bare, DATE_FORMAT)
+                else:
+                    col_val = float(c_bare)
+
                 row += [col_val]
 
         ret.loc[len(ret.index)] = row
 
+    # Convert columns into right data types
     ret['success'] = ret['success'].astype(bool)
+    if is_extended:
+        ret['MasurementsStartedAt'] = \
+            ret['MasurementsStartedAt'].astype('datetime64[ns]')
 
     return sanity_check(ret)
 

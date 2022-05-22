@@ -676,6 +676,9 @@ bool estimateNetwork(shared_ptr<GenSync> genSync, string &peerIP) {
     iperf_d_cmd = "iperf3 -c " + peerIP + " -t " + to_string(iperf_dur_s) +
                   " -R" + err_redir;
 
+    // Record the Unix time when measurement started
+    time_t start_time =
+        chrono::system_clock::to_time_t(chrono::system_clock::now());
     // Start timer to measure the time needed to estimate the network
     // performance.
     auto start = high_resolution_clock::now();
@@ -726,7 +729,7 @@ bool estimateNetwork(shared_ptr<GenSync> genSync, string &peerIP) {
                      to_string(SLEEP_BETWEEN_IPERF_MILLIS));
     // Update genSync object
     auto ams = make_shared<AuxMeasurements>(ping_val, iperf_u_val, iperf_d_val,
-                                            duration);
+                                            duration, start_time);
     genSync->setAuxMeasurements(ams);
 
     return true;

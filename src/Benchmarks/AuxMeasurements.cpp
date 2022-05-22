@@ -11,11 +11,12 @@
 const string AuxMeasurements::announcerString = "Auxiliary:\n";
 
 ostream &operator<<(ostream &os, const AuxMeasurements &aux) {
-    os << AuxMeasurements::announcerString
-       << "Latency: " << aux.latBeforeSync << endl
+    os << AuxMeasurements::announcerString << "Latency: " << aux.latBeforeSync
+       << endl
        << "uBandwidth: " << aux.uBBeforeSync << endl
        << "dBandwidth: " << aux.dBBeforeSync << endl
-       << "MeasuremntsDuration: " << aux.mesDur << endl;
+       << "MeasuremntsDuration: " << aux.mesDur << endl
+       << "MasurementsStartedAt: " << ctime(&aux.mesStartAt) << endl;
 
     return os;
 }
