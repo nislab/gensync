@@ -118,7 +118,7 @@ if __name__ == '__main__':
                                 break
                             # measurements start time is treated differently
                             if measure == 'MasurementsStartedAt':
-                                str_t = line.split(':')[-1].strip()
+                                str_t = ':'.join(line.split(':')[1:]).strip()
                                 d_t = datetime.datetime.strptime(str_t, '%c')
                                 measurements.append(d_t)
                                 break

@@ -54,6 +54,7 @@ def parse(path: str, summarize=False) -> pd.DataFrame:
         is_extended = True
     else:
         ret = pd.DataFrame(columns=SUMMARY_COLUMNS)
+        is_extended = False
 
     for i in df.index[::2]:
         algo = df['algorithm'][i]

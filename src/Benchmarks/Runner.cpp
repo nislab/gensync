@@ -44,10 +44,13 @@ static const string LOCK_FILE = ".cpisync_benchmarks_server_lock";
 #ifdef NETWORK_PROBING
 // Where iperf3 server writes it outputs for debug.
 static const string IPERF_SERVER_LOGFILE = "/share/iperf_server.log";
+// Milliseconds to wait to run `iperf3 -R` after `iperf3`
 static const int SLEEP_BETWEEN_IPERF_MILLIS = 500;
-#endif
-
-#ifdef NETWORK_PROBING
+// Send interrupt using `timeout` to iperf3 after this many seconds.
+// This is necessary because iperf3 with -R under very slow networks
+// weirdly gets stuck and does not write anything to stdout, which
+// makes fgets stuck as well.
+static const int IPERF_INTERRUPT_AFTER = 10;
 // Duration of one iperf3 session.
 static const int iperf_dur_s = 1;
 #endif
@@ -90,11 +93,19 @@ enum RunningMode { CLIENT, SERVER, BOTH };
 /**
  * Error codes for external ping and iperf3 call outputs.
  */
-enum NetErrCode { NO_ERROR = 0, EMPTY = -1, GENERAL = -2, UNABLE_CONN = -3 };
+enum NetErrCode {
+    NO_ERROR = 0,
+    EMPTY = -1,
+    GENERAL = -2,
+    UNABLE_CONN = -3,
+    INTERRUPTED = -4,
+    NO_PING_TIME = -5
+};
 
 static map<NetErrCode, string> netErrToStr = {
     {NetErrCode::GENERAL, "error"},
-    {NetErrCode::UNABLE_CONN, "error - unable to connect"}};
+    {NetErrCode::UNABLE_CONN, "error - unable to connect"},
+    {NetErrCode::INTERRUPTED, "interrupt - the client has terminated"}};
 #endif
 
 /**
@@ -562,6 +573,8 @@ inline NetErrCode getNetErr(const string &s) {
         return NetErrCode::UNABLE_CONN;
     } else if (s.find(netErrToStr[NetErrCode::GENERAL]) != string::npos) {
         return NetErrCode::GENERAL;
+    } else if (s.find(netErrToStr[NetErrCode::INTERRUPTED]) != string::npos) {
+        return NetErrCode::INTERRUPTED;
     }
 
     return NetErrCode::NO_ERROR;
@@ -638,7 +651,7 @@ inline float handlePingOutput(string &s) {
     if (time_pos == string::npos) {
         Logger::gLog(Logger::TEST,
                      "handlePingOutput error: no 'time=' in:\n" + s);
-        return NetErrCode::GENERAL;
+        return NetErrCode::NO_PING_TIME;
     }
     string part = s.substr(time_pos);
     size_t space_pos = part.find(" ");
@@ -652,7 +665,7 @@ inline void log_external_fail(string text, int stat_code) {
 }
 
 inline void log_external_run(string &text) {
-    Logger::gLog(Logger::TEST, "Popen run: " + text);
+    Logger::gLog(Logger::TEST, "Popen run: '" + text + "'");
 }
 
 inline void log_exit_code(string &cmd, int exit_code) {
@@ -671,9 +684,11 @@ bool estimateNetwork(shared_ptr<GenSync> genSync, string &peerIP) {
 
     // Build the external commands
     ping_cmd = "ping -c 1 " + peerIP + err_redir;
-    iperf_u_cmd =
-        "iperf3 -c " + peerIP + " -t " + to_string(iperf_dur_s) + err_redir;
-    iperf_d_cmd = "iperf3 -c " + peerIP + " -t " + to_string(iperf_dur_s) +
+    iperf_u_cmd = "timeout " + to_string(IPERF_INTERRUPT_AFTER) + " " +
+                  "iperf3 -c " + peerIP + " -t " + to_string(iperf_dur_s) +
+                  err_redir;
+    iperf_d_cmd = "timeout " + to_string(IPERF_INTERRUPT_AFTER) + " " +
+                  "iperf3 -c " + peerIP + " -t " + to_string(iperf_dur_s) +
                   " -R" + err_redir;
 
     // Record the Unix time when measurement started
@@ -708,15 +723,15 @@ bool estimateNetwork(shared_ptr<GenSync> genSync, string &peerIP) {
     }
     while (fgets(buff.data(), BUFF_SIZE, ping) != nullptr)
         ping_out += buff.data();
+    log_exit_code(ping_cmd, pclose(ping));
     if (iperf_d == nullptr) {
         log_external_fail("Second iperf failed", pclose(iperf_d));
         return false;
     }
-    while (fgets(buff.data(), BUFF_SIZE, iperf_d) != nullptr)
+    while (fgets(buff.data(), 2, iperf_d) != nullptr)
         iperf_d_out += buff.data();
-    log_exit_code(ping_cmd, pclose(ping));
-    ping_val = handlePingOutput(ping_out);
     log_exit_code(iperf_d_cmd, pclose(iperf_d));
+    ping_val = handlePingOutput(ping_out);
     iperf_d_val = handleIperfOutput(iperf_d_out, true);
 
     // Stop the timer and log the time it took to estimate the
@@ -726,7 +741,9 @@ bool estimateNetwork(shared_ptr<GenSync> genSync, string &peerIP) {
     Logger::gLog(Logger::TEST,
                  "NETWORK PROBING succeeded and took: " + to_string(duration) +
                      "ms @ SLEEP_BETWEEN_IPERF_MILLIS: " +
-                     to_string(SLEEP_BETWEEN_IPERF_MILLIS));
+                     to_string(SLEEP_BETWEEN_IPERF_MILLIS) +
+                     "ms & IPERF_INTERRUPT_AFTER: " +
+                     to_string(IPERF_INTERRUPT_AFTER) + "s.");
     // Update genSync object
     auto ams = make_shared<AuxMeasurements>(ping_val, iperf_u_val, iperf_d_val,
                                             duration, start_time);

@@ -13,9 +13,9 @@ experiments=( # "sync-edge-033 sync-edge-034 sync-edge-037 sync-edge-038 1017 8:
               # "sync-edge-070 sync-edge-071 sync-edge-072 sync-edge-073 1026 1:45am"
     # "sync-edge-074 sync-edge-075 sync-edge-076 sync-edge-077 1027 1:47am"
 
-    "sync-edge-033 sync-edge-034 sync-edge-037 sync-edge-038 1026 6:08pm" )
+    "sync-edge-033 sync-edge-034 sync-edge-037 sync-edge-038 1026 8:58pm" )
 
-log_dir=start_experiments_at_long
+log_dir=start_experiments_at
 containers_pass='Spiteful Corgi Bites'
 ################ END PARAMETERS ################
 
