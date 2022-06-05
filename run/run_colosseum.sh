@@ -33,6 +33,7 @@ default_gensync_port=8001                       # port GenSync server uses
 default_nas_path=/share/nas                     # where are team-specific storage on shared NAS (file-proxy)
 default_iperf_each=1                            # -i option in iperf3
 default_iperf_onedir_dur=1800                   # duration (seconds) of iperf in one direction
+default_shuffle_experiments=true                # shuffle GenSync experiments
 
 ######## Handle env variables
 team_name=${team_name:="$default_team_name"}
@@ -50,6 +51,7 @@ gensync_port=${gensync_port:="$default_gensync_port"}
 nas_path=${nas_path:="$default_nas_path"}
 iperf_each=${iperf_each:="$default_iperf_each"}
 iperf_onedir_dur=${iperf_onedir_dur:="$default_iperf_onedir_dur"}
+shuffle_experiments=${shuffle_experiments:="$default_shuffle_experiments"}
 
 mapfile -t custom_vars \
         < <(( set -o posix; set ) | grep 'default_' | sed 's/default_//g')
@@ -501,7 +503,7 @@ get_client_data_file_for() {
     fi
 }
 
-# Kill the processes that occupy the port we need for GenSync
+# Kill the processes that occupy the port we need for GenSync.
 # $1 remote on which to clear the port
 clear_gensync_port() {
     local remote="$1"
@@ -519,6 +521,17 @@ clear_gensync_port() {
 wait_for_radios() {
     echo_o "Waiting $sleep_before_gensync seconds for radios to get set up ..."
     sleep $sleep_before_gensync
+}
+
+# Return the `.cpisync_`  dir suffix based on the path to server file.
+# $1 server file name
+get_dot_cpisync_suffix() {
+    local sf_basename_w_ext="$(basename $server_f)"
+    local sf_basename=${sf_basename_w_ext%.*}
+    local sf_dirname="$(dirname $server_f)"
+    local sf_path="$(echo $sf_dirname | sed 's/\//_/g')"
+
+    echo "${sf_path}_${sf_basename}"
 }
 
 # Execute GenSync experiments on Colosseum.
@@ -570,30 +583,30 @@ exec_on_colosseum() {
     sshpass -e ssh srn-user@"$server_host" \
             "cp -r /'$gensync_basename'/* '$copy_dest'/"
 
-    # # DEBUG: make sure that iperf3 server is running here
-    # echo_o "Running iperf3 server on $server_host."
-    # sshpass -e ssh root@"$server_host" \
-    #         "iperf3 -s -D --logfile=iperf_server.log; echo pgrep iperf3 is: \$(pgrep iperf3)"
-    # echo_o "iperf3 server command sent."
-
-    # Execute GenSync for all parameter files in `$data_loc`
+    # Obtain all experiments files
     local data_files="$(get_server_data_files $server_host $data_loc)"
-    for server_f in ${data_files[@]}; do
-        echo "----> [$(date)] Start GenSync for server data file: $server_f"
 
-        get_client_data_file_for "$server_host" "$server_f" client_f
-        echo "----> Matching client file: $client_f"
+    # Place for the local PID of the server process (invoked via ssh)
+    local server_cmd_pid=
+    if [ $shuffle_experiments = true ]; then
+        # Replicate each server file `experiment_rep` times
+        data_files_with_reps=( )
+        for f in ${data_files[@]}; do
+            for rep in $(seq $experiment_rep); do
+                data_files_with_reps+=( $f )
+            done
+        done
 
-        local sf_basename_w_ext="$(basename $server_f)"
-        local sf_basename=${sf_basename_w_ext%.*}
-        local sf_dirname="$(dirname $server_f)"
-        local sf_path="$(echo $sf_dirname | sed 's/\//_/g')"
-        local suffix="${sf_path}_${sf_basename}"
+        # Shuffle the list of server files with repetitions
+        mapfile -t data_files < <(shuf -e ${data_files_with_reps[@]})
 
-        # Repeat experiments for the same parameter files
-        local server_cmd_pid=
-        for rep in $(seq $experiment_rep); do
-            echo "--------> [$(date)] Repetition $rep"
+        for server_f in ${data_files[@]}; do
+            echo "----> [$(date)] Starts ONE EXECUTION of GenSync for server data file: $server_f"
+
+            local suffix="$(get_dot_cpisync_suffix \"$server_f\")"
+
+            get_client_data_file_for "$server_host" "$server_f" client_f
+            echo "----> Matching client file: $client_f"
 
             clear_gensync_port "$server_host"
 
@@ -608,16 +621,61 @@ exec_on_colosseum() {
                      '$benchmark_path' -m client -r '$server_ip' -p '$client_f'"
 
             wait $server_cmd_pid
+
+            # Move experimental observations and parameters to the right directory
+            local dot_cpi_dirname=".cpisync_${suffix}"
+            local rename_or_move_cmd="if ! [ -d $dot_cpi_dirname ]; then
+                                          mv .cpisync $dot_cpi_dirname
+                                      else
+                                          cp -rp .cpisync/. $dot_cpi_dirname/
+                                          rm -rf .cpisync
+                                      fi"
+            local copy_scenario_cmd="if ! [ -e '$dot_cpi_dirname/$(basename $scenario_info_path)' ]; then
+                                        cp $scenario_info_path $dot_cpi_dirname
+                                     fi"
+            sshpass -e ssh srn-user@"$server_host" \
+                    "cd '$copy_dest'; $rename_or_move_cmd; $copy_scenario_cmd"
+
+            echo "----> [$(date)] Ends ONE EXECUTION for server data file: $server_f"
         done
+    else
+        # Execute experiments in order
+        for server_f in ${data_files[@]}; do
+            echo "----> [$(date)] Start GenSync for server data file: $server_f"
 
-        # Rename experimental observation directory
-        local rename_cmd="mv .cpisync .cpisync_${suffix}"
-        local copy_scenario_cmd="cp '$scenario_info_path' .cpisync_${suffix}/"
-        sshpass -e ssh srn-user@"$server_host" \
-                "cd '$copy_dest'; $rename_cmd; $copy_scenario_cmd"
+            local suffix="$(get_dot_cpisync_suffix \"$server_f\")"
 
-        echo "----> [$(date)] End GenSync for server data file $server_f"
-    done
+            get_client_data_file_for "$server_host" "$server_f" client_f
+            echo "----> Matching client file: $client_f"
+
+            # Repeat experiments for the same parameter files
+            for rep in $(seq $experiment_rep); do
+                echo "--------> [$(date)] Repetition $rep"
+
+                clear_gensync_port "$server_host"
+
+                sshpass -e ssh srn-user@"$server_host" \
+                        "cd '$copy_dest'
+                     '$benchmark_path' -m server -p '$server_f'" &
+
+                server_cmd_pid=$!
+
+                sshpass -e ssh srn-user@"$client_host" \
+                        "cd '$copy_dest'
+                     '$benchmark_path' -m client -r '$server_ip' -p '$client_f'"
+
+                wait $server_cmd_pid
+            done
+
+            # Rename experimental observation directory
+            local rename_cmd="mv .cpisync .cpisync_${suffix}"
+            local copy_scenario_cmd="cp '$scenario_info_path' .cpisync_${suffix}/"
+            sshpass -e ssh srn-user@"$server_host" \
+                    "cd '$copy_dest'; $rename_cmd; $copy_scenario_cmd"
+
+            echo "----> [$(date)] End GenSync for server data file: $server_f"
+        done
+    fi
 }
 
 # Stop SCOPE and scenario on Colosseum.

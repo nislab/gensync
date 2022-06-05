@@ -98,6 +98,13 @@ enum NetErrCode {
     EMPTY = -1,
     GENERAL = -2,
     UNABLE_CONN = -3,
+    // TODO: However, logs show that when we interrupt iperf3 using
+    // timeout, it actually prints "iperf3: interrupt - the client has
+    // terminated" and then the output that may or may not contain
+    // some useful bandwidth numbers. It probably just flushes the
+    // iperf3's output buffer in the state which interrupt signal
+    // finds it in. We may or may not want to try parse this
+    // incomplete output string for some more bandwidth data.
     INTERRUPTED = -4,
     NO_PING_TIME = -5
 };
