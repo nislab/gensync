@@ -34,6 +34,7 @@ default_nas_path=/share/nas                     # where are team-specific storag
 default_iperf_each=1                            # -i option in iperf3
 default_iperf_onedir_dur=1800                   # duration (seconds) of iperf in one direction
 default_shuffle_experiments=true                # shuffle GenSync experiments
+default_ssh_server_alive_interval=30            # ServerAliveInterval for long ssh commands to Colosseum
 
 ######## Handle env variables
 team_name=${team_name:="$default_team_name"}
@@ -52,6 +53,7 @@ nas_path=${nas_path:="$default_nas_path"}
 iperf_each=${iperf_each:="$default_iperf_each"}
 iperf_onedir_dur=${iperf_onedir_dur:="$default_iperf_onedir_dur"}
 shuffle_experiments=${shuffle_experiments:="$default_shuffle_experiments"}
+ssh_server_alive_interval=${ssh_server_alive_interval:="$default_ssh_server_alive_interval"}
 
 mapfile -t custom_vars \
         < <(( set -o posix; set ) | grep 'default_' | sed 's/default_//g')
@@ -546,6 +548,7 @@ exec_on_colosseum() {
     local scenario_info_path="$copy_dest"/scenario.info
     local benchmark_path="$copy_dest/build/Benchmarks"
     local examples_path="$copy_dest/example"
+    local ssh_cmd="sshpass -e ssh -o 'ServerAliveInterval $ssh_server_alive_interval'"
 
     # Setup base station and all other hosts
     setup_colosseum "$base_station_host" "$scenario_id"
@@ -600,6 +603,12 @@ exec_on_colosseum() {
         # Shuffle the list of server files with repetitions
         mapfile -t data_files < <(shuf -e ${data_files_with_reps[@]})
 
+        echo "====> Shuffled order of execution:"
+        for e in ${data_files[@]}; do
+            echo $e
+        done
+        echo "==== End of shuffled order of execution."
+
         for server_f in ${data_files[@]}; do
             echo "----> [$(date)] Starts ONE EXECUTION of GenSync for server data file: $server_f"
 
@@ -610,15 +619,15 @@ exec_on_colosseum() {
 
             clear_gensync_port "$server_host"
 
-            sshpass -e ssh srn-user@"$server_host" \
-                    "cd '$copy_dest'
-                     '$benchmark_path' -m server -p '$server_f'" &
+            eval $ssh_cmd srn-user@"$server_host" \
+                    "\"cd '$copy_dest'
+                     '$benchmark_path' -m server -p '$server_f'\"" &
 
             server_cmd_pid=$!
 
-            sshpass -e ssh srn-user@"$client_host" \
-                    "cd '$copy_dest'
-                     '$benchmark_path' -m client -r '$server_ip' -p '$client_f'"
+            eval $ssh_cmd srn-user@"$client_host" \
+                    "\"cd '$copy_dest'
+                     '$benchmark_path' -m client -r '$server_ip' -p '$client_f'\""
 
             wait $server_cmd_pid
 
@@ -654,15 +663,15 @@ exec_on_colosseum() {
 
                 clear_gensync_port "$server_host"
 
-                sshpass -e ssh srn-user@"$server_host" \
-                        "cd '$copy_dest'
-                     '$benchmark_path' -m server -p '$server_f'" &
+                eval $ssh_cmd srn-user@"$server_host" \
+                        "\"cd '$copy_dest'
+                        '$benchmark_path' -m server -p '$server_f'\"" &
 
                 server_cmd_pid=$!
 
-                sshpass -e ssh srn-user@"$client_host" \
-                        "cd '$copy_dest'
-                     '$benchmark_path' -m client -r '$server_ip' -p '$client_f'"
+                eval $ssh_cmd srn-user@"$client_host" \
+                        "\"cd '$copy_dest'
+                        '$benchmark_path' -m client -r '$server_ip' -p '$client_f'\""
 
                 wait $server_cmd_pid
             done
