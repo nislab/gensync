@@ -13,7 +13,7 @@ experiments=( # "sync-edge-033 sync-edge-034 sync-edge-037 sync-edge-038 1017 8:
               # "sync-edge-070 sync-edge-071 sync-edge-072 sync-edge-073 1026 1:45am"
     # "sync-edge-074 sync-edge-075 sync-edge-076 sync-edge-077 1027 1:47am"
 
-    "sync-edge-044 sync-edge-045 sync-edge-046 sync-edge-047 1026 8:27pm" )
+    "sync-edge-033 sync-edge-034 sync-edge-037 1026 12:25am" )
 
 log_dir=start_experiments_at
 containers_pass='Spiteful Corgi Bites'
@@ -40,16 +40,16 @@ check_requirements() {
 }
 
 # Return experiment command
-# ${@:0:4} hosts
+# ${@:0:3} hosts
 # ${@: -1} scenario ID
 get_cmd() {
-    if ! [ "${#}" -eq 5 ]; then
-        err "get_cmd needs exactly 5 arguments, but passed ${#}."
+    if ! [ "${#}" -eq 4 ]; then
+        err "get_cmd needs exactly 4 arguments, but passed ${#}."
     fi
 
     local all=( "$@" )
     local scenario="${all[-1]}"
-    local hosts="${all[@]::4}"
+    local hosts="${all[@]::3}"
     local log_name="$(echo $scenario $hosts | sed 's/ /_/g')"
     local log_path="$log_dir"/"$log_name"-"$(date +%N)".log
 

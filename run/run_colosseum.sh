@@ -619,36 +619,55 @@ exec_on_colosseum() {
 
             clear_gensync_port "$server_host"
 
+            # we don't want a "connection reset by peer" error in
+            # these two ssh calls to terminate the script
+            set +e
             eval $ssh_cmd srn-user@"$server_host" \
-                    "\"cd '$copy_dest'
-                     '$benchmark_path' -m server -p '$server_f'\"" &
+                 "\"cd '$copy_dest'
+                    '$benchmark_path' -m server -p '$server_f'\"" &
 
             server_cmd_pid=$!
 
             eval $ssh_cmd srn-user@"$client_host" \
-                    "\"cd '$copy_dest'
-                     '$benchmark_path' -m client -r '$server_ip' -p '$client_f'\""
+                 "\"cd '$copy_dest'
+                    '$benchmark_path' -m client -r '$server_ip' -p '$client_f'\""
 
+            local server_ssh_e=$?
             wait $server_cmd_pid
+            local client_ssh_e=$?
+            echo "=> [$(date)]: SSH server exit: ${server_ssh_e}, client exit: ${client_ssh_e}."
+            set -e
 
-            # Move experimental observations and parameters to the right directory
-            local dot_cpi_dirname=".cpisync_${suffix}"
-            local rename_or_move_cmd="if ! [ -d $dot_cpi_dirname ]; then
+            if ! [ $server_ssh_e -eq 0 ] || ! [ $client_ssh_e -eq 0 ]; then
+                echo "=> SSH fail. Killing 'Benchmarks' processes in containers ..."
+                echo "=> If this fails, containers are unreachable (fatal error)."
+                eval $ssh_cmd srn-user@"$server_host" \
+                     "\"pkill Benchmarks || true
+                        cd '$copy_dest'
+                        rm -rf .cpisync || true\""
+                eval $ssh_cmd srn-user@"$client_host" \
+                     "\"pkill Benchmarks || true\""
+            else
+                # Move experimental observations and parameters to the right directory
+                local dot_cpi_dirname=".cpisync_${suffix}"
+                local rename_or_move_cmd="if ! [ -d $dot_cpi_dirname ]; then
                                           mv .cpisync $dot_cpi_dirname
                                       else
                                           cp -rp .cpisync/. $dot_cpi_dirname/
                                           rm -rf .cpisync
                                       fi"
-            local copy_scenario_cmd="if ! [ -e '$dot_cpi_dirname/$(basename $scenario_info_path)' ]; then
+                local copy_scenario_cmd="if ! [ -e '$dot_cpi_dirname/$(basename $scenario_info_path)' ]; then
                                         cp $scenario_info_path $dot_cpi_dirname
                                      fi"
-            sshpass -e ssh srn-user@"$server_host" \
-                    "cd '$copy_dest'; $rename_or_move_cmd; $copy_scenario_cmd"
+                sshpass -e ssh srn-user@"$server_host" \
+                        "cd '$copy_dest'; $rename_or_move_cmd; $copy_scenario_cmd"
+            fi
 
             echo "----> [$(date)] Ends ONE EXECUTION for server data file: $server_f"
         done
     else
-        # Execute experiments in order
+        # TODO: do the +e-e magic here too.
+        # execute experiments in order
         for server_f in ${data_files[@]}; do
             echo "----> [$(date)] Start GenSync for server data file: $server_f"
 
@@ -664,13 +683,13 @@ exec_on_colosseum() {
                 clear_gensync_port "$server_host"
 
                 eval $ssh_cmd srn-user@"$server_host" \
-                        "\"cd '$copy_dest'
+                     "\"cd '$copy_dest'
                         '$benchmark_path' -m server -p '$server_f'\"" &
 
                 server_cmd_pid=$!
 
                 eval $ssh_cmd srn-user@"$client_host" \
-                        "\"cd '$copy_dest'
+                     "\"cd '$copy_dest'
                         '$benchmark_path' -m client -r '$server_ip' -p '$client_f'\""
 
                 wait $server_cmd_pid
