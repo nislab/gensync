@@ -87,7 +87,7 @@ OPTIONS:
        If CONTAINER is passed, it must be a running container's name to snapshopt into SOURCE
        and push to DESTINATION.
     -g Get CSV file from DATA_DIR on 'file-proxy' (shared NAS on Colosseum).
-    -b Benchmark network performance. Arguments are the 4 nodes from the reservation followed
+    -b Benchmark network performance. Arguments are the 3 nodes from the reservation followed
        by the scenario identifier. There is optional argument after SCENARIO_ID, if passed
        measure latency with 'ping', if not measure bandwidth with 'iperf3'.
 
@@ -748,21 +748,20 @@ pull_data_as_csv() {
 }
 
 # Benchmark latency and bandwidth for the given scenario. Reservations
-# for iperf3 need at least 80 minutes, ping reservations need at least
-# 50 minutes.
+# for iperf3 need at least (2 x duration of scenario) + epsilon,
+# ping reservations need at least one duration of scenario + epsilon.
+# Epsilon time is used for the setup of containers.
 # $1 base station
 # $2 server SRN
 # $3 client SRN
-# $4 the fourth node (if first two SRNs work, this won't be used, but need to get set up)
-# $5 scenario
-# $6 if passed, measure latency (ping) instead of bandwidth (iperf3)
+# $4 scenario
+# $5 if passed, measure latency (ping) instead of bandwidth (iperf3)
 benchmark_net() {
     local base_st="$1"
     local server="$2"
     local client="$3"
-    local the_fourth="$4"
-    local scenario="$5"
-    local is_latency="$6"
+    local scenario="$4"
+    local is_latency="$5"
 
     local out_file_dir="$shared_path/benchmark_net_$(get_current_date)_${scenario}"
     local client_file="$out_file_dir/iperf_client_to_server.json"
@@ -772,10 +771,9 @@ benchmark_net() {
     setup_colosseum "$base_st" "$scenario"
     setup_colosseum "$server"
     setup_colosseum "$client"
-    setup_colosseum "$the_fourth"
 
     wait_for_radios
-    discover_two_working_hosts hosts "$server" "$client" "$the_fourth"
+    discover_two_working_hosts hosts "$server" "$client"
     local server_host=${hosts[0]}
     local client_host=${hosts[1]}
 
@@ -836,8 +834,8 @@ while getopts "hcpbu:g:" option; do
            exit
            ;;
         b) benchmark_net_params=( "${@:2:(( $# - 1 ))}" )
-           if [ "${#benchmark_net_params[@]}" -lt 5 ]; then
-               err "You need at least 5 arguments."
+           if [ "${#benchmark_net_params[@]}" -lt 4 ]; then
+               err "You need at least 4 arguments."
                help
            fi
            ask_ssh_pass "$(echo $2 | cut -d'-' -f1,2)"
