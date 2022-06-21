@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# echo "echo 'Spiteful Corgi Bites' | sleep_before_gensync=60 ./run_colosseum.sh -b sync-edge-033 sync-edge-034 sync-edge-037 1009 >iperf.log 2>&1" | at 9:52pm
+echo "echo 'Spiteful Corgi Bites' | sleep_before_gensync=60 ./run_colosseum.sh -b sync-edge-033 sync-edge-034 sync-edge-037 1009 >iperf_1009.log 2>&1" | at 10:51pm
 
-echo "echo 'Spiteful Corgi Bites' | sleep_before_gensync=60 ./run_colosseum.sh -b sync-edge-038 sync-edge-039 sync-edge-044 1009 latency >ping.log 2>&1" | at 9:57pm
+echo "echo 'Spiteful Corgi Bites' | sleep_before_gensync=60 ./run_colosseum.sh -b sync-edge-038 sync-edge-039 sync-edge-044 1009 latency >ping_1009.log 2>&1" | at 10:52pm
 
 # ################ BEGIN PARAMETERS ################
 # experiments=( # "sync-edge-033 sync-edge-034 sync-edge-037 sync-edge-038 1017 8:49pm"

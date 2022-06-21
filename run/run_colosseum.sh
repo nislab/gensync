@@ -59,15 +59,15 @@ mapfile -t custom_vars \
         < <(( set -o posix; set ) | grep 'default_' | sed 's/default_//g')
 
 ######## Calculated constants
-gensync_path="`cd ..; pwd`"
-gensync_basename="$(basename "$gensync_path")"
+readonly gensync_path="`cd ..; pwd`"
+readonly gensync_basename="$(basename "$gensync_path")"
 
 ######## Extended commands
 lxc="sudo lxc"
 
 help() {
     cat<<EOF
-USAGE: run_colosseum [-h] [-c] [-u IMAGE] [-p SOURCE DESTINATION [CONTAINER]] [-g DATA_DIR] [-b BASE_STATION SERVER CLIENT FOURTH SCENARIO_ID [latency]] SERVER CLIENT BASE_STATION SCENARIO_ID
+USAGE: run_colosseum [-h] [-c] [-u IMAGE] [-p SOURCE DESTINATION [CONTAINER]] [-g DATA_DIR] [-b BASE_STATION SERVER CLIENT FOURTH SCENARIO_ID [latency]] [-d] SERVER CLIENT BASE_STATION SCENARIO_ID
 
 Executes GenSync synchornization on Colosseum wireless network emulator.
 
@@ -90,6 +90,7 @@ OPTIONS:
     -b Benchmark network performance. Arguments are the 3 nodes from the reservation followed
        by the scenario identifier. There is optional argument after SCENARIO_ID, if passed
        measure latency with 'ping', if not measure bandwidth with 'iperf3'.
+    -d Dry run. Set up one base station and two SRNs then exit. Setting up is done via SCOPE.
 
 You can custmize the following script variables:
 $( for ((i = 0; i < ${#custom_vars[@]}; i++)) do echo ${custom_vars[$i]}; done )
@@ -536,6 +537,23 @@ get_dot_cpisync_suffix() {
     echo "${sf_path}_${sf_basename}"
 }
 
+# Only set up 3 nodes and the desired scenario.
+# $1 base station host
+# {@:2:(( $# - 1 ))} Colosseum hosts
+# {@: -1} scenario ID
+dry_run() {
+    local base_station_host="$1"
+    local other_hosts="${@:2:(( $# - 2 ))}"
+    local scenario="${@: -1}"
+
+    setup_colosseum "$base_station_host" "$scenario"
+    for h in ${other_hosts[@]}; do
+        setup_colosseum "$h"
+    done
+
+    echo_g "Colosseum setup done. Base station is '$base_station_host'."
+}
+
 # Execute GenSync experiments on Colosseum.
 # $1 base station host
 # ${@:2:(( $# - 2 ))} other hosts (first working host is the server, the next is the client)
@@ -748,8 +766,8 @@ pull_data_as_csv() {
 }
 
 # Benchmark latency and bandwidth for the given scenario. Reservations
-# for iperf3 need at least (2 x duration of scenario) + epsilon,
-# ping reservations need at least one duration of scenario + epsilon.
+# for iperf3 need at least (2 x `default_iperf_onedir_dur`) + epsilon,
+# ping reservations need at least `default_iperf_onedir_dur` + epsilon.
 # Epsilon time is used for the setup of containers.
 # $1 base station
 # $2 server SRN
@@ -808,7 +826,7 @@ benchmark_net() {
 
 check_requirements
 
-while getopts "hcpbu:g:" option; do
+while getopts "hcpbdu:g:" option; do
     case $option in
         c) ask_ssh_pass
            setup
@@ -835,11 +853,20 @@ while getopts "hcpbu:g:" option; do
            ;;
         b) benchmark_net_params=( "${@:2:(( $# - 1 ))}" )
            if [ "${#benchmark_net_params[@]}" -lt 4 ]; then
-               err "You need at least 4 arguments."
                help
+               err "You need at least 4 arguments."
            fi
            ask_ssh_pass "$(echo $2 | cut -d'-' -f1,2)"
            benchmark_net "${benchmark_net_params[@]}"
+           exit
+           ;;
+        d) ask_ssh_pass
+           dry_run_params=( "${@:2:(( $# - 1 ))}" )
+           if [ "${#dry_run_params[@]}" -lt 4 ]; then
+               help
+               err "You need at least 4 parameters."
+           fi
+           dry_run "${dry_run_params[@]}"
            exit
            ;;
         h|* ) help
