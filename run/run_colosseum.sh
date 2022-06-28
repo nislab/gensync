@@ -551,7 +551,15 @@ dry_run() {
         setup_colosseum "$h"
     done
 
-    echo_g "Colosseum setup done. Base station is '$base_station_host'."
+    wait_for_radios
+
+    discover_two_working_hosts hosts "${other_hosts[@]}"
+
+    echo "Base station is '$base_station_host'. Working hosts are:"
+    for h in ${hosts[@]}; do
+        echo "'$h'"
+    done
+    echo_g "Setup succeeded."
 }
 
 # Execute GenSync experiments on Colosseum.
