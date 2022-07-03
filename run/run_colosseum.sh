@@ -36,6 +36,11 @@ default_iperf_onedir_dur=1800                   # duration (seconds) of iperf in
 default_shuffle_experiments=true                # shuffle GenSync experiments
 default_ssh_server_alive_interval=30            # ServerAliveInterval for long ssh commands to Colosseum
 
+# Target bandwidth for measuring latency using `iperf` v2. This should
+# be big enough to saturate the network but not too big to cause
+# majority of packets to get lost. ~3% packet loss is good.
+default_iperf2_bandwidth="1M"
+
 ######## Handle env variables
 team_name=${team_name:="$default_team_name"}
 srn_user_passwd=${srn_user_passwd:="$default_srn_user_passwd"}
@@ -54,6 +59,7 @@ iperf_each=${iperf_each:="$default_iperf_each"}
 iperf_onedir_dur=${iperf_onedir_dur:="$default_iperf_onedir_dur"}
 shuffle_experiments=${shuffle_experiments:="$default_shuffle_experiments"}
 ssh_server_alive_interval=${ssh_server_alive_interval:="$default_ssh_server_alive_interval"}
+iperf2_bandwidth=${iperf2_bandwidth:="$default_iperf2_bandwidth"}
 
 mapfile -t custom_vars \
         < <(( set -o posix; set ) | grep 'default_' | sed 's/default_//g')
@@ -89,7 +95,8 @@ OPTIONS:
     -g Get CSV file from DATA_DIR on 'file-proxy' (shared NAS on Colosseum).
     -b Benchmark network performance. Arguments are the 3 nodes from the reservation followed
        by the scenario identifier. There is optional argument after SCENARIO_ID, if passed
-       measure latency with 'ping', if not measure bandwidth with 'iperf3'.
+       measure latency (using latest 'iperf' v2 if the argument is 'iperf', otherwise use 'ping'),
+       if not measure bandwidth with 'iperf3'.
     -d Dry run. Set up one base station and two SRNs then exit. Setting up is done via SCOPE.
 
 You can custmize the following script variables:
@@ -791,10 +798,6 @@ benchmark_net() {
     local scenario="$4"
     local latency_tool="$5"
 
-    # Target bandwidth for measuring latency using `iperf` v2. This
-    # should be big enough to saturate the network.
-    local iperf2_UDP_b="1G"
-
     local out_file_dir="$shared_path/benchmark_net_$(get_current_date)_${scenario}"
     local client_file="$out_file_dir/iperf_client_to_server.json"
     local server_file="$out_file_dir/iperf_server_to_client.json"
@@ -818,10 +821,10 @@ benchmark_net() {
     echo "Results will be stored in $out_file_dir"
 
     if [ "$latency_tool" = 'iperf' ]; then
-        local ser_cmd="iperf -s -e -i 1 -u -o '$iperf2_server_file'"
-        local cli_cmd="iperf -c $server_ip -e -i 1 -u -b '$iperf2_UDP_b' -t '$iperf_onedir_dur"
+        local ser_cmd="iperf -s -e -i 1 -u -b '$iperf2_bandwidth' -o '$iperf2_server_file' &"
+        local cli_cmd="iperf -c $server_ip -e -i 1 -u -b '$iperf2_bandwidth' -t '$iperf_onedir_dur'"
 
-        echo "[$(date)]: Starting latency measurements using iperf v2 ..."
+        echo "[$(date)]: Starting latency measurements using iperf v2 (-b '$iperf2_bandwidth') ..."
 
         sshpass -e ssh srn-user@"$server_host" "$ser_cmd"
         echo -e "--------> iperf2 server (for UDP latency) has started as a daemon\n"
