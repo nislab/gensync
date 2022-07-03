@@ -774,25 +774,33 @@ pull_data_as_csv() {
 }
 
 # Benchmark latency and bandwidth for the given scenario. Reservations
-# for iperf3 need at least (2 x `default_iperf_onedir_dur`) + epsilon,
-# ping reservations need at least `default_iperf_onedir_dur` + epsilon.
+# need be at least `(2 x `default_iperf_onedir_dur`) + epsilon` long.
+# Except when `ping` is used. Then `default_iperf_onedir_dur + epsilon` time is required.
 # Epsilon time is used for the setup of containers.
 # $1 base station
 # $2 server SRN
 # $3 client SRN
 # $4 scenario
-# $5 if passed, measure latency (ping) instead of bandwidth (iperf3)
+# $5 if passed, measure latency.
+#    When "$5" = 'iperf' use iperf v2 to measure latency using UTP.
+#    Otherwise, use ping and ICMP.
 benchmark_net() {
     local base_st="$1"
     local server="$2"
     local client="$3"
     local scenario="$4"
-    local is_latency="$5"
+    local latency_tool="$5"
+
+    # Target bandwidth for measuring latency using `iperf` v2. This
+    # should be big enough to saturate the network.
+    local iperf2_UDP_b="1G"
 
     local out_file_dir="$shared_path/benchmark_net_$(get_current_date)_${scenario}"
     local client_file="$out_file_dir/iperf_client_to_server.json"
     local server_file="$out_file_dir/iperf_server_to_client.json"
     local ping_file="$out_file_dir/ping.txt"
+    local iperf2_server_file="$out_file_dir/iperf2_server.txt"
+    local iperf2_client_file="$out_file_dir/iperf2_client.txt"
 
     setup_colosseum "$base_st" "$scenario"
     setup_colosseum "$server"
@@ -806,18 +814,33 @@ benchmark_net() {
     local server_ip="$(get_ip $server_host)"
     echo -e "\nInferred server IP is: $server_ip\n"
 
-    local ser_cmd="iperf3 -s -i $iperf_each --daemon"
-    local cli_cmd="iperf3 -c $server_ip -t $iperf_onedir_dur -i $iperf_each -J"
-
     sshpass -e ssh srn-user@"$server_host" "mkdir -p $out_file_dir"
     echo "Results will be stored in $out_file_dir"
 
-    if [ "$is_latency" ]; then
+    if [ "$latency_tool" = 'iperf' ]; then
+        local ser_cmd="iperf -s -e -i 1 -u -o '$iperf2_server_file'"
+        local cli_cmd="iperf -c $server_ip -e -i 1 -u -b '$iperf2_UDP_b' -t '$iperf_onedir_dur"
+
+        echo "[$(date)]: Starting latency measurements using iperf v2 ..."
+
+        sshpass -e ssh srn-user@"$server_host" "$ser_cmd"
+        echo -e "--------> iperf2 server (for UDP latency) has started as a daemon\n"
+        sshpass -e ssh srn-user@"$client_host" "$cli_cmd"
+
+        echo "[$(date)]: Client to server ended, starting server to client transmission ..."
+
+        sshpass -e ssh srn-user@"$client_host" "$cli_cmd_lat -R -o '$iperf2_client_file'"
+
+        echo "[$(date)]: iperf v2 ended."
+    elif [ "$latency_tool" ]; then
         echo "[$(date)]: Starting ping ..."
         sshpass -e ssh srn-user@"$client_host" \
                 "ping $server_ip -w $iperf_onedir_dur > $ping_file"
         echo "[$(date)]: ping ended."
     else
+        local ser_cmd="iperf3 -s -i $iperf_each --daemon"
+        local cli_cmd="iperf3 -c $server_ip -t $iperf_onedir_dur -i $iperf_each -J"
+
         echo "[$(date)]: Starting iperf3 measurements ..."
 
         sshpass -e ssh srn-user@"$server_host" "$ser_cmd"
@@ -868,8 +891,8 @@ while getopts "hcpbdu:g:" option; do
            benchmark_net "${benchmark_net_params[@]}"
            exit
            ;;
-        d) ask_ssh_pass
-           dry_run_params=( "${@:2:(( $# - 1 ))}" )
+        d) dry_run_params=( "${@:2:(( $# - 1 ))}" )
+           ask_ssh_pass "$(echo "${dry_run_params[0]}" | cut -d'-' -f1,2)"
            if [ "${#dry_run_params[@]}" -lt 4 ]; then
                help
                err "You need at least 4 parameters."
