@@ -40,6 +40,10 @@ default_ssh_server_alive_interval=30            # ServerAliveInterval for long s
 # be big enough to saturate the network but not too big to cause
 # majority of packets to get lost. ~3% packet loss is good.
 default_iperf2_bandwidth="1M"
+# Target bandwidth for `iperf3` in bandwidth measurements. Here we
+# want to overwhelm the network such that the measured bandwidth
+# estimates the maximum attainable bandwidth. '0' means no limit.
+default_iperf3_bandwidth="0"
 
 ######## Handle env variables
 team_name=${team_name:="$default_team_name"}
@@ -60,6 +64,7 @@ iperf_onedir_dur=${iperf_onedir_dur:="$default_iperf_onedir_dur"}
 shuffle_experiments=${shuffle_experiments:="$default_shuffle_experiments"}
 ssh_server_alive_interval=${ssh_server_alive_interval:="$default_ssh_server_alive_interval"}
 iperf2_bandwidth=${iperf2_bandwidth:="$default_iperf2_bandwidth"}
+iperf3_bandwidth=${iperf3_bandwidth:="$default_iperf3_bandwidth"}
 
 mapfile -t custom_vars \
         < <(( set -o posix; set ) | grep 'default_' | sed 's/default_//g')
@@ -135,9 +140,8 @@ echo_o() {
 # Echo the error message and exit.
 # $1 error message (optional)
 err() {
-    if ! [ -z "$1" ]; then echo_r "Error: $1"; fi
+    if ! [ -z "$1" ]; then >&2 echo_r "Error: $1"; fi
     kill -s TERM $TOP_PID
-    exit
 }
 
 # Build `lxc` execution command.
@@ -799,8 +803,8 @@ benchmark_net() {
     local latency_tool="$5"
 
     local out_file_dir="$shared_path/benchmark_net_$(get_current_date)_${scenario}"
-    local client_file="$out_file_dir/iperf_client_to_server.json"
-    local server_file="$out_file_dir/iperf_server_to_client.json"
+    local client_file="$out_file_dir/iperf3_server_to_client.json"
+    local server_file="$out_file_dir/iperf3_server_logs.json"
     local ping_file="$out_file_dir/ping.txt"
     local iperf2_server_file="$out_file_dir/iperf2_server.txt"
     local iperf2_client_file="$out_file_dir/iperf2_client.txt"
@@ -821,18 +825,19 @@ benchmark_net() {
     echo "Results will be stored in $out_file_dir"
 
     if [ "$latency_tool" = 'iperf' ]; then
-        local ser_cmd="iperf -s -e -i 1 -u -b '$iperf2_bandwidth' -o '$iperf2_server_file' &"
+        local ser_cmd="iperf -s -e -i 1"
+        ser_cmd="$ser_cmd -u -b '$iperf2_bandwidth' -o '$iperf2_server_file' &"
         local cli_cmd="iperf -c $server_ip -e -i 1 -u -b '$iperf2_bandwidth' -t '$iperf_onedir_dur'"
 
         echo "[$(date)]: Starting latency measurements using iperf v2 (-b '$iperf2_bandwidth') ..."
 
         sshpass -e ssh srn-user@"$server_host" "$ser_cmd"
-        echo -e "--------> iperf2 server (for UDP latency) has started as a daemon\n"
+        echo -e "--------> iperf2 server (for UDP latency) has started in background.\n"
         sshpass -e ssh srn-user@"$client_host" "$cli_cmd"
 
         echo "[$(date)]: Client to server ended, starting server to client transmission ..."
 
-        sshpass -e ssh srn-user@"$client_host" "$cli_cmd_lat -R -o '$iperf2_client_file'"
+        sshpass -e ssh srn-user@"$client_host" "$cli_cmd -R -o '$iperf2_client_file'"
 
         echo "[$(date)]: iperf v2 ended."
     elif [ "$latency_tool" ]; then
@@ -841,18 +846,19 @@ benchmark_net() {
                 "ping $server_ip -w $iperf_onedir_dur > $ping_file"
         echo "[$(date)]: ping ended."
     else
-        local ser_cmd="iperf3 -s -i $iperf_each --daemon"
+        local ser_cmd="iperf3 -s -i $iperf_each -J"
         local cli_cmd="iperf3 -c $server_ip -t $iperf_onedir_dur -i $iperf_each -J"
+        cli_cmd="$cli_cmd -u -b '$iperf3_bandwidth'"
 
         echo "[$(date)]: Starting iperf3 measurements ..."
 
-        sshpass -e ssh srn-user@"$server_host" "$ser_cmd"
-        echo -e "--------> iperf3 server has started as a daemon\n"
-        sshpass -e ssh srn-user@"$client_host" "$cli_cmd > '$client_file'"
+        sshpass -e ssh srn-user@"$server_host" "$ser_cmd >'$server_file' &"
+        echo -e "--------> iperf3 server has started in background.\n"
+        sshpass -e ssh srn-user@"$client_host" "$cli_cmd"
 
         echo "[$(date)]: Client to server ended, starting server to client transmission ..."
 
-        sshpass -e ssh srn-user@"$client_host" "$cli_cmd --reverse > '$server_file'"
+        sshpass -e ssh srn-user@"$client_host" "$cli_cmd -R >'$client_file'"
 
         echo "[$(date)]: iperf3 ended."
     fi
