@@ -5,9 +5,10 @@ Author: Novak Boskov <boskov@bu.edu>
 Date: May 2022.
 """
 
-from typing import Optional
+from typing import Optional, List
 import pandas as pd
 import json
+import re
 import datetime
 
 SUMMARY_COLUMNS = ['algorithm', 'diffs', 'cardinality',
@@ -194,8 +195,45 @@ def parse_iperf(f_name: str) -> pd.DataFrame:
         Path to the json file
     """
     with open(f_name, 'r') as f:
-        plain = json.load(f)
+        raw = f.read()
+
+        second_object_start = raw.find('}\n{')
+        if second_object_start > 0:
+            last_char = second_object_start + 1
+            print(f"{f_name} seems to have more than one JSON object. "
+                  f"Second object starts after position {last_char}.")
+            content = raw[:last_char]
+        else:
+            content = raw
+
+        plain = json.loads(content)
 
     sums = [inter['sum'] for inter in plain['intervals']]
 
     return pd.DataFrame.from_dict(sums)
+
+
+def parse_iperf_v2(f_name: str) -> List[float]:
+    """
+    Parse iperf v2 output and output latency data.
+
+    Parameters:
+    --------
+    f_name : str
+        Path to the log file.
+    """
+    stat_regex = re.compile(r'\d+\.\d+/\d+\.\d+/\d+\.\d+/\d+\.\d+[\s]ms')
+    ret = []
+    with open(f_name, 'r') as f:
+        while True:
+            line = f.readline()
+            if not line:
+                break
+
+            match = stat_regex.search(line)
+            if match:
+                ret.append(
+                    float(match.group(0).strip(' ms').split('/')[0])
+                )
+
+    return ret
