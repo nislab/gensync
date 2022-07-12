@@ -222,7 +222,10 @@ def parse_iperf_v2(f_name: str) -> List[float]:
     f_name : str
         Path to the log file.
     """
-    stat_regex = re.compile(r'\d+\.\d+/\d+\.\d+/\d+\.\d+/\d+\.\d+[\s]ms')
+    f_or_d = r'(\d+\.\d+|-)'  # float or dash
+    # Like '12.42/12.32/9.66/66.9 ms' or exactly '-/-/-/- ms'
+    stat_regex = re.compile(
+        fr"{f_or_d}/{f_or_d}/{f_or_d}/{f_or_d}[\s]ms")
     ret = []
     with open(f_name, 'r') as f:
         while True:
@@ -232,8 +235,8 @@ def parse_iperf_v2(f_name: str) -> List[float]:
 
             match = stat_regex.search(line)
             if match:
-                ret.append(
-                    float(match.group(0).strip(' ms').split('/')[0])
-                )
+                data_str = match.group(0).strip(' ms').split('/')[0]
+                data = float(data_str) if not data_str == '-' else 0
+                ret.append(data)
 
     return ret
