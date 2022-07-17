@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <chrono>
 #include <random>
+#include <regex>
 #include <stdio.h>
 #include <thread>
 #include <unistd.h>
@@ -43,6 +44,8 @@ OPTIONS:
 static const string LOCK_FILE = ".cpisync_benchmarks_server_lock";
 #ifdef NETWORK_PROBING
 // Where iperf3 server writes it outputs for debug.
+static const string IPERF3_SERVER_LOGFILE = "/share/iperf3_server.log";
+// Where iperf server writes it outputs for debug.
 static const string IPERF_SERVER_LOGFILE = "/share/iperf_server.log";
 // Milliseconds to wait to run `iperf3 -R` after `iperf3`
 static const int SLEEP_BETWEEN_IPERF_MILLIS = 500;
@@ -53,6 +56,8 @@ static const int SLEEP_BETWEEN_IPERF_MILLIS = 500;
 static const int IPERF_INTERRUPT_AFTER = 10;
 // Duration of one iperf3 session.
 static const int iperf_dur_s = 1;
+// iperf v2 requires bandwidth cap to accurately measure latency
+static const string iperf2_b = "1M";
 #endif
 
 using namespace std;
@@ -198,8 +203,9 @@ bool estimateNetwork(shared_ptr<GenSync> genSync, string &peerIP);
 /**
  * Start iperf3 server on the GenSync server side to make network
  * probing possible.
+ * @param iperf_version The version iperf to start.
  */
-void startIperfServer();
+void startIperfServer(string iperf_version);
 #endif
 
 int main(int argc, char *argv[]) {
@@ -296,7 +302,8 @@ int main(int argc, char *argv[]) {
                                         bPar.AElems);
             } else {
 #ifdef NETWORK_PROBING
-                startIperfServer();
+                startIperfServer("iperf3");
+                startIperfServer("iperf");
 #endif
                 // create the lock file to signalize that the server is ready
                 ofstream lock(LOCK_FILE);
@@ -644,26 +651,31 @@ inline float handleIperfOutput(string &s, bool reverse = false) {
 }
 
 /**
- * Handle the output of ping.
+ * Handle the output of the latency command (iperf v2).
  * @param s The output.
- * @returns ping time in milliseconds.
+ * @returns latency in milliseconds.
  */
-inline float handlePingOutput(string &s) {
+inline float handleLatencyOutput(string &s) {
     if (auto err = getNetErr(s)) {
         Logger::gLog(Logger::TEST, "handlePingOutput error:\n" + s);
         return err;
     }
 
-    size_t time_pos = s.find("time=");
-    if (time_pos == string::npos) {
-        Logger::gLog(Logger::TEST,
-                     "handlePingOutput error: no 'time=' in:\n" + s);
-        return NetErrCode::NO_PING_TIME;
-    }
-    string part = s.substr(time_pos);
-    size_t space_pos = part.find(" ");
+    regex stat_regx("\\d+\\.\\d+/\\d+\\.\\d+/\\d+\\.\\d+/\\d+\\.\\d+");
 
-    return stof(part.substr(5, space_pos - 5));
+    istringstream iss(s);
+    for (string line; getline(iss, line);) {
+        smatch sm;
+        if (regex_search(line, sm, stat_regx)) {
+            if (sm.size() > 1)
+                throw logic_error("Multiple regex matches in one line.");
+            string match = sm[0].str();
+            return stof(match.substr(0, match.find("/")));
+        }
+    }
+
+    throw logic_error(
+        "There is no line that matches the latency statistics in:\n" + s);
 }
 
 inline void log_external_fail(string text, int stat_code) {
@@ -682,21 +694,22 @@ inline void log_exit_code(string &cmd, int exit_code) {
 
 bool estimateNetwork(shared_ptr<GenSync> genSync, string &peerIP) {
     array<char, BUFF_SIZE> buff;
-    string ping_cmd, iperf_u_cmd, iperf_d_cmd, ping_out, iperf_u_out,
-        iperf_d_out;
-    float iperf_u_val, iperf_d_val, ping_val;
-    int iperf_u_exit, iperf_d_exit, ping_exit;
+    string lat_cmd, iperf3_u_cmd, iperf3_d_cmd, lat_out, iperf3_u_out,
+        iperf3_d_out;
+    float iperf3_u_val, iperf3_d_val, lat_val;
+    int iperf3_u_exit, iperf3_d_exit, lat_exit;
 
     static const string err_redir = " 2>&1";
 
     // Build the external commands
-    ping_cmd = "ping -c 1 " + peerIP + err_redir;
-    iperf_u_cmd = "timeout " + to_string(IPERF_INTERRUPT_AFTER) + " " +
-                  "iperf3 -c " + peerIP + " -t " + to_string(iperf_dur_s) +
-                  err_redir;
-    iperf_d_cmd = "timeout " + to_string(IPERF_INTERRUPT_AFTER) + " " +
-                  "iperf3 -c " + peerIP + " -t " + to_string(iperf_dur_s) +
-                  " -R" + err_redir;
+    lat_cmd = "iperf -c " + peerIP + " -e -i 1 -u -b " + iperf2_b + " -t 1 " +
+              err_redir;
+    iperf3_u_cmd = "timeout " + to_string(IPERF_INTERRUPT_AFTER) + " " +
+                   "iperf3 -c " + peerIP + " -t " + to_string(iperf_dur_s) +
+                   " -u -b 0 " + err_redir;
+    iperf3_d_cmd = "timeout " + to_string(IPERF_INTERRUPT_AFTER) + " " +
+                   "iperf3 -c " + peerIP + " -t " + to_string(iperf_dur_s) +
+                   " -u -b 0 " + "-R " + err_redir;
 
     // Record the Unix time when measurement started
     time_t start_time =
@@ -705,41 +718,41 @@ bool estimateNetwork(shared_ptr<GenSync> genSync, string &peerIP) {
     // performance.
     auto start = high_resolution_clock::now();
 
-    log_external_run(iperf_u_cmd);
-    FILE *iperf_u = popen(iperf_u_cmd.c_str(), "r");
+    log_external_run(iperf3_u_cmd);
+    FILE *iperf_u = popen(iperf3_u_cmd.c_str(), "r");
     if (iperf_u == nullptr) {
         log_external_fail("First iperf failed", pclose(iperf_u));
         return false;
     }
     while (fgets(buff.data(), BUFF_SIZE, iperf_u) != nullptr)
-        iperf_u_out += buff.data();
-    // make sure we wait until the first iperf call ends, then wait a
+        iperf3_u_out += buff.data();
+    // make sure we wait until the first iperf3 call ends, then wait a
     // little more before sending the second iperf call to give the
     // server a chance to get ready.
-    log_exit_code(iperf_u_cmd, pclose(iperf_u));
-    iperf_u_val = handleIperfOutput(iperf_u_out);
+    log_exit_code(iperf3_u_cmd, pclose(iperf_u));
+    iperf3_u_val = handleIperfOutput(iperf3_u_out);
     this_thread::sleep_for(chrono::milliseconds(SLEEP_BETWEEN_IPERF_MILLIS));
 
-    log_external_run(ping_cmd);
-    FILE *ping = popen(ping_cmd.c_str(), "r");
-    log_external_run(iperf_d_cmd);
-    FILE *iperf_d = popen(iperf_d_cmd.c_str(), "r");
+    log_external_run(lat_cmd);
+    FILE *ping = popen(lat_cmd.c_str(), "r");
+    log_external_run(iperf3_d_cmd);
+    FILE *iperf_d = popen(iperf3_d_cmd.c_str(), "r");
     if (ping == nullptr) {
         log_external_fail("Ping failed", pclose(ping));
         return false;
     }
     while (fgets(buff.data(), BUFF_SIZE, ping) != nullptr)
-        ping_out += buff.data();
-    log_exit_code(ping_cmd, pclose(ping));
+        lat_out += buff.data();
+    log_exit_code(lat_cmd, pclose(ping));
     if (iperf_d == nullptr) {
         log_external_fail("Second iperf failed", pclose(iperf_d));
         return false;
     }
     while (fgets(buff.data(), 2, iperf_d) != nullptr)
-        iperf_d_out += buff.data();
-    log_exit_code(iperf_d_cmd, pclose(iperf_d));
-    ping_val = handlePingOutput(ping_out);
-    iperf_d_val = handleIperfOutput(iperf_d_out, true);
+        iperf3_d_out += buff.data();
+    log_exit_code(iperf3_d_cmd, pclose(iperf_d));
+    lat_val = handleLatencyOutput(lat_out);
+    iperf3_d_val = handleIperfOutput(iperf3_d_out, true);
 
     // Stop the timer and log the time it took to estimate the
     // network conditions
@@ -752,26 +765,49 @@ bool estimateNetwork(shared_ptr<GenSync> genSync, string &peerIP) {
                      "ms & IPERF_INTERRUPT_AFTER: " +
                      to_string(IPERF_INTERRUPT_AFTER) + "s.");
     // Update genSync object
-    auto ams = make_shared<AuxMeasurements>(ping_val, iperf_u_val, iperf_d_val,
+    auto ams = make_shared<AuxMeasurements>(lat_val, iperf3_u_val, iperf3_d_val,
                                             duration, start_time);
     genSync->setAuxMeasurements(ams);
 
     return true;
 }
 
-void startIperfServer() {
-    string is_already_running_cmd = "pgrep iperf3";
-    string run_cmd = "iperf3 -s -D --logfile=" + IPERF_SERVER_LOGFILE;
-    stringstream ss;
-    int run_ret;
+void startIperfServer(string iperf_version = "iperf3") {
+    array<string, 2> iperf_versions = {"iperf", "iperf3"};
+
+    if (!any_of(iperf_versions.begin(), iperf_versions.end(),
+                [iperf_version](string x) { return x == iperf_version; })) {
+        stringstream ss;
+        ss << "'" << iperf_version << "'"
+           << " is not any of ";
+        for (auto x : iperf_versions)
+            ss << "'" << x << "'"
+               << ",";
+        string s = ss.str();
+        s.pop_back();
+        throw logic_error(s + "\n");
+    }
+
+    string is_already_running_cmd = "pgrep -x " + iperf_version;
+    string run_cmd, log_file_to_use;
+
+    if (iperf_version == "iperf3") {
+        log_file_to_use = IPERF3_SERVER_LOGFILE;
+        run_cmd = "iperf3 -s -D --logfile=" + log_file_to_use;
+    } else if (iperf_version == "iperf") {
+        log_file_to_use = IPERF_SERVER_LOGFILE;
+        run_cmd = "iperf -s -e -i 1 -u -o " + log_file_to_use + " &";
+    }
 
     // We need to remove the log file since iperf3 --logfile appends
     // to file and we want it fresh.
-    if (remove(IPERF_SERVER_LOGFILE.c_str()) != 0)
+    if (remove(log_file_to_use.c_str()) != 0)
         Logger::gLog(Logger::TEST,
-                     IPERF_SERVER_LOGFILE +
+                     log_file_to_use +
                          " failed to remove with errno: " + to_string(errno));
 
+    stringstream ss;
+    int run_ret;
     int ret = system(is_already_running_cmd.c_str());
     switch (ret) {
     case 1:
@@ -781,7 +817,8 @@ void startIperfServer() {
         Logger::gLog(Logger::TEST, ss.str());
         break;
     case 0:
-        Logger::gLog(Logger::TEST, "iperf3 server is already running.");
+        Logger::gLog(Logger::TEST,
+                     iperf_version + " server is already running.");
         break;
     case -1:
         throw runtime_error(

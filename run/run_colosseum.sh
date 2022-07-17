@@ -78,7 +78,7 @@ lxc="sudo lxc"
 
 help() {
     cat<<EOF
-USAGE: run_colosseum [-h] [-c] [-u IMAGE] [-p SOURCE DESTINATION [CONTAINER]] [-g DATA_DIR] [-b BASE_STATION SERVER CLIENT FOURTH SCENARIO_ID [latency]] [-d] SERVER CLIENT BASE_STATION SCENARIO_ID
+USAGE: run_colosseum [-h] [-c] [-u IMAGE] [-p SOURCE DESTINATION [CONTAINER]] [-g DATA_DIR] [-b BASE_STATION SERVER CLIENT FOURTH SCENARIO_ID [latency]] [-d] BASE_STATION SERVER CLIENT SCENARIO_ID
 
 Executes GenSync synchornization on Colosseum wireless network emulator.
 
