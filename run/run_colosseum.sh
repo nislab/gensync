@@ -15,7 +15,7 @@ set -e
 trap "exit 1" TERM
 export TOP_PID=$$
 
-requirements=( sudo ssh sshpass rsync lxc lxd )
+requirements=( sudo ssh sshpass rsync )
 
 ######## Global constants
 default_team_name=sync-edge                     # Colosseum team name

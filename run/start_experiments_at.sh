@@ -31,16 +31,19 @@ experiments=(
     # "-b sync-edge-038 sync-edge-039 sync-edge-044 1017 5:36pm"
     # "-b sync-edge-045 sync-edge-046 sync-edge-047 1031 iperf 5:36pm"
     # "-b sync-edge-048 sync-edge-049 sync-edge-051 1031 5:36pm"
-    "-b sync-edge-037 sync-edge-038 sync-edge-039 1033 iperf 12:16pm"
+    # "-b sync-edge-037 sync-edge-038 sync-edge-039 1033 iperf 12:16pm"
     # "-b sync-edge-056 sync-edge-057 sync-edge-058 1033 5:36pm"
-    "-b sync-edge-044 sync-edge-045 sync-edge-046 1024 iperf 12:18pm"
-    "-b sync-edge-047 sync-edge-048 sync-edge-049 1024 12:20pm"
-    "-b sync-edge-051 sync-edge-052 sync-edge-053 1025 iperf 12:21pm"
+    # "-b sync-edge-044 sync-edge-045 sync-edge-046 1024 iperf 12:18pm"
+    # "-b sync-edge-047 sync-edge-048 sync-edge-049 1024 12:20pm"
+    # "-b sync-edge-051 sync-edge-052 sync-edge-053 1025 iperf 12:21pm"
     # "-b sync-edge-052 sync-edge-053 sync-edge-054 1025 11:52pm"
-    "-b sync-edge-054 sync-edge-056 sync-edge-057 1026 iperf 12:24pm"
-    "-b sync-edge-058 sync-edge-059 sync-edge-060 1026 12:26pm"
-    "-b sync-edge-064 sync-edge-065 sync-edge-066 1027 iperf 12:28pm"
+    # "-b sync-edge-054 sync-edge-056 sync-edge-057 1026 iperf 12:24pm"
+    # "-b sync-edge-058 sync-edge-059 sync-edge-060 1026 12:26pm"
+    # "-b sync-edge-064 sync-edge-065 sync-edge-066 1027 iperf 12:28pm"
     # "-b sync-edge-068 sync-edge-069 sync-edge-070 1027 11:52pm"
+
+    # "-b sync-edge-064 sync-edge-065 sync-edge-066 1009 iperf 12:28pm"
+    # "-b sync-edge-068 sync-edge-069 sync-edge-070 1009 11:52pm"
 )
 
 log_dir=start_experiments_at

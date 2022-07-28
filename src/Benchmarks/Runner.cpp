@@ -48,7 +48,7 @@ static const string IPERF3_SERVER_LOGFILE = "/share/iperf3_server.log";
 // Where iperf server writes it outputs for debug.
 static const string IPERF_SERVER_LOGFILE = "/share/iperf_server.log";
 // Milliseconds to wait to run `iperf3 -R` after `iperf3`
-static const int SLEEP_BETWEEN_IPERF_MILLIS = 500;
+static const int SLEEP_BETWEEN_IPERF_MILLIS = 0;
 // Send interrupt using `timeout` to iperf3 after this many seconds.
 // This is necessary because iperf3 with -R under very slow networks
 // weirdly gets stuck and does not write anything to stdout, which
@@ -58,6 +58,7 @@ static const int IPERF_INTERRUPT_AFTER = 10;
 static const int iperf_dur_s = 1;
 // iperf v2 requires bandwidth cap to accurately measure latency
 static const string iperf2_b = "1M";
+static const float iperf2_dur_s = 0.5;
 #endif
 
 using namespace std;
@@ -111,7 +112,7 @@ enum NetErrCode {
     // finds it in. We may or may not want to try parse this
     // incomplete output string for some more bandwidth data.
     INTERRUPTED = -4,
-    NO_PING_TIME = -5
+    NO_LATENCY_TIME = -5
 };
 
 static map<NetErrCode, string> netErrToStr = {
@@ -609,8 +610,9 @@ inline float handleIperfOutput(string &s, bool reverse = false) {
 
     float iperf_val;
 
-    // get the right line
-    size_t right_line = reverse ? 4 : 3;
+    // always the last line (the receiver's end works for both TCP and
+    // UDP flags)
+    size_t right_line = reverse ? 8 : 7;
     size_t line_cnt = 0;
     istringstream s_lines(s);
     string line;
@@ -661,16 +663,21 @@ inline float handleLatencyOutput(string &s) {
         return err;
     }
 
-    regex stat_regx("\\d+\\.\\d+/\\d+\\.\\d+/\\d+\\.\\d+/\\d+\\.\\d+");
+    static const string num_regex = "((\\d+\\.\\d+)|-)";
+    regex stat_regx(num_regex + "/" + num_regex + "/" + num_regex + "/" +
+                    num_regex + " ms");
 
     istringstream iss(s);
     for (string line; getline(iss, line);) {
         smatch sm;
         if (regex_search(line, sm, stat_regx)) {
-            if (sm.size() > 1)
-                throw logic_error("Multiple regex matches in one line.");
             string match = sm[0].str();
-            return stof(match.substr(0, match.find("/")));
+            string num_str = match.substr(0, match.find("/"));
+            if (num_str == "-") {
+                return NetErrCode::NO_LATENCY_TIME;
+            } else {
+                return stof(num_str);
+            }
         }
     }
 
@@ -702,14 +709,15 @@ bool estimateNetwork(shared_ptr<GenSync> genSync, string &peerIP) {
     static const string err_redir = " 2>&1";
 
     // Build the external commands
-    lat_cmd = "iperf -c " + peerIP + " -e -i 1 -u -b " + iperf2_b + " -t 1 " +
-              err_redir;
-    iperf3_u_cmd = "timeout " + to_string(IPERF_INTERRUPT_AFTER) + " " +
-                   "iperf3 -c " + peerIP + " -t " + to_string(iperf_dur_s) +
-                   " -u -b 0 " + err_redir;
-    iperf3_d_cmd = "timeout " + to_string(IPERF_INTERRUPT_AFTER) + " " +
-                   "iperf3 -c " + peerIP + " -t " + to_string(iperf_dur_s) +
-                   " -u -b 0 " + "-R " + err_redir;
+    lat_cmd = "timeout " + to_string(IPERF_INTERRUPT_AFTER) + " iperf -c " +
+              peerIP + " -e -u -b " + iperf2_b + " -t " +
+              to_string(iperf2_dur_s) + " " + err_redir;
+    iperf3_u_cmd = "timeout " + to_string(IPERF_INTERRUPT_AFTER) +
+                   " iperf3 -c " + peerIP + " -t " + to_string(iperf_dur_s) +
+                   " -u -b 0" + err_redir;
+    iperf3_d_cmd = "timeout " + to_string(IPERF_INTERRUPT_AFTER) +
+                   " iperf3 -c " + peerIP + " -t " + to_string(iperf_dur_s) +
+                   " -u -b 0" + " -R" + err_redir;
 
     // Record the Unix time when measurement started
     time_t start_time =
@@ -734,23 +742,25 @@ bool estimateNetwork(shared_ptr<GenSync> genSync, string &peerIP) {
     this_thread::sleep_for(chrono::milliseconds(SLEEP_BETWEEN_IPERF_MILLIS));
 
     log_external_run(lat_cmd);
-    FILE *ping = popen(lat_cmd.c_str(), "r");
-    log_external_run(iperf3_d_cmd);
-    FILE *iperf_d = popen(iperf3_d_cmd.c_str(), "r");
-    if (ping == nullptr) {
-        log_external_fail("Ping failed", pclose(ping));
+    FILE *lat = popen(lat_cmd.c_str(), "r");
+    if (lat == nullptr) {
+        log_external_fail("Ping failed", pclose(lat));
         return false;
     }
-    while (fgets(buff.data(), BUFF_SIZE, ping) != nullptr)
+    while (fgets(buff.data(), BUFF_SIZE, lat) != nullptr)
         lat_out += buff.data();
-    log_exit_code(lat_cmd, pclose(ping));
+    log_exit_code(lat_cmd, pclose(lat));
+
+    log_external_run(iperf3_d_cmd);
+    FILE *iperf_d = popen(iperf3_d_cmd.c_str(), "r");
     if (iperf_d == nullptr) {
         log_external_fail("Second iperf failed", pclose(iperf_d));
         return false;
     }
-    while (fgets(buff.data(), 2, iperf_d) != nullptr)
+    while (fgets(buff.data(), BUFF_SIZE, iperf_d) != nullptr)
         iperf3_d_out += buff.data();
     log_exit_code(iperf3_d_cmd, pclose(iperf_d));
+
     lat_val = handleLatencyOutput(lat_out);
     iperf3_d_val = handleIperfOutput(iperf3_d_out, true);
 
