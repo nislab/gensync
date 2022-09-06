@@ -44,6 +44,14 @@ experiments=(
 
     # "-b sync-edge-064 sync-edge-065 sync-edge-066 1009 iperf 12:28pm"
     # "-b sync-edge-068 sync-edge-069 sync-edge-070 1009 11:52pm"
+
+    # "sync-edge-069  sync-edge-070 sync-edge-071 1017 1:36pm"
+    # "sync-edge-072  sync-edge-073 sync-edge-074 1018 1:36pm"
+    "sync-edge-109 sync-edge-110 sync-edge-111 1019 11:17pm"
+
+    # "sync-edge-078  sync-edge-079 sync-edge-080 1031 1:38pm"
+    # "sync-edge-081  sync-edge-082 sync-edge-083 1033 1:38pm"
+    # "sync-edge-084  sync-edge-085 sync-edge-086 1024 1:40pm"
 )
 
 log_dir=start_experiments_at
@@ -97,7 +105,7 @@ get_cmd() {
     local log_path="$log_dir"/"$log_name"-"$(date +%N)".log
 
     echo "script $log_path -f -c \"echo '$containers_pass' \
-          | sleep_before_gensync=120 experiment_rep=10 ./run_colosseum.sh $flag $hosts $rest\""
+          | sleep_before_gensync=180 experiment_rep=10 ./run_colosseum.sh $flag $hosts $rest\""
 }
 
 check_requirements

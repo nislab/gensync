@@ -247,6 +247,7 @@ push_and_run() {
           --exclude '.*'        \
           --exclude *.deb       \
           --exclude *.rpm       \
+          --exclude *.tar.gz    \
           $cpisync_path $remote_path
 
     rsync -a --info=progress2 \
@@ -268,13 +269,13 @@ push_and_run() {
     rsync -a --info=progress2 \
           $(basename $0) $remote_path/$(basename $0)
 
-    # Build CPISync on remote
-    ssh $address "cd $path/$(basename $cpisync_path)
+    if ! [[ $prepare_only ]]; then
+        # Build CPISync on remote
+        ssh $address "cd $path
                   mkdir build && cd build
                   cmake -GNinja . ../
                   ninja"
 
-    if ! [[ $prepare_only ]]; then
         ssh -t $address "cd $path
                          timestamp=\$(date +%s)
                          sudo nohup ./$(basename $0) -q > nohup_\$timestamp.out &
@@ -292,6 +293,7 @@ when_on_remote() {
     fi
     mininet_path=$(basename $mininet_path)
     benchmarks_path=./$(basename $cpisync_path)/build/Benchmarks
+    python_path=/usr/bin/python
 }
 
 print_common_el() {
@@ -372,7 +374,9 @@ while getopts "hqsifr:p:" option; do
             exit
             ;;
         # When we are on remote, all the needed parts are in the same directory
-        q) when_on_remote
+        q) # Build the source code on remote
+           rm -r build || true && mkdir build && cd build && cmake .. && make -j$(nproc) && cd ..
+           when_on_remote
            we_are_on_remote=yes
            ;;
         i) ignore_mininet=yes
