@@ -30,21 +30,43 @@ repeat=100
 
 # ... or the directory where to find the data sets, and a .cpisync header
 # If params_header contains SET_OPTIMAL, the script tries to do so.
-params_dir=../example/example_params_dir
+# params_dir=../example/example_params_dir
+params_dir=/home/novak/Desktop/CODE/btc-analysis/for_3d_graph
 
-params_header="Sync protocol (as in GenSync.h): 1
-m_bar: SET_OPTIMAL
-bits: 64
-epsilon: 3
-partitions/pFactor(for InterCPISync): 0
-hashes: false
+params_header="Sync protocol (as in GenSync.h): 12
+fngprtSize: 7
+bucketSize: 4
+filterSize: SET_OPTIMAL
+maxKicks: 500
 Sketches:
 --------------------------------------------------------------------------------"
 
+# Sync protocol (as in GenSync.h): 1
+# m_bar: SET_OPTIMAL
+# bits: 64
+# epsilon: 3
+# partitions/pFactor(for InterCPISync): 0
+# hashes: false
+# Sketches:
+# --------------------------------------------------------------------------------
+# Sync protocol (as in GenSync.h): 8
+# expected: SET_OPTIMAL
+# eltSize: 8
+# numElemChild: 0
+# Sketches:
+# --------------------------------------------------------------------------------
+# Sync protocol (as in GenSync.h): 12
+# fngprtSize: 7
+# bucketSize: 4
+# filterSize: SET_OPTIMAL
+# maxKicks: 500
+# Sketches:
+# --------------------------------------------------------------------------------
+
 # Network parameters
 latency=10
-bandwidth="12/60"
-packet_loss=0.001
+bandwidth="1/1"
+packet_loss=0.0001
 cpu_server=100
 cpu_client=100
 
@@ -56,7 +78,7 @@ python_path=/home/novak/.virtualenvs/statistics/bin/python
 ################################ PARAMETERS END ################################
 
 help() {
-cat<<EOF
+    cat<<EOF
 USAGE: ./run_experiments.sh [-q] [-s] [-i] [-f] [-r REMOTE_PATH] [-p EXPERIMENT_DIR] [-pp PULL_REMOTE]
 
 See the beginning of this script to set the parameters for experiments.
@@ -292,7 +314,7 @@ when_on_remote() {
         params_dir=$(basename $params_dir)
     fi
     mininet_path=$(basename $mininet_path)
-    benchmarks_path=./$(basename $cpisync_path)/build/Benchmarks
+    benchmarks_path=./build/Benchmarks
     python_path=/usr/bin/python
 }
 
@@ -374,8 +396,17 @@ while getopts "hqsifr:p:" option; do
             exit
             ;;
         # When we are on remote, all the needed parts are in the same directory
-        q) # Build the source code on remote
-           rm -r build || true && mkdir build && cd build && cmake .. && make -j$(nproc) && cd ..
+        q) if ! [ -d run ] || ! [ -d src ]; then
+               echo "Error: please run from the gensync root."
+               exit 1
+           fi
+           # Build the source code on remote
+           rm -r build || true        \
+                   && mkdir build     \
+                   && cd build        \
+                   && cmake ..        \
+                   && make -j$(nproc) \
+                   && cd ..
            when_on_remote
            we_are_on_remote=yes
            ;;
