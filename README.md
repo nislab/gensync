@@ -451,6 +451,15 @@ The compilation process produces a static library that you can include
 in other projects (as `.deb` and `.rpm` packages), and all the
 standalone executables that you need for benchmarking.
 
+Troubleshooting this process:
+For the cmake commands to work, please make sure that the NTL, GNU GMP, and 
+cpuunit are installed correctly.
+Also make sure that the CMakeLists.txt file refers to the proper path that 
+those libraries are in. To do this, visit the lines in CMakeLists that use the
+link_directories command (line number 135 as of June 2023). There should be a 
+series of 3 lines, 2 of which use that command, and they should all use paths.
+Update those paths to your personal computer. 
+
 <a name="examples"></a>
 ## Examples
 For this to work you will need
