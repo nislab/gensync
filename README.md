@@ -459,9 +459,9 @@ cppunit are installed correctly.
 
 
 Also make sure that the CMakeLists.txt file refers to the proper path that 
-those libraries are in. To do this, visit the lines in CMakeLists that use the
-link_directories command (line number 135 as of June 2023). Update these paths
-to the paths of the same directories on your personal machiene. 
+all the directories are in. Specifically, you may need to update the directories
+in the link_directories commands. Update these paths
+to the paths of the same directories on your personal machiene.
 
 <a name="examples"></a>
 ## Examples
