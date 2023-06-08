@@ -5,7 +5,7 @@ PortSystem              1.0
 name                    gensync
 version                 1.0
 revision                0
-categories              network dev
+categories              net devel
 license                 GPL-3
 maintainers             {@trachten bu.edu:trachten} openmaintainer
 description             Gensync: a library for network syncing
@@ -22,8 +22,7 @@ checksums
 
 compiler.cxx_standard   2011
 
-#depends_build-append    path:bin/perl:perl5
-depends_lib-append      port:ntl \ port:cppunit
+depends_lib-append      port:ntl \ port:cppunit \port:cmake
 
 worksrcdir              ${name}-${version}/src
 
