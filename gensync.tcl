@@ -1,11 +1,13 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem              1.0
+PortGroup               github 1.0
+PortGroup               cmake 1.1
 
 name                    gensync
 version                 1.0
 revision                0
-categories              net devel
+categories              network dev
 license                 GPL-3
 maintainers             {@trachten bu.edu:trachten} openmaintainer
 description             Gensync: a library for network syncing
@@ -16,33 +18,19 @@ long_description        Gensync is a library that uses many different syncing
 
 homepage                https://github.com/nislab/gensync/
 platforms               macosx
-master_sites            ${homepage}
+fetch.type              git
+git.url                 https://github.com/nislab/gensync.git
+git.branch              master
+
 
 checksums               
 
 compiler.cxx_standard   2011
 
-depends_lib-append      port:ntl \ port:cppunit \port:cmake
+depends_lib-append      port:ntl \ port:cppunit \ port:cmake
 
 worksrcdir              ${name}-${version}/src
 
-# see configure script
-configure.cmd           "${prefix}/bin/perl DoConfig"
-
-configure.pre_args-replace \
-                        --prefix=${prefix} \
-                        PREFIX=\"${prefix}\"
-# build shared library
-# do not try to add -march=native
-# look for external libraries (e.g. GMP) in ${prefix}
-configure.args-append   SHARED=on \
-                        NATIVE=off \
-                        DEF_PREFIX=\"${prefix}\"
-
-# respect MacPorts variables
-foreach val {CXX CXXFLAGS CPPFLAGS LDFLAGS} {
-    configure.args-append ${val}=\"\$${val}\"
-}
 
 post-destroot {
     system "cd ${destroot}${prefix}/share/doc && mv NTL tmp && mv tmp ${name}"
@@ -59,6 +47,3 @@ variant tuned description {Build with more optimizations} {
 
 test.run                yes
 test.target             check
-
-livecheck.url           https://shoup.net/ntl/download.html
-livecheck.regex         "Download NTL (\\d+(?:\\.\\d+)*)"
