@@ -17,33 +17,35 @@ long_description        Gensync is a library that uses many different syncing
                         Cuckoo Syncs, and more.
 
 homepage                https://github.com/nislab/gensync/
-platforms               macosx
+platforms               darwin
 fetch.type              git
 git.url                 https://github.com/nislab/gensync.git
 git.branch              master
 
 
-checksums               
+#TODO need to insert checksums
 
 compiler.cxx_standard   2011
 
 depends_lib-append      port:ntl \ port:cppunit \ port:cmake
 
-worksrcdir              ${name}-${version}/src
-
 
 post-destroot {
-    system "cd ${destroot}${prefix}/share/doc && mv NTL tmp && mv tmp ${name}"
-    xinstall -m 0644 ${worksrcpath}/../README \
-                     ${destroot}${prefix}/share/doc/${name}
-    xinstall -m 0644 ${worksrcpath}/../doc/copying.txt \
-                     ${destroot}${prefix}/share/doc/${name}/LICENSE
+    
 }
 
-variant tuned description {Build with more optimizations} {
-    configure.args-delete  NATIVE=off
-    configure.args-append  TUNE=auto
+use_configure           no
+build {
+    cd ${worksrcpath}
+
+    system "cmake -B build"
+
+    system "cmake --build build"
 }
 
+
+livecheck.type          none
 test.run                yes
 test.target             check
+
+#NEED TO FIGURE OUT HOW TO FIND TEH DIRECTORIES FOR LINK_DIRECTORIES CMD IN THE CMAKELISTS.TXT
