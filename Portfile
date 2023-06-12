@@ -1,33 +1,34 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem              1.0
-PortGroup               github 1.0
 PortGroup               cmake 1.1
 
 name                    gensync
 version                 1.0
 revision                0
+
 categories              network dev
+platforms               darwin
 license                 GPL-3
 maintainers             {@trachten bu.edu:trachten} openmaintainer
+
 description             Gensync: a library for network syncing
-long_description        Gensync is a library that uses many different syncing
-                        algorithms to sync data between two nodes in a network.
-                        These algorithms include IBLTs, CPISyncs, HashSyncs, 
-                        Cuckoo Syncs, and more.
+long_description        Gensync is a library that uses many different syncing \
+                        algorithms to sync data between two nodes in a network. \
+                        These algorithms include IBLTs, CPISyncs, HashSyncs, Cuckoo Syncs, and more.
 
 homepage                https://github.com/nislab/gensync/
-platforms               darwin
-fetch.type              git
-git.url                 https://github.com/nislab/gensync.git
-git.branch              master
+master_sites            ${homepage}/archive/refs/heads/
 
-
-#TODO need to insert checksums
+checksums               rmd160  d87f14216393a75f66a93d2b802ca20884811e10 \
+                        sha256  e8657f2240891a0d6e840c937ec6551ecc682590a2f960a015cf52c2dfcfea47 \
+                        size    6679082
 
 compiler.cxx_standard   2011
 
-depends_lib-append      port:ntl \ port:cppunit \ port:cmake
+depends_build-append    port:cppunit
+
+depends_lib             port:ntl
 
 
 post-destroot {
@@ -47,5 +48,3 @@ build {
 livecheck.type          none
 test.run                yes
 test.target             check
-
-#NEED TO FIGURE OUT HOW TO FIND TEH DIRECTORIES FOR LINK_DIRECTORIES CMD IN THE CMAKELISTS.TXT
