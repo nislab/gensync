@@ -36,13 +36,7 @@ post-destroot {
 }
 
 use_configure           no
-build {
-    cd ${worksrcpath}
-
-    system "cmake -B build"
-
-    system "cmake --build build"
-}
+build.cmd               cd .. && cd "${name}-${distname}" && cmake -B build && cmake --build build
 
 
 livecheck.type          none

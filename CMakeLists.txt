@@ -132,9 +132,9 @@ set(HEADERS
 include_directories(include)
 include_directories(tests)
 # Users may need to update these paths
-include_directories(/usr/local/include)
-link_directories(/usr/local/lib)
-link_directories(/usr/local/lib64)
+include_directories(/opt/local/include)
+link_directories(/opt/local/lib)
+link_directories(/opt/local/lib64)
 
 include_directories(${CMAKE_INSTALL_INCLUDEDIR})
 link_directories(${CMAKE_INSTALL_LIBDIR})
