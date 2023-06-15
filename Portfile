@@ -30,15 +30,4 @@ depends_build-append    port:cppunit
 
 depends_lib             port:ntl
 
-
-post-destroot {
-    
-}
-
-use_configure           no
-build.cmd               cd .. && cd "${name}-${distname}" && sudo make all
-
-
-livecheck.type          none
-test.run                yes
-test.target             check
+cmake.out_of_source     yes
