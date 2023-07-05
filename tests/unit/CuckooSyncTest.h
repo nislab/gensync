@@ -14,6 +14,7 @@
 class CuckooSyncTest : public CPPUNIT_NS::TestFixture {
     CPPUNIT_TEST_SUITE(CuckooSyncTest);
     CPPUNIT_TEST(setReconcileTest);
+    CPPUNIT_TEST(testAddDelElement);
     CPPUNIT_TEST_SUITE_END();
  public:
     CuckooSyncTest();
@@ -22,6 +23,7 @@ class CuckooSyncTest : public CPPUNIT_NS::TestFixture {
     void tearDown() override;
 
     void setReconcileTest();
+    void testAddDelElement();
 };
 
 #endif // CPISYNCLIB_CUCKOOSYNCTEST_H
