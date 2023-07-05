@@ -9,6 +9,7 @@
 #include "CuckooSyncTest.h"
 #include "TestAuxiliary.h"
 #include <CPISync/Syncs/GenSync.h>
+#include <CPISync/Syncs/CuckooSync.h>
 
 CPPUNIT_TEST_SUITE_REGISTRATION(CuckooSyncTest);
 
@@ -59,4 +60,26 @@ void CuckooSyncTest::setReconcileTest() {
     ZZ_p::init(randZZ());
 
     CPPUNIT_ASSERT(syncTest(client, server, false, false, false, false, false));
+}
+
+void CuckooSyncTest::testAddDelElement() {
+    const int ITEMS = 20;
+    CuckooSync cuckoo(8,8,8,8);
+
+    multiset<shared_ptr<DataObject>, cmp<shared_ptr<DataObject>>> elts;
+
+    // check that add works
+    for(int ii = 0; ii < ITEMS; ii++) {
+        shared_ptr<DataObject> item = make_shared<DataObject>(randZZ());
+        elts.insert(item);
+        CPPUNIT_ASSERT(cuckoo.addElem(item));
+    }
+
+    // check that delete works
+    for(const auto& dop : elts) {
+        CPPUNIT_ASSERT(cuckoo.delElem(dop));
+    }
+
+    CPPUNIT_ASSERT_EQUAL(0l, cuckoo.getNumElem());
+
 }
