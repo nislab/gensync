@@ -41,10 +41,10 @@ cmake.out_of_source     yes
 
 post-destroot {
     system "cd ${destroot}${prefix}/share/doc && mv gensync tmp && mv tmp ${name}"
-    xinstall -m 0644 ${worksrcpath}/../README \
+    xinstall -m 0644 ${worksrcpath}/README.md \
                      ${destroot}${prefix}/share/doc/${name}
-    xinstall -m 0644 ${worksrcpath}/../LICENSE \
+    xinstall -m 0644 ${worksrcpath}/LICENSE \
                      ${destroot}${prefix}/share/doc/${name}
-    xinstall -m 0644 ${worksrcpath}/../CITATION \
+    xinstall -m 0644 ${worksrcpath}/CITATION.cff \
                      ${destroot}${prefix}/share/doc/${name}
 }
