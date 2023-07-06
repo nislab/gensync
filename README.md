@@ -1,504 +1,225 @@
-# *GenSync*
-
-*GenSync* is a framework for benchmarking and optimizing
-reconciliation of data. It can be compiled to a shared library and
-integrated into other applications, or can be built as a standalone
-application and used to benchmark the implemented algorithms under a
-broad range of practical compute and network conditions (see below for
-the list of implemented [algorithms](#algorithms)).
-
-If you use this software, please cite the following paper (pdf,
-[DOI](http://doi.org/10.1109/TNSM.2022.3164369)):
-
-``` bibtex
-@ARTICLE{gensync,
-  author={Boškov, Novak and Trachtenberg, Ari and Starobinski, David},
-  journal={IEEE Transactions on Network and Service Management},
-  title={GenSync: A New Framework for Benchmarking and Optimizing Reconciliation of Data},
-  year={2022},
-  volume={},
-  number={},
-  pages={1-1},
-  doi={10.1109/TNSM.2022.3164369}
-}
-```
-
-- - -
-
-## Table Of Contents
-- [Concepts of *GenSync*](#concepts)
-  - [*GenSync* Interface](#concepts_GenSync)
-  - [*SyncMethod* Interface](#concepts_SyncMethod)
-  - [*Communicant*](#concepts_Communicant)
-  - [*BenchParams*](#concepts_BenchParams)
-  - [*BenchObserv*](#concepts_BenchObserv)
-  - [*Runner*](#concepts_Runner)
-  - [`mininet_exec`](#concepts_mininet_exec)
-  - [`run_experiments`](#concepts_run_experiments)
-    - [Remote testbed](#concepts_run_experiments_remote_testbed)
-- [Included Algorithms](#algorithms)
-- [Usage](#usage)
-  - [Compilation](#usage_compilation)
-- [Examples](#examples)
-- [License](#license)
-- [Contact](#contacts)
-- [Acknowledgments](#acknowledgments)
-
-- - -
-
-<a name="concepts"></a>
-## Concepts of *GenSync*
-
-*GenSync* includes several concepts that facilitate the integration
-into higher-level applications, allow for benchmarking, and unify
-algorithm implementations. The concepts of *GenSync* interface,
-*SyncMethod* interface, and *Communicant* are initially introduced by
-*CPISync*[^1]. We refine these concepts and introduce the five new
-ones (*BenchParams*, *BenchObserv*, *Runner*, `mininet_exec`, and
-`run_experiments`). Further we discuss the purpose and details of each
-concept.
-
-<img src="doc/figures/GenSyncUML.jpeg"
-     alt="Simplified UML diagram of the GenSync framework."
-     title="Simplified UML diagram of the GenSync framework." />
-
-<a name="concepts_GenSync"></a>
-### *GenSync* Interface
-*GenSync* interface is the core abstraction of the *GenSync*
-framework. It encompasses a generalized data representation (as
-`DataSet`), a set of `Communicant`s, and a set of `SyncMethod`s. When
-the framework is compiled in the benchmarking mode, a *GenSync* object
-will also contain the `BenchParams`, and `BenchObserv` files (see
-below for more details).
-
-The main purpose of this abstraction is to offer a unified
-reconciliation interface to all data sources, communication channels,
-and all protocol implementations. Besides that, it is also the basis
-for the fair comparison among the protocol implementations.
-
-<a name="concepts_SyncMethod"></a>
-### *SyncMethod* Interface
-*GenSync* framework implements set reconciliation in the server-client
-fashion. Thus, each set reconciliation algorithm needs to implement
-the two core functions:
-
-- `serverSyncBegin` which implements the client side of the algorithm, and
-- `clientSyncBegin` which implements the server side of the algorithm.
-
-Note that this separation is needed because not all set reconciliation
-protocols are symmetric. For example, IBLT-based set reconciliation
-requires different steps on client and server (similar is true for
-CPI).
-
-<a name="concepts_Communicant"></a>
-### *Communicant*
-*Communicant* is an abstraction for the communication channel. We have
-so far implemented TCP and String based communicants. The former is
-what we use by default, while the latter can be used when the nodes
-are disconnected in time or space (*i.e.,* there is no communication
-channel at the moment).
-
-<a name="concepts_BenchParams"></a>
-### *BenchParams*
-*BenchParams* serves as a data source for all *GenSync* algorithms. It
-can consume data from anything that conforms to the C++ stream
-abstraction. For example, we may have our server and client data in
-files (see [examples](#examples) below), or we may consume data from a
-network stream. Each node in the reconciliation process is associated
-with one *BenchParams* as its primary data source.
-
-Besides the data, *BenchParams* object also contains the information
-needed to construct a *SyncMethod*. This includes the specification of
-the algorithm that we want to use and its parameters. When the
-*GenSync* framework is compiled in the benchmarking mode (*i.e.,* the
-data is available upfront), we can infer optimal algorithm parameters
-from the data (see [`run_experimetns`](#concepts_run_experiments) for
-more details). Note that this is possible *only* in the benchmarking
-mode. In the reconciliation without a prior context (*i.e.,* parties
-do not know the data of the other party up front), inferring the
-optimal algorithm parameters may be a hard task (see the paper for
-more details).
-
-Besides consuming data from an existing data source *BenchParams*
-object can also generate its own data according to some random
-distribution (*e.g.,* Zipfian).
-
-A *BenchParams* object can be fully reconstructed from a file. Such
-files typically have the `.cpisync` extension and the following
-format:
-
-```
-Sync protocol (as in GenSync.h): <INTEGER_TO_IDENTIFY_PROTOCOL>
-<PROTOCOL_PARAMETERS>
-Sketches:
---------------------------------------------------------------------------------
-<BASE64_ENCODED_DATA_POINTS|REFERENCE_TO_OTHER_DATA_FILE>
-```
-
-Each Protocol has unique set of parameters. For example:
-- CPI
-```
-m_bar: <INT>
-bits: <INT>
-epsilon: <INT>
-partitions/pFactor(for InterCPISync): <INT>
-hashes: <true|false>
-```
-- IBLT
-```
-expected: <INT>
-eltSize: <INT>
-numElemChild: <INT>
-```
-- Cuckoo
-```
-fngprtSize: <INT>
-bucketSize: <INT>
-filterSize: <INT>
-maxKicks: <INT>
-```
-
-When we create multiple parameter files with the same data points,
-*GenSync* automatically detects that and uses file path references to
-save storage on the testbed machine.
-
-<a name="concepts_BenchObserv"></a>
-### *BenchObserv*
-A *BenchObserv* object represents an experimental observation. When
-*GenSync* is compiled in the benchmark mode for the purpose of
-experimentation, each experiment run generates one *BenchObserv* with
-the following content:
-
-- `BenchParams` parameters that are used in the experiment.
-- `success` indicates whether the synchronization has succeeded (is
-  server's and client's data exactly equal after reconciliation
-  protocol has completed),
-- `exception` the exception information if the program has failed to
-  execute, and
-- Reconciliation statistics that consist of:
-  - bytes sent by the server,
-  - bytes sent by the client,
-  - server idle time (time spent waiting for the message from the client),
-  - client idle time,
-  - server communication time (time spent sending the messages),
-  - client communication time,
-  - server computation time (time spent executing the algorithm operations),
-  - client computation time, and
-  - total time (total wall clock time from the moment when the client
-    initiates the communications to the moment when the protocol has
-    completed).
-
-Note that the previous works typically only report the overall
-computation time, which makes *GenSync* unique.
-
-<a name="concepts_Runner"></a>
-### *Runner*
-When *GenSync* is compiled with its benchmarking suite, the *Runner*
-serves as the benchmarking entry point. The runner program is called
-`Benchmarks` and has the following interface:
-
-```
-Usage: ./Benchmarks -p PARAMS_FILE [OPTIONS]
-
-Do not run multiple instances of -m server or -m client in the same
-directory at the same time. When server and client are run in two
-separate runs of this script, a lock file is created in the current
-directory.
-
-OPTIONS:
-    -h print this message and exit
-    -p PARAMS_FILE to be used.
-    -g whether to generate sets or to use those from PARAMS_FILE.
-       In SERVER and CLIENT modes data from PARAMS_FILE is always used.
-       The first set from PARAMS_FILE is loaded into the peer.
-    -i ADD_ELEM_CHUNK_SIZE add elements incrementally in chunks.
-       Synchronization is invoked after each chunk is added.
-       Can be used only when data is consumed from parameter files
-       and this script is run in either SERVER or CLIENT mode.
-    -m MODE mode of operation (can be "server", "client", or "both")
-    -r PEER_HOSTNAME host name of the peer (requred when -m is client)
-```
-
-The *Runner* can invoke any *GenSync* algorithm on arbitrary data
-(provided in `PARAM_FILE`), or can generate the random data. It also
-supports two reconciliation types (*i.e.,* one-time and
-incremental). The *Runner* can run the client and the server on the
-same machine, or can be run on two remote machines.
-
-<a name="concepts_mininet_exec"></a>
-### `mininet_exec`
-The program that integrates *GenSync* set reconciliation protocols and
-[Mininet](http://mininet.org/) is called `mininet_exec` and you can
-find it in [`/mininet_exec`](/mininet_exec). By default,
-`mininet_exec` instantiates the two Mininet nodes and runs separate
-*Runner*s in each of them. It achieves so by running the *Runner* in
-the server mode on one host and in the client mode on the other. It
-uses the single switch and two hosts topology. `mininet-exec` has the
-following interface:
-
-```
-Runs arbitrary programs within mininet nodes in a single-switch-two-nodes
-topology.
-Network parameters and the computational power of nodes are adjustable.
-
-positional arguments:
-  SERVER_SCRIPT         script that runs within the server (server node IP is 192.168.1.1, host name h1).
-  CLIENT_SCRIPT         script that runs within the client (client node IP is 192.168.1.2, host name h2).
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -l LATENCY, --latency LATENCY
-                        symmetric latency between server and client (in ms).
-  -b BANDWIDTH, --bandwidth BANDWIDTH
-                        bandwidth on each node to switch link (in Mbps)
-  -pl PACKET_LOSS, --packet-loss PACKET_LOSS
-                        packet loss on each node to switch link (in percentages, e.g., 10).
-  -cpus CPU_SERVER, --cpu-server CPU_SERVER
-                        CPU share of the server (in percentages, e.g., 33).
-  -cpuc CPU_CLIENT, --cpu-client CPU_CLIENT
-                        CPU share of the client (in percentages, e.g., 33).
-  --ping-iperf          if passed, ping and iperf tests between server and client are run before running the scripts.
-```
-
-<a name="concepts_run_experiments"></a>
-### `run_experiments`
-The focal point of the *GenSync* benchmarking infrastructure is the
-`run_experiments` program. It orchestrates all parts of the *GenSync*
-framework and allows for easy benchmarking. Typical inputs to
-`run_experiments` program are:
-1. Two `PARAM_FILE`s (representing server and client data, and the
-   protocol specification). Instead of using only two `PARAM_FILE`s,
-   you can specify the directory that contains many of them (as
-   `params_dir` in [`run/run_experiments.sh`](run/run_experiments.sh))
-   and they will be run in alphabetical order. This is particularly
-   useful when we want to run many experiments as a batch job.
-2. Network parameters in the following form:
-```
-latency=<INT>  # in milliseconds
-bandwidth="<INT_UPLOAD>/<INT_DOWNLOAD>" | <INT>  # when <INT>, bandwidth is symmetrical
-packet_loss=<DOUBLE>  # for example, 0.01 for 0.01% packet loss
-```
-3. Compute parameters of the nodes where each integer represents the compute power **relative to the single-thread score of the testbed machine** (you can find these scores at [cpubenchmark.net](https://www.cpubenchmark.net/) or any other place of your choice):
-```
-cpu_server=<INT>  # for example, 33 for 33% of testbed CPU
-cpu_client=<INT>
-```
-Please see the paper for more details on how we constrain the compute power of the nodes.
-
-The outputs of the `run_experiment` program are as follows:
-1. `.cpisync` directory is created in the current working directory
-   and it contains an experimental observation for each experiment
-   run. These experimental observations can be obtained as CSV files
-   using the `-p` option of the `run_experiments` program (see the
-   full interface below).
-2. `.mnlog` directory is created in the same location and contains the
-   logs from the two Mininet hosts.
-
-By default, each experiment runs 100 times. To adjust this, see
-`repeat` variable in
-[`run/run_experiments.sh`](run/run_experiments.sh).
-
-To persist the benchmark settings, you can specify the values of all
-`run_experiments` parameters in
-[`run/run_experiments.sh`](run/run_experiments.sh) file directly.
-
-The `run_experiments` program has the following interface:
-
-```
-USAGE: ./run_experiments.sh [-q] [-s] [-i] [-r REMOTE_PATH] [-p EXPERIMENT_DIR] [-pp PULL_REMOTE]
-
-See the beginning of this script to set the parameters for experiments.
-
-OPTIONS:
-    -r REMOTE_PATH the path on remote to copy all the needed parts to.
-    -p EXPERIMENT_DIR make a csv file out of this dir, and pull it to the local working directory.
-    -pp PULL_REMOTE pull from here to my DATA/. Used to gather data from experimetns.
-    -s used with -r when we only want to prepare an experiment on remote but not to run it.
-    -q when this script is run on a remote set this.
-    -i ignore mininet and run the client and the server on bare machine.
-    -f force recreating param files' headers (works only with params_dir).
-
-EXAMPLES:
-    # runs locally
-    ./run_experiments.sh
-    # runs on remote
-    ./run_experiments.sh -r remote_name:/remote/path
-    # collects data on remote and makes CPI_Experiment_1.csv locally
-    ./run_experiments.sh -p remote_name:/home/novak/EXPERIMENTS/CPI_Experiment_1
-    # pulls the experimental data from the remote. Creates DATA/CPISync/1/.cpisync
-    ./run_experiments.sh -pp remote_name:/home/novak/EXPERIMENTS/./CPISync/1/.cpisync
-
-If a remote machine is used, it needs the following dependencies:
-    - Mininet,
-    - Python 3 (with Mininet API),
-    - CPISync dependencies (see cpisync/README.md), and
-    - Ninja build system.
-CPISync source code will be compiled on the remote machine.
-```
-
-`run_experiment` contains some other useful features that we omit
-here. To learn more about them, please refer to
-[`run/run_experiments.sh`](run/run_experiments.sh) directly.
-
-<a name="concepts_run_experiments_remote_testbed"></a>
-#### Remote testbed
-We typically use `run_experiments` on a dedicated physical testbed
-server to minimize the interference with other
-processes. `run_experiments.sh` allows you to run the program itself
-on your local machine (*e.g.,* your laptop) while the experiments are
-run on a remote testbed:
-
-```
-$ ./run_experiments.sh -r remote_name:/remote/path
-```
-
-Then pull the experimental observations as CSV files back to your
-local machine:
-
-```
-$ ./run_experiments.sh -p remote_name:/remote/path
-```
-
-For this to work, your remote testbed machine must satisfy all the
-`run_experiments` dependencies (see above) and you laptop needs
-[`rsync`](https://man7.org/linux/man-pages/man1/rsync.1.html)
-(alongside standard Linux user tools).
-
-<a name="algorithms"></a>
-## Included Algorithms
-
-*GenSync* currently supports the following set reconciliation
-protocols:
-
-- Characteristic Polynomial Interpolation-based set reconciliation
-  (CPI). The main theoretical underpinnings are introduced in:
-  - Y. Minsky, A. Trachtenberg, and R. Zippel, "Set Reconciliation
-    with Nearly Optimal Communication Complexity", IEEE Transactions
-    on Information Theory, 2003.
-  - Y. Minsky and A. Trachtenberg, "Scalable set reconciliation" 40th
-    Annual Allerton Conference on Communication, Control, and
-    Computing, 2002.
-- Interactive CPI is an extension of CPI to support interactive
-  reconciliation.
-- Prioritized CPI is an extension of CPI to support elements with
-  different priorities.
-- Invertible Bloom Lookup Tables-based set reconciliation (IBLT). The
-  main theoretical underpinnings are introduced in:
-  - Eppstein et al. "What's the difference? Efficient set
-    reconciliation without prior context." ACM SIGCOMM Computer
-    Communication Review, 2011.
-  - M. Goodrich and M. Mitzenmacher, "Invertible bloom
-    lookup tables." 2011 49th Annual Allerton Conference on
-    Communication, Control, and Computing (Allerton). IEEE, 2011.
-  - M. Mitzenmacher, and T. Morgan, "Reconciling graphs and sets of
-    sets." Proceedings of the 37th ACM SIGMOD-SIGACT-SIGAI Symposium
-    on Principles of Database Systems. ACM, 2018.
-- Cuckoo filters-based set reconciliation. The theoretical basis
-  introduced in:
-  - Fan et al., "Cuckoo filter: Practically better than bloom."
-    Proceedings of the 10th ACM International on Conference on
-    emerging Networking Experiments and Technologies. 2014.
-  - Luo et al., "Set reconciliation with cuckoo filters."  Proceedings
-    of the 28th ACM International Conference on Information and
-    Knowledge Management. 2019.
-  - Shangsen, et al. "Multiset Synchronization with Counting Cuckoo
-    Filters." International Conference on Wireless Algorithms,
-    Systems, and Applications. Springer, Cham, 2020.
-
-For more implementation details as well as the full list of the CPI
-variants that we have implement see [doc/README.md](doc/README.md).
-
-<a name="usage"></a>
-## Usage
-As we mentioned before, *GenSync* has two modes of operation; 1) as a
-library for integration into higher-level applications, and 2) the
-benchmarking mode. The list of the set reconciliation protocols that
-we support is the same in both cases. For the usage as a library refer
-to [`use-instructions`](/doc#use-instructions). For the benchmarking
-purposes, please see [*Runner*](#concepts_Runner),
-[`mininet_exec`](#concepts_mininet_exec), and
-[`run_experiments`](#concepts_run_experiments).
-
-<a name="usage_compilation"></a>
-### Compilation
-The only external dependencies you will need to run GenSync are
-[NTL](https://libntl.org/) and [GNU GMP](https://gmplib.org/). Many
-Linux distributions already have NTL and GNU GMP in their package
-archives (*e.g.,*
-[Debian](https://packages.debian.org/sid/libntl-dev),
-[Ubuntu](https://packages.ubuntu.com/bionic/libntl-dev),
-[Fedora](https://src.fedoraproject.org/rpms/ntl),
-[Arch](https://archlinux.org/packages/community/x86_64/ntl/)).
-
-If you use Debian, or a derivative such as Ubuntu, you can install all
-dependencies using:
-
-``` shell
-$ apt-install -y libntl-dev libgmp3-dev  # NTL and GNU GMP dependencies
-$ apt-install -y build-essential cmake libcppunit-dev  # for building and testing
-```
-
-To compile *GenSync* use:
-
-``` shell
-$ git clone --recurse-submodules git@github.com:nislab/gensync.git
-$ cd gensync
-$ cmake -B build
-$ cmake --build build
-```
-
-The compilation process produces a static library that you can include
-in other projects (as `.deb` and `.rpm` packages), and all the
-standalone executables that you need for benchmarking.
-
-Troubleshooting this process:
-
-
-For the cmake commands to work, please make sure that the NTL, GNU GMP, and 
-cppunit are installed correctly.
-
-
-Also make sure that the CMakeLists.txt file refers to the proper path that 
-all the directories are in. Specifically, you may need to update the directories
-in the link_directories commands. Update these paths
-to the paths of the same directories on your personal machiene.
-
-<a name="examples"></a>
-## Examples
-For this to work you will need
-- Linux machine with superuser privileges,
-- Mininet with Python API (see [here](http://mininet.org/download/)), and
-- *GenSync* (compile as [above](#usage_compilation)).
-
-To try *GenSync*, you will need `PARAM_FILE`s. We provide the default
-ones in [`/example`](/example). The current version of the
-`run_experiment` program already refers to them. Without modifying any
-files, you can try *GenSync* running the following commands:
-
-```
-$ cd run
-$ ./run_experiments.sh
-```
-
-See [`run_experiments`](#concepts_run_experiments) for more details on
-how to gauge the benchmark parameters and analyze the experimental
-observations.
-
-<a name="acknowledgments"></a>
-## Acknowledgments
-
-This project was supported in part by the National Science Foundation (NSF).
-
-<a name="license"></a>
-## License
-
-General Public License v3.0 (GPL-3.0).
-
-<a name="contacts"></a>
-## Contacts
-
-- Novak Boskov ([boskov@bu.edu](mailto:boskov@bu.edu))
-- Ari Trachtenberg ([trachten@bu.edu](mailto:trachten@bu.edu))
-- David Starobinski ([staro@bu.edu](mailto:staro@bu.edu))
-
-[^1]: A version of *CPISync* is also maintained [here](https://github.com/trachten/cpisync). Although we are actively working to integrate the two projects, *CPISync* currently does *not* include the *GenSync* benchmarking infrastructure and abstractions improvements that are contained in this repository. Our final goal is to merge the two projects into one.
+# CPISync
+
+This is the source code for set reconciliation from the CPISync project by [BU NISLAB](http://nislab.bu.edu).
+
+Current Version - 2.0.3
+
+------------------------------
+
+
+## References:
+
+ The code, explanation, references, API, and a demo can be found on this
+ web page.  If you use this work, please cite any relevant papers below.
+
+The main theoretical bases for the approaches in this work are:
+   * Y. Minsky, A. Trachtenberg, and R. Zippel,
+    "Set Reconciliation with Nearly Optimal Communication Complexity",
+    IEEE Transactions on Information Theory, 49:9.
+    <http://ipsit.bu.edu/documents/ieee-it3-web.pdf>
+    
+   * Y. Minsky and A. Trachtenberg,
+    "Scalable set reconciliation"
+    40th Annual Allerton Conference on Communication, Control, and Computing, 2002.
+    <http://ipsit.bu.edu/documents/BUTR2002-01.pdf>
+
+Relevant applications and extensions can be found at:
+   * D. Starobinski, A. Trachtenberg and S. Agarwal,
+    "Efficient PDA synchronization"
+    IEEE Transactions on Mobile Computing 2:1, pp. 40-51 (2003).
+    <http://ipsit.bu.edu/documents/efficient_pda_web.pdf>
+  
+   * S. Agarwal, V. Chauhan and A. Trachtenberg,
+    "Bandwidth efficient string reconciliation using puzzles"
+    IEEE Transactions on Parallel and Distributed Systems 17:11,pp. 1217-1225 (2006).
+    <http://ipsit.bu.edu/documents/puzzles_journal.pdf>
+
+   *  M.G. Karpovsky, L.B. Levitin. and A. Trachtenberg,
+    "Data verification and reconciliation with generalized error-control codes"
+    IEEE Transactions on Information Theory 49:7, pp. 1788-1793 (2003).
+
+   * More at <http://people.bu.edu/trachten>.
+
+Additional algorithms:
+   * Eppstein, David, et al. "What's the difference?: efficient set reconciliation without
+   prior context." ACM SIGCOMM Computer Communication Review 41.4 (2011): 218-229.
+
+   * Goodrich, Michael T., and Michael Mitzenmacher. "Invertible bloom lookup tables."
+   49th Annual Allerton Conference on Communication, Control, and Computing (Allerton), 2011.
+
+   * Mitzenmacher, Michael, and Tom Morgan. "Reconciling graphs and sets of sets."
+   Proceedings of the 37th ACM SIGMOD-SIGACT-SIGAI Symposium on Principles of Database
+   Systems. ACM, 2018.
+
+## Contributors:
+
+  Elements of the CPISync project code have been worked on, at various points, by:
+
+  @ Ari Trachtenberg
+
+  @ Sachin Agarwal 
+
+  @ Paul Varghese
+
+  @ Jiaxi Jin
+
+  @ Jie Meng
+
+  @ Alexander Smirnov
+
+  @ [Eliezer Pearl](http://eliezer.tk) 
+  
+  @ Sean Brandenburg
+  
+  @ Zifan Wang
+  
+  @ Novak Boškov 
+
+
+## Compilation:
+
+* Dependencies:
+   * [NTL](http://www.shoup.net/ntl/) - A library for doing Number Theory (>9.5) 
+       - ptheads - may be required depending on how NTL is configured
+       - gmp - may be required depending on how NTL is configured
+   * [cppunit](http://cppunit.sourceforge.net/doc/cvs/index.html) - For testing
+   * [cmake](https://cmake.org) - For building
+
+- Ensure that compiler flags for relevant libraries are included (`-lCPISync -lntl -lpthread -lgmp` etc.)
+   - May also need to include `-std=c++11` on some devices
+ 
+* Dependency Install Linux
+    * `sudo apt install cmake libgmp3-dev libcppunit-dev libpthread-stubs0-dev`
+    *  NTL must be installed manually from the link above  
+
+
+## Installation:
+ **MacOS & Linux**  
+ 1. Install dependencies, download the project and navigate to the project folder in terminal
+ 2. Run the following commands in the project directory (The directory containing CMakeLists.txt)
+    - `cmake .`
+    - `sudo make install`
+ 3. Run `./UnitTest` to ensure that the install has run successfully
+
+    *OR*
+
+ 1\.  Run the .deb or .rpm files included on a compatible linux system
+
+
+
+
+ **Windows** - Not currently supported
+
+
+## Use Instructions:
+  - *Include Statements:* `#include <CPISync/(Aux/Data/Communicants/Syncs)/(The module you want to use).h>`
+
+  1. Initialize a `GenSync` object with the constructor or builder helper class on the client and server machine
+          
+     ```cpp
+         GenSync::Builder builder = GenSync::Builder().
+            setProtocol(GenSync::SyncProtocol::CPISync).  //CPISync,InterCPISync, ProbCPISync, IBLTSync, FullSync, etc.
+            setComm(GenSync::SyncComm::socket). //CommSocket or CommString
+            setPort(8001).
+            setHost(localhost).
+         
+            //Set the parameters for your specific sync type (Not the same for every protocol. See GenSync build parameters section)
+            setBits(64). // Bits per element
+            setMbar(256). // Max differences to sync
+            setErr(7); // -log_2(prob of error) to allow for errors that might otherwise underflow
+            
+         GenSync mySyncClientOrServer = builder.build();
+     ```
+     
+  2. Add elements to your GenSyncs (If you need to add large elements use the ZZ class from NTL)
+     * You may manually create a shared_ptr<DataObject> (Data/DataObject.h) or pass a data type compatible with DataObject and one will be automatically created for you, returning a pointer to the newly created DataObject
+     ```cpp
+         mySyncClientOrServer.addElem(myZZ);
+         mySyncClientOrServer.addElem(myLong);
+         mySyncClientOrServer.addElem(myInt);
+         mySyncClientOrServer.addElem(myMultiSet); // Multisets are serialized for use in IBLTSetOfSets. This does NOT add each element in the multiset to your sync.
+     ```
+     
+     
+  3. Run serverSyncBegin and clientSyncBegin on the server and client respectively
+     ```cpp
+         mySyncServer.serverSyncBegin(0); //Add the index of the sync you would like to perform
+         mySyncClient.clientSyncBegin(0);  //Multiple syncs or communicants may be added to one GenSync
+     ```
+  
+  4. Collect relevant statistics
+     ```cpp
+        //The sync index is decided by the order you added your sync in
+        //If your GenSync has only 1 sync the index is 0
+         mySyncClient.printStats(syncIndex); //Returns a string of formatted stats about your sync
+         mySyncClient.mySyncVec[syncIndex]->getName(); //Retruns the name and parameters for your sync
+         mySyncClient.getXmitBytes(syncIndex); //Returns the number of bytes transmitted by this sync
+         mySyncClient.getRecvBytes(syncIndex); //Returns the number of bytes received by this sync
+         mySyncClient.getCommTime(syncIndex); //Returns the amount of time in seconds that the sync spent sending and receiving info through a socket
+         mySyncClient.getIdleTime(syncIndex); //The amount of time spent waiting for a connection or for a peer to finish computation
+         mySyncClient.getCompTime(syncIndex); //The amount of time spent doing computations
+
+         
+     ```
+     
+
+## Sync Types:
+   * **Included Sync Protocols (Sets and Multisets):**
+       * CPISync
+            * Sync using the protocol described [here](http://ipsit.bu.edu/documents/ieee-it3-web.pdf). The maximum number of differences that can be reconciled must be bounded by setting mBar. The server does the necessary computations while the client waits, and returns the required values to the client
+       * CPISync_OneLessRound
+            * Perform CPISync with set elements represented in full in order to reduce the amount of rounds of communication by one (No hash inverse round of communication). The server does the necessary computations while the client waits, and returns the required values to the client
+       * OneWayCPISync
+            * Perform CPISync in one direction, only adding new elements from the client to the server. The client's elements are not updated. The server does the necessary computations and determines what elements they need to add to their set. The client does not receive a return message and does not have their elements updated
+       * ProbCPISync
+            * Perform CPISync with a given mBar but if the amount of differences is larger than that, double mBar until the sync is successful. The server does the necessary computations while the client waits, and returns the required values to the client
+       * InteractiveCPISync
+            * Perform CPISync but if there are more than mBar differences, divide the set into `numPartitions` subsets and attempt to CPISync again. This recurses until the sync is successful. The server does the necessary computations while the client waits, and returns the required values to the client
+       * FullSync
+            * The client sends the server its set contents and the server determines what elements it needs from the clients set. The server also determines what elements the client needs and sends them back.
+       * IBLTSync
+            * Each peer encodes their set into an [Invertible Bloom Lookup Table](https://arxiv.org/pdf/1101.2245.pdf) with a size determined by NumExpElements and the client sends their IBLT to their per. The differences are determined by "subtracting" the IBLT's from each other and attempting to peel the resulting IBLT. The server peer then returns the elements that the client peer needs to update their set
+       * OneWayIBLTSync
+            * The client sends their IBLT to their server peer and the server determines what elements they need to add to their set. The client does not receive a return message and does not update their set
+       * CuckooSync
+            * Each peer encodes their set into a [cuckoo filter](https://www.cs.cmu.edu/~dga/papers/cuckoo-conext2014.pdf). Peers exchange their cuckoo filters. Each host infers the elements that are not in its peer by looking them up in the peer's cuckoo filter. Any elements that are not found in the peer's cuckoo filter are sent to it.
+   * **Included Sync Protocols (Set of Sets):**
+       * IBLT Set of Sets
+            * Sync using the protocol described [here](https://arxiv.org/pdf/1707.05867.pdf). This sync serializes an IBLT containing a child set into a bitstring where it is then treated as an element of a larger IBLT. Each host recovers the IBLT containing the serialized IBLTs and deserializes each one. A matching procedure is then used to determine which child sets should sync with each other and which elements they need. If this sync is two way this info is then sent back to the peer node. The number of differences in each child IBLT may not be larger than the total number of sets being synced
+
+## GenSync Builder Parameters:
+* **setProtocol:** Set the protocol that your sync will execute (from the list above)
+    * *All syncs*
+*  **setComm:** Set the communication method your sync will use (CommSocket and CommString). Comm String is for local testing
+    * *All Syncs*
+*  **setPort & setHost:** Set the port & host that your socket will use
+    * *Any socket based syncs*
+*  **setIOString:** Set the string with which to synchronize
+    * *Only for CommString based syncs*
+*  **setBits:** The number of bits that represent each element in the set
+    * *All syncs except FullSync*
+*  **setMbar:** The maximum number of symmetric differences that can be synced by a CPISync
+    * *All CPISync variants*
+*  **setErr:** The negative log base 2 of the probability of error you would like to use to bound your sync
+    * *All CPISync variants*
+* **setHashes:** If true, elements are hashed non-trivially (Must be true to synchronize multisets)
+    * *All CPISync variants*
+* **setNumPartitions:** The number of partitions that InterCPISync should recurse into if it fails
+    * *InteractiveCPISync*
+* **setExpNumElems:** The maximum number of differences that you expect to be placed into your IBLT. If you are doing IBLTSetOfSets this is the number of child sets you expect
+    * *IBLTSync, OneWayIBLTSync & IBLTSetOfSets*
+* **setExpNumElemChild:** Set the upper bound for number of elements in each child set
+    * *IBLTSetOfSets*
+* **setDataFile:** Set the data file containing the data you would like to populate your GenSync with
+    * *Any sync you'd like to do this with*
+
+
+
+## Documentation
+More documentation may be found in the [documents](doc/) folder:
+#  [General usage](doc/README.md)
+#  [Data structures](doc/dataStructures)
+
+Acknowledgments:  NSF
+
+Ari Trachtenberg, trachten@bu.edu, Boston University
