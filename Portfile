@@ -40,6 +40,7 @@ depends_lib             port:ntl
 cmake.out_of_source     yes
 
 post-destroot {
+    system "cd ${destroot}${prefix}/share/doc && mv gensync tmp && mv tmp ${name}"
     xinstall -m 0644 ${worksrcpath}/../README \
                      ${destroot}${prefix}/share/doc/${name}
     xinstall -m 0644 ${worksrcpath}/../LICENSE \
