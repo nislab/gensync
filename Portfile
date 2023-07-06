@@ -38,3 +38,10 @@ depends_build-append    port:cppunit
 depends_lib             port:ntl
 
 cmake.out_of_source     yes
+
+post-destroot {
+    xinstall -m 0644 ${worksrcpath}/../README \
+                     ${destroot}${prefix}/share/doc/${name}
+    xinstall -m 0644 ${worksrcpath}/../LICENSE \
+                     ${destroot}${prefix}/share/doc/${name}
+}
