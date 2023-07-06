@@ -5,7 +5,7 @@ PortGroup               cmake 1.1
 PortGroup               github 1.0
 
 github.setup            nislab gensync 1.0.2 v
-git.branch              1.0.2
+git.branch              vanilla
 
 name                    gensync
 version                 1.0
