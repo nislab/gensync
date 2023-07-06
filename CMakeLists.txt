@@ -33,15 +33,6 @@ set(COMM_DIR_INC ${INCLUDE}/Communicants)
 set(SYNC_DIR_INC ${INCLUDE}/Syncs)
 set(SYNC_BENCH_INC ${INCLUDE}/Benchmarks)
 
-# Test directory structure
-set(TEST_DIR tests)
-set(UNIT_TEST_DIR ${TEST_DIR}/unit)
-set(SYSLONG_TEST_DIR ${TEST_DIR}/sys/long)
-set(BENCHMARK_TEST_DIR ${TEST_DIR}/sys/benchmark)
-
-# Set location of the test runner
-set(TEST_RUNNER ${TEST_DIR}/testRunner.cpp)
-
 # Set file config
 set(SOURCE_FILES
 
@@ -130,7 +121,7 @@ set(HEADERS
         ${SYNC_BENCH_INC}/FromFileGen.h)
 
 include_directories(include)
-include_directories(tests)
+
 # Users may need to update these paths
 include_directories(/opt/local/include)
 link_directories(/opt/local/lib)
@@ -150,38 +141,6 @@ install(TARGETS cpisync LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} ARCHIVE DEST
 install(DIRECTORY DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/CPISync) #create a new folder for CPISync inside of the system include directory
 install(DIRECTORY ${AUX_DIR_INC} ${DATA_DIR_INC} ${COMM_DIR_INC} ${SYNC_DIR_INC} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/CPISync COMPONENT devel) #copy the contents of the include folder into the system include directory
 
-# Add the TryMe executable
-add_executable(TryMe ${SRC_DIR}/TryMe.cpp)
-target_link_libraries(TryMe cpisync ntl cppunit pthread gmp)
-
-# Benchmarks
-add_executable(Benchmarks ${BENCH_DIR}/Runner.cpp)
-target_link_libraries(Benchmarks cpisync ntl cppunit pthread gmp)
-
-# Tools
-add_executable(EncodeJoin ${TOOLS_DIR}/EncodeJoin.cpp)
-target_link_libraries(EncodeJoin cpisync ntl pthread gmp)
-
-# Define a macro for adding executables testing multiple files
-# @param dir The relative path to the folder containing test files to add
-# @param name The executable name
-macro(add_group_test dir name)
-    FILE(GLOB testPaths ${dir}/*Test.cpp ${dir}/*Tests.cpp)
-    ADD_EXECUTABLE(${name} ${TEST_RUNNER} ${testPaths})
-
-    FOREACH(test ${testPaths})
-        GET_FILENAME_COMPONENT(testName ${test} NAME_WE)
-        TARGET_LINK_LIBRARIES(${name} cpisync ntl cppunit pthread gmp)
-        ADD_TEST(${testName} ${name})
-    ENDFOREACH(test)
-endmacro()
-
-# Add test groups (note: executable will throw errors if there are no tests in the respective folder)
-add_group_test(${UNIT_TEST_DIR} UnitTest)
-#add_group_test(${SYSSHORT_TEST_DIR} SystemShortTests)
-add_group_test(${SYSLONG_TEST_DIR} SystemLongTest)
-#add_group_test(${SYSSHORT_TEST_DIR} SystemShortTests)
-add_group_test(${BENCHMARK_TEST_DIR} Benchmark)
 
 #Packaging
 set(CPACK_GENERATOR "RPM;DEB")
