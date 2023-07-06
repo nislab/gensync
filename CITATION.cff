@@ -21,6 +21,18 @@ authors:
     email: staro@bu.edu
     affiliation: Boston University
     orcid: 'https://orcid.org/0000-0002-8071-3865'
+  - given-names: Xingyu
+    family-names: Chen
+    email: chxy517@bu.edu
+    affiliation: Boston University
+  - given-names: Nathan
+    family-names: Strahs
+    email: nstrahs@bu.edu
+    affiliation: Boston University
+  - given-names: David
+    family-names: Starobinski
+    email: staro@bu.edu
+    affiliation: Boston University
 preferred-citation:
   type: article
   journal: IEEE Transactions on Network and Service Management
