@@ -44,4 +44,6 @@ post-destroot {
                      ${destroot}${prefix}/share/doc/${name}
     xinstall -m 0644 ${worksrcpath}/../LICENSE \
                      ${destroot}${prefix}/share/doc/${name}
+    xinstall -m 0644 ${worksrcpath}/../CITATION \
+                     ${destroot}${prefix}/share/doc/${name}
 }
