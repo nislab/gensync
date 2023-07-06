@@ -29,9 +29,9 @@ post-fetch {
     system -W ${worksrcpath} "git submodule update --init --recursive"
 }
 
-checksums               rmd160  e2b5bd538c8f10905823f0420c631e9260c1862c \
-                        sha256  5e7cf11ed621c8a716f9d7e74cf6c076f4e5264561f475e12feb5142f0001758 \
-                        size    6679091
+checksums               rmd160  94f97538bd1c061a901ef310e504fe8a866f4864 \
+                        sha256  8642fc845b19d6313f3dfc811760c586997846abdcdb076dbfacd4a2b76d7256 \
+                        size    198540
 
 depends_build-append    port:cppunit
 
