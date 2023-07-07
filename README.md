@@ -15,6 +15,7 @@ Current Version - 2.0.4
 - [References](#References)
 - [Contributors](#Contributors)
 - [Installation/Compilation](#Installation/Compilation)
+- [Examples](#Examples)
 
 <a name="UseInstructions"></a>
 ## Use Instructions:
@@ -207,9 +208,55 @@ Additional algorithms:
    * [cppunit](http://cppunit.sourceforge.net/doc/cvs/index.html) - For testing
    * [cmake](https://cmake.org) - For building
 
+<a name="Examples"></a>
+## Examples
+TryMe.cpp
+```cpp
+#include <iostream>
+#include <GenSync/Syncs/GenSync.h>
 
+int main() {
+  GenSync host1 = GenSync::Builder().
+    setProtocol(GenSync::SyncProtocol::CPISync).
+    setComm(GenSync::SyncComm::socket).
+    setMbar(5).
+    build();
 
+    GenSync host2 = GenSync::Builder().
+    setProtocol(GenSync::SyncProtocol::CPISync).
+    setComm(GenSync::SyncComm::socket).
+    setMbar(5).
+    build();
 
+    host1.addElem(make_shared<DataObject>('a'));
+    host1.addElem(make_shared<DataObject>('b'));
+    host1.addElem(make_shared<DataObject>('c'));
+
+    host2.addElem(make_shared<DataObject>('b'));
+    host2.addElem(make_shared<DataObject>('d'));
+
+    if (fork()) {
+      host2.serverSyncBegin(0);
+      cout << "host2 now has ";
+      for (auto &i: host2.dumpElements())
+	    cout << i << " ";
+     
+    }
+    else {
+      host1.clientSyncBegin(0);
+      cout << "host1 now has ";
+      for (auto &i: host1.dumpElements())
+	    cout << i << " ";
+    }
+}
+
+```
+To compile this program, follow the instructions below:
+
+```shell
+$ g++ -I/opt/local/include -L/opt/local/lib -std=c++11 tryme.cpp -lgensync -lntl -c tryme
+$ ./tryme
+```
 Acknowledgments:  NSF
 
 Ari Trachtenberg, trachten@bu.edu, Boston University
