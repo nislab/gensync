@@ -215,11 +215,6 @@ Additional algorithms:
 
 
 
-## Documentation
-More documentation may be found in the [documents](doc/) folder:
-#  [General usage](doc/README.md)
-#  [Data structures](doc/dataStructures)
-
 Acknowledgments:  NSF
 
 Ari Trachtenberg, trachten@bu.edu, Boston University
