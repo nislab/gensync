@@ -254,7 +254,7 @@ int main() {
 To compile this program, use:
 
 ```shell
-$ g++ -I/opt/local/include -L/opt/local/lib -std=c++11 TryMe.cpp -lgensync -lntl -c tryme
+$ g++ -I/opt/local/include -L/opt/local/lib -std=c++11 TryMe.cpp -lgensync -lntl -o tryme
 $ ./tryme
 ```
 
