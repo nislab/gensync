@@ -9,13 +9,11 @@ Current Version - 2.0.4
 
 ## Table Of Contents
 - [Usage](#UseInstructions)
-- [Included Algorithms](#algorithms)
-- [Usage](#usage)
-  - [Compilation](#usage_compilation)
-- [Examples](#examples)
-- [License](#license)
-- [Contact](#contacts)
-- [Acknowledgments](#acknowledgments)
+- [Builder Parameters](#BuilderParameters)
+- [Sync Types](#SyncTypes)
+- [Refrences](#Refrences)
+- [Contributors](#Contributors)
+- [Installation/Compilation](#Installation/Compilation)
 
 <a name="UseInstructions"></a>
 ## Use Instructions:
@@ -69,7 +67,7 @@ Current Version - 2.0.4
          
      ```
 
-
+<a name="BuilderParameters"></a>
 ## GenSync Builder Parameters:
 * **setProtocol:** Set the protocol that your sync will execute (from the list above)
     * *All syncs*
@@ -96,7 +94,7 @@ Current Version - 2.0.4
 * **setDataFile:** Set the data file containing the data you would like to populate your GenSync with
     * *Any sync you'd like to do this with*
 
-
+<a name="SyncTypes"></a>
 ## Sync Types:
    * **Included Sync Protocols (Sets and Multisets):**
        * CPISync
@@ -121,6 +119,7 @@ Current Version - 2.0.4
        * IBLT Set of Sets
             * Sync using the protocol described [here](https://dl.acm.org/doi/abs/10.1145/3196959.3196988). This sync serializes an IBLT containing a child set into a bitstring where it is then treated as an element of a larger IBLT. Each host recovers the IBLT containing the serialized IBLTs and deserializes each one. A matching procedure is then used to determine which child sets should sync with each other and which elements they need. If this sync is two way this info is then sent back to the peer node. The number of differences in each child IBLT may not be larger than the total number of sets being synced
 
+<a name="Refrences"></a>
 ## References:
 
  The code, explanation, references, API, and a demo can be found on this
@@ -165,6 +164,7 @@ Additional algorithms:
    Proceedings of the 37th ACM SIGMOD-SIGACT-SIGAI Symposium on Principles of Database
    Systems. ACM, 2018.
 
+<a name="Contributors"></a>
 ## Contributors:
 
   Elements of the CPISync project code have been worked on, at various points, by:
@@ -193,7 +193,7 @@ Additional algorithms:
 
   @ Nathan Strahs
 
-
+<a name="Installation/Compilation"></a>
 ## Installation/Compilation:
 
 * Troubleshooting
