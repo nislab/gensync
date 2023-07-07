@@ -7,19 +7,21 @@ application and used to benchmark the implemented algorithms under a
 broad range of practical compute and network conditions (see below for
 the list of implemented [algorithms](#algorithms)).
 
-If you use this software, please cite the following paper (pdf,
-[DOI](http://doi.org/10.1109/TNSM.2022.3164369)):
+If you use this software in your works, please cite the following paper ([DOI](http://doi.org/10.1109/TNSM.2022.3164369)):
 
+`Boškov, Novak, Ari Trachtenberg, and David Starobinski. "Gensync: A new framework for benchmarking and optimizing reconciliation of data." IEEE Transactions on Network and Service Management 19.4 (2022): 4408-4423.`
+
+or in [BibTex](https://scholar.googleusercontent.com/scholar.bib?q=info:pDq08RhPXS4J:scholar.google.com/&output=citation&scisdr=ChXrdsEpEOrg4DdvVFI:ABFrs3wAAAAAZKhpTFLD0mjTsQegzm0Ycic1Fjc&scisig=ABFrs3wAAAAAZKhpTPmcD74OAT0yhaxuOkj4mDY&scisf=4&ct=citation&cd=-1&hl=en):
 ``` bibtex
-@ARTICLE{gensync,
-  author={Boškov, Novak and Trachtenberg, Ari and Starobinski, David},
+@article{bovskov2022gensync,
+  title={Gensync: A new framework for benchmarking and optimizing reconciliation of data},
+  author={Bo{\v{s}}kov, Novak and Trachtenberg, Ari and Starobinski, David},
   journal={IEEE Transactions on Network and Service Management},
-  title={GenSync: A New Framework for Benchmarking and Optimizing Reconciliation of Data},
+  volume={19},
+  number={4},
+  pages={4408--4423},
   year={2022},
-  volume={},
-  number={},
-  pages={1-1},
-  doi={10.1109/TNSM.2022.3164369}
+  publisher={IEEE}
 }
 ```
 
