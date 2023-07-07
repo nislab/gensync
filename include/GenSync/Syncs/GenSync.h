@@ -230,7 +230,7 @@ public:
      *          a GenSync method, then sync_num=0 (the default value) will listen for a GenSync sync request.
      * @return  true iff all synchronizations were completed successfully
      */
-    bool clientSyncBegin(int sync_num);
+    bool clientSyncBegin(int sync_num=0);
 
 
 

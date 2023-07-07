@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
     string type = string(argv[2]);
 
     // no string switch statements :(
-    if(type == "GenSync") {
+    if(type == "CPISync") {
         prot = GenSync::SyncProtocol::CPISync;
     } else if (type == "InterCPISync") {
         prot = GenSync::SyncProtocol::InteractiveCPISync;
