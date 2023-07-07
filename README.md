@@ -18,13 +18,13 @@ Current Version - 2.0.4
 
 <a name="UseInstructions"></a>
 ## Use Instructions:
-  - *Include Statements:* `#include <CPISync/(Aux/Data/Communicants/Syncs)/(The module you want to use).h>`
+  - *Include Statements:* `#include <GenSync/(Aux/Data/Communicants/Syncs)/(The module you want to use).h>`
 
   1. Initialize a `GenSync` object with the constructor or builder helper class on the client and server machine
           
      ```cpp
          GenSync::Builder builder = GenSync::Builder().
-            setProtocol(GenSync::SyncProtocol::CPISync).  //GenSync,InterCPISync, ProbCPISync, IBLTSync, FullSync, etc.
+            setProtocol(GenSync::SyncProtocol::GenSync).  //GenSync,InterCPISync, ProbCPISync, IBLTSync, FullSync, etc.
             setComm(GenSync::SyncComm::socket). //CommSocket or CommString
             setPort(8001).
             setHost(localhost).
@@ -80,12 +80,12 @@ Current Version - 2.0.4
     * *Only for CommString based syncs*
 *  **setBits:** The number of bits that represent each element in the set
     * *All syncs except FullSync*
-*  **setMbar:** The maximum number of symmetric differences that can be synced by a CPISync
-    * *All CPISync variants*
+*  **setMbar:** The maximum number of symmetric differences that can be synced by a GenSync
+    * *All GenSync variants*
 *  **setErr:** The negative log base 2 of the probability of error you would like to use to bound your sync
-    * *All CPISync variants*
+    * *All GenSync variants*
 * **setHashes:** If true, elements are hashed non-trivially (Must be true to synchronize multisets)
-    * *All CPISync variants*
+    * *All GenSync variants*
 * **setNumPartitions:** The number of partitions that InterCPISync should recurse into if it fails
     * *InteractiveCPISync*
 * **setExpNumElems:** The maximum number of differences that you expect to be placed into your IBLT. If you are doing IBLTSetOfSets this is the number of child sets you expect
@@ -168,7 +168,7 @@ Additional algorithms:
 <a name="Contributors"></a>
 ## Contributors:
 
-  Elements of the CPISync project code have been worked on, at various points, by:
+  Elements of the GenSync project code have been worked on, at various points, by:
 
   @ Ari Trachtenberg
 
