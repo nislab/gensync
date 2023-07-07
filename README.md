@@ -251,7 +251,7 @@ int main() {
 }
 
 ```
-To compile this program, follow the instructions below:
+To compile this program, use:
 
 ```shell
 $ g++ -I/opt/local/include -L/opt/local/lib -std=c++11 tryme.cpp -lgensync -lntl -c tryme
