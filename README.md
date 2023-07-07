@@ -108,7 +108,7 @@ Current Version - 2.0.4
             * Each peer encodes their set into a [cuckoo filter](https://www.cs.cmu.edu/~dga/papers/cuckoo-conext2014.pdf). Peers exchange their cuckoo filters. Each host infers the elements that are not in its peer by looking them up in the peer's cuckoo filter. Any elements that are not found in the peer's cuckoo filter are sent to it.
    * **Included Sync Protocols (Set of Sets):**
        * IBLT Set of Sets
-            * Sync using the protocol described [here]([https://arxiv.org/pdf/1707.05867.pdf](https://dl.acm.org/doi/abs/10.1145/3196959.3196988)). This sync serializes an IBLT containing a child set into a bitstring where it is then treated as an element of a larger IBLT. Each host recovers the IBLT containing the serialized IBLTs and deserializes each one. A matching procedure is then used to determine which child sets should sync with each other and which elements they need. If this sync is two way this info is then sent back to the peer node. The number of differences in each child IBLT may not be larger than the total number of sets being synced
+            * Sync using the protocol described [here](https://dl.acm.org/doi/abs/10.1145/3196959.3196988). This sync serializes an IBLT containing a child set into a bitstring where it is then treated as an element of a larger IBLT. Each host recovers the IBLT containing the serialized IBLTs and deserializes each one. A matching procedure is then used to determine which child sets should sync with each other and which elements they need. If this sync is two way this info is then sent back to the peer node. The number of differences in each child IBLT may not be larger than the total number of sets being synced
 
 ## References:
 
@@ -194,11 +194,6 @@ Additional algorithms:
        - gmp - may be required depending on how NTL is configured
    * [cppunit](http://cppunit.sourceforge.net/doc/cvs/index.html) - For testing
    * [cmake](https://cmake.org) - For building
-   *
-* Dependency Install Linux
-    * `sudo apt install cmake libgmp3-dev libcppunit-dev libpthread-stubs0-dev`
-    *  NTL must be installed manually from the link above  
-
 
 
 
