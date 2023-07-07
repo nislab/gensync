@@ -337,7 +337,14 @@ int main(int argc, char *argv[]) {
 To compile and run, use: 
 ```shell
 $ g++ -I/opt/local/include -L/opt/local/lib -std=c++11 TryMe.cpp -lgensync -lntl -o tryme
-$ ./tryme
+```
+In Terminal A:
+```shell
+$ ./tryme client GenSync
+```
+In Terminal B:
+```shell
+$ ./tryme server GenSync
 ```
 
 Acknowledgments:  NSF
