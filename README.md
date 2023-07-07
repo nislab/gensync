@@ -108,7 +108,7 @@ Current Version - 2.0.4
             * Each peer encodes their set into a [cuckoo filter](https://www.cs.cmu.edu/~dga/papers/cuckoo-conext2014.pdf). Peers exchange their cuckoo filters. Each host infers the elements that are not in its peer by looking them up in the peer's cuckoo filter. Any elements that are not found in the peer's cuckoo filter are sent to it.
    * **Included Sync Protocols (Set of Sets):**
        * IBLT Set of Sets
-            * Sync using the protocol described [here](https://arxiv.org/pdf/1707.05867.pdf). This sync serializes an IBLT containing a child set into a bitstring where it is then treated as an element of a larger IBLT. Each host recovers the IBLT containing the serialized IBLTs and deserializes each one. A matching procedure is then used to determine which child sets should sync with each other and which elements they need. If this sync is two way this info is then sent back to the peer node. The number of differences in each child IBLT may not be larger than the total number of sets being synced
+            * Sync using the protocol described [here]([https://arxiv.org/pdf/1707.05867.pdf](https://dl.acm.org/doi/abs/10.1145/3196959.3196988)). This sync serializes an IBLT containing a child set into a bitstring where it is then treated as an element of a larger IBLT. Each host recovers the IBLT containing the serialized IBLTs and deserializes each one. A matching procedure is then used to determine which child sets should sync with each other and which elements they need. If this sync is two way this info is then sent back to the peer node. The number of differences in each child IBLT may not be larger than the total number of sets being synced
 
 ## References:
 
@@ -183,7 +183,10 @@ Additional algorithms:
   @ Nathan Strahs
 
 
-## Compilation:
+## Installation/Compilation:
+
+* Troubleshooting
+   * For issues with macports installation, refer to the default [README](https://github.com/nislab/gensync/blob/master/README.md#usage_compilation)
 
 * Dependencies:
    * [NTL](http://www.shoup.net/ntl/) - A library for doing Number Theory (>9.5) 
@@ -191,32 +194,12 @@ Additional algorithms:
        - gmp - may be required depending on how NTL is configured
    * [cppunit](http://cppunit.sourceforge.net/doc/cvs/index.html) - For testing
    * [cmake](https://cmake.org) - For building
-
-- Ensure that compiler flags for relevant libraries are included (`-lCPISync -lntl -lpthread -lgmp` etc.)
-   - May also need to include `-std=c++11` on some devices
- 
+   *
 * Dependency Install Linux
     * `sudo apt install cmake libgmp3-dev libcppunit-dev libpthread-stubs0-dev`
     *  NTL must be installed manually from the link above  
 
 
-## Installation:
- **MacOS & Linux**  
- 1. Install dependencies, download the project and navigate to the project folder in terminal
- 2. Run the following commands in the project directory (The directory containing CMakeLists.txt)
-    - `cmake .`
-    - `sudo make install`
- 3. Run `./UnitTest` to ensure that the install has run successfully
-
-    *OR*
-
- 1\.  Run the .deb or .rpm files included on a compatible linux system
-
-
-
-
- **Windows** - Not currently supported
-     
 
 
 
