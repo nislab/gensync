@@ -261,7 +261,7 @@ $ ./tryme
 Another example of a TryMe.cpp:
 ```cpp
 #include <iostream>
-#include <Gensync/Syncs/GenSync.h>
+#include <GenSync/Syncs/GenSync.h>
 
 using std::cout;
 using std::endl;
@@ -335,7 +335,7 @@ int main(int argc, char *argv[]) {
 ```
 To compile and run, use: 
 ```shell
-$ g++ -I/opt/local/include -L/opt/local/lib -std=c++11 TryMe.cpp -lgensync -lntl -c tryme
+$ g++ -I/opt/local/include -L/opt/local/lib -std=c++11 TryMe.cpp -lgensync -lntl -o tryme
 $ ./tryme
 ```
 
