@@ -8,7 +8,7 @@ Current Version - 2.0.4
 ------------------------------
 
 ## Table Of Contents
-- [Usage](#Use_Instructions)
+- [Usage](#UseInstructions)
 - [Included Algorithms](#algorithms)
 - [Usage](#usage)
   - [Compilation](#usage_compilation)
@@ -17,7 +17,7 @@ Current Version - 2.0.4
 - [Contact](#contacts)
 - [Acknowledgments](#acknowledgments)
 
-
+<a name="UseInstructions"></a>
 ## Use Instructions:
   - *Include Statements:* `#include <CPISync/(Aux/Data/Communicants/Syncs)/(The module you want to use).h>`
 
