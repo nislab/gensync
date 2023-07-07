@@ -198,6 +198,7 @@ Additional algorithms:
 <a name="Installation/Compilation"></a>
 ## Installation/Compilation:
 
+* Macports installs the Gensync library in /opt/local/lib, and installs the header files in /opt/local/include.
 * Troubleshooting
    * For issues with macports installation, refer to the default [README](https://github.com/nislab/gensync/blob/master/README.md#usage_compilation)
 
