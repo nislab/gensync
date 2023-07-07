@@ -1,6 +1,7 @@
 # GenSync
 
 This is the source code for set reconciliation from the GenSync project by [Boston University NISLAB](http://nislab.bu.edu).
+More instructions and information about GenSync can be found on NISLAB's [Github](https://github.com/nislab/gensync).
 
 Current Version - 2.0.4
 
