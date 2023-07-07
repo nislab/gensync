@@ -1,8 +1,8 @@
-/* This code is part of the CPISync project developed at Boston University.  Please see the README for use and references. */
+/* This code is part of the GenSync project developed at Boston University.  Please see the README for use and references. */
 
-#include <CPISync/Communicants/Communicant.h>
-#include <CPISync/Aux/SyncMethod.h>
-#include <CPISync/Aux/Exceptions.h>
+#include <Gensync/Communicants/Communicant.h>
+#include <Gensync/Aux/SyncMethod.h>
+#include <Gensync/Aux/Exceptions.h>
 
 SyncMethod::SyncMethod() {
     SyncID = SYNC_TYPE::GenericSync; // synchronization type

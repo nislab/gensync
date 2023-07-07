@@ -5,7 +5,7 @@
 
 
 #include <iostream>
-#include <CPISync/Syncs/GenSync.h>
+#include <Gensync/Syncs/GenSync.h>
 
 using std::cout;
 using std::endl;
@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
     string type = string(argv[2]);
 
     // no string switch statements :(
-    if(type == "CPISync") {
+    if(type == "GenSync") {
         prot = GenSync::SyncProtocol::CPISync;
     } else if (type == "InterCPISync") {
         prot = GenSync::SyncProtocol::InteractiveCPISync;

@@ -6,8 +6,8 @@
  * Created on July, 2020.
  */
 
-#include <CPISync/Benchmarks/BenchParams.h>
-#include <CPISync/Syncs/GenSync.h>
+#include <GenSync/Benchmarks/BenchParams.h>
+#include <GenSync/Syncs/GenSync.h>
 #include <assert.h>
 #include <chrono>
 #include <random>

@@ -10,11 +10,11 @@
 #include <vector>
 #include <getopt.h>
 
-#include <CPISync/Aux/Auxiliary.h>
-#include <CPISync/Aux/SyncMethod.h>
-#include <CPISync/Syncs/GenSync.h>
-#include <CPISync/Syncs/CPISync.h>
-#include <CPISync/Communicants/CommString.h>
+#include <Gensync/Aux/Auxiliary.h>
+#include <Gensync/Aux/SyncMethod.h>
+#include <Gensync/Syncs/GenSync.h>
+#include <Gensync/Syncs/CPISync.h>
+#include <Gensync/Communicants/CommString.h>
 
 using namespace std;
 
@@ -29,9 +29,9 @@ static const int SERVER = 1; /** I am a server listening for a client. */
 static int comm_flag = CLIENT;
 
 // ... Synchronization mode
-static const int CPISYNC = 0; /** Standard, interactive CPISync. */
-static const int ONEWAY_CPISYNC = 1; /** One-way (non-interactive) CPISync. */
-static const int PROB_CPISYNC = 2; /** Probabilistic CPISync. */
+static const int CPISYNC = 0; /** Standard, interactive GenSync. */
+static const int ONEWAY_CPISYNC = 1; /** One-way (non-interactive) GenSync. */
+static const int PROB_CPISYNC = 2; /** Probabilistic GenSync. */
 static const int INTER_CPISYNC = 3; /** Interactive, expected-linear-time/comm CPISYNC. */
 static const int IBLT_CPISYNC = 4; /** IBLT-based sync. */
 static int sync_flag = INTER_CPISYNC; /** Defaults to InterCPISync. */
@@ -65,7 +65,7 @@ static struct option long_options[] = {
         {"perr", required_argument, 0, 'e'}, // maximum probability of error allowed, for sync algorithms that take this as a parameter
         {"mbar", required_argument, 0, 'm'}, // maximum number of differences in an atomic sync operation
         {"bits", required_argument, 0, 'b'}, // number of bits used to represent each set element internally
-        {"partition", required_argument, 0, 'p'}, // the number of partitions in interactive CPISync
+        {"partition", required_argument, 0, 'p'}, // the number of partitions in interactive GenSync
         {"numElems", required_argument, 0, 'n'},  // maximum number of elements expected in the sync object (esp. for IBLT)
 
         // other

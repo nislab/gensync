@@ -1,4 +1,4 @@
-/* This code is part of the CPISync project developed at Boston
+/* This code is part of the GenSync project developed at Boston
  * University. Please see the README for use and references.
  *
  * @author Novak Boškov <boskov@bu.edu>
@@ -9,7 +9,7 @@
  * https://www.cs.cmu.edu/~dga/papers/cuckoo-conext2014.pdf
  */
 
-#include <CPISync/Syncs/Cuckoo.h>
+#include <Gensync/Syncs/Cuckoo.h>
 
 std::random_device Cuckoo::rd;
 

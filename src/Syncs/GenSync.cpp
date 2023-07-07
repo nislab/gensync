@@ -1,26 +1,26 @@
-/* This code is part of the CPISync project developed at Boston University.  Please see the README for use and references. */
+/* This code is part of the GenSync project developed at Boston University.  Please see the README for use and references. */
 
 #include <iostream>
 #include <fstream>
 
-#include <CPISync/Syncs/GenSync.h>
-#include <CPISync/Aux/Exceptions.h>
-#include <CPISync/Syncs/CPISync.h>
-#include <CPISync/Communicants/CommSocket.h>
-#include <CPISync/Communicants/CommString.h>
-#include <CPISync/Syncs/ProbCPISync.h>
-#include <CPISync/Syncs/InterCPISync.h>
-#include <CPISync/Syncs/FullSync.h>
-#include <CPISync/Syncs/IBLTSync.h>
-#include <CPISync/Syncs/IBLTSync_HalfRound.h>
-#include <CPISync/Syncs/IBLTSync_Multiset.h>
-#include <CPISync/Syncs/CPISync_HalfRound.h>
-#include <CPISync/Syncs/IBLTSetOfSets.h>
-#include <CPISync/Syncs/CuckooSync.h>
+#include <Gensync/Syncs/GenSync.h>
+#include <Gensync/Aux/Exceptions.h>
+#include <Gensync/Syncs/CPISync.h>
+#include <Gensync/Communicants/CommSocket.h>
+#include <Gensync/Communicants/CommString.h>
+#include <Gensync/Syncs/ProbCPISync.h>
+#include <Gensync/Syncs/InterCPISync.h>
+#include <Gensync/Syncs/FullSync.h>
+#include <Gensync/Syncs/IBLTSync.h>
+#include <Gensync/Syncs/IBLTSync_HalfRound.h>
+#include <Gensync/Syncs/IBLTSync_Multiset.h>
+#include <Gensync/Syncs/CPISync_HalfRound.h>
+#include <Gensync/Syncs/IBLTSetOfSets.h>
+#include <Gensync/Syncs/CuckooSync.h>
 
 #if defined (RECORD)
-#include <CPISync/Benchmarks/BenchParams.h>
-#include <CPISync/Benchmarks/BenchObserv.h>
+#include <Gensync/Benchmarks/BenchParams.h>
+#include <Gensync/Benchmarks/BenchObserv.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <iomanip>

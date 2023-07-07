@@ -1,4 +1,4 @@
-/* This code is part of the CPISync project developed at Boston University.  Please see the README for use and references. */
+/* This code is part of the GenSync project developed at Boston University.  Please see the README for use and references. */
 
 // standard libraries
 #include <utility>
@@ -12,10 +12,10 @@
 #include <NTL/ZZ_pXFactoring.h>
 
 // project libraries
-#include <CPISync/Aux/Auxiliary.h>
-#include <CPISync/Aux/SyncMethod.h>
-#include <CPISync/Syncs/CPISync.h>
-#include <CPISync/Aux/Exceptions.h>
+#include <Gensync/Aux/Auxiliary.h>
+#include <Gensync/Aux/SyncMethod.h>
+#include <Gensync/Syncs/CPISync.h>
+#include <Gensync/Aux/Exceptions.h>
 
 // namespaces
 
@@ -23,7 +23,7 @@ using namespace NTL;
 
 // helper procedures
 void CPISync::initData(long num) {
-    Logger::gLog(Logger::METHOD,"Entering CPISync::initData");
+    Logger::gLog(Logger::METHOD,"Entering GenSync::initData");
     // set the lengths
     sampleLoc.SetLength(num);
     CPI_evals.SetLength(num);
@@ -40,7 +40,7 @@ void CPISync::initData(long num) {
 
 CPISync::CPISync(long m_bar, long bits, int epsilon, int redundant, bool hashes /* = false */) :
     hashQ(hashes), bits (bits), maxDiff(m_bar), probEps(epsilon), redundant (redundant) {
-Logger::gLog(Logger::METHOD,"Entering CPISync::CPISync");
+Logger::gLog(Logger::METHOD,"Entering GenSync::GenSync");
 
     // set default parameters
     if (hashQ) {
@@ -92,7 +92,7 @@ CPISync::~CPISync() {
 }
 
 string CPISync::getName() {
-    Logger::gLog(Logger::METHOD,"Entering CPISync::getName");
+    Logger::gLog(Logger::METHOD,"Entering GenSync::getName");
     string methodName;
     if (!probCPI) {
         methodName = "Basic CPI Sync";
@@ -107,7 +107,7 @@ string CPISync::getName() {
 }
 
 bool CPISync::ratFuncInterp(const vec_ZZ_p& evals, long mA, long mB, vec_ZZ_p& P_vec, vec_ZZ_p& Q_vec) {
-    Logger::gLog(Logger::METHOD,"Entering CPISync::ratFuncInterp");
+    Logger::gLog(Logger::METHOD,"Entering GenSync::ratFuncInterp");
     /* The coding attempts to follow the notation in
      ** Y. Minsky, A. Trachtenberg, and R. Zippel,
      **   Set Reconciliation with Nearly Optimal Communication Complexity,
@@ -213,7 +213,7 @@ bool CPISync::ratFuncInterp(const vec_ZZ_p& evals, long mA, long mB, vec_ZZ_p& P
 }
 
 bool CPISync::find_roots(vec_ZZ_p& P_vec, vec_ZZ_p& Q_vec, vec_ZZ_p& numerator, vec_ZZ_p& denominator) {
-Logger::gLog(Logger::METHOD,"Entering CPISync::find_roots");
+Logger::gLog(Logger::METHOD,"Entering GenSync::find_roots");
     // 0. initialization
     ZZ_pX P_poly, Q_poly, gcd_poly;
 
@@ -275,7 +275,7 @@ Logger::gLog(Logger::METHOD,"Entering CPISync::find_roots");
 }
 
 bool CPISync::set_reconcile(const long otherSetSize, const vec_ZZ_p &otherEvals, vec_ZZ_p &delta_self, vec_ZZ_p &delta_other) {
-Logger::gLog(Logger::METHOD,"Entering CPISync::set_reconcile");
+Logger::gLog(Logger::METHOD,"Entering GenSync::set_reconcile");
     if (otherSetSize < 1) {
         // Jin's optimization:  if the other set has nothing, just send over my evaluations
         map<ZZ, shared_ptr<DataObject> >::iterator itCPI;
@@ -313,7 +313,7 @@ Logger::gLog(Logger::METHOD,"Entering CPISync::set_reconcile");
 
 void CPISync::_sendSetElem(const shared_ptr<Communicant> &commSync, list<shared_ptr<DataObject>> &selfMinusOther,
 						   const ZZ_p &element) {
-    Logger::gLog(Logger::METHOD,"Entering CPISync::sendSetElem");
+    Logger::gLog(Logger::METHOD,"Entering GenSync::sendSetElem");
     if (!hashQ || oneWay) // these cases don't require an additional round of string exchanges
         selfMinusOther.push_back(_invHash(element));
     else {
@@ -329,7 +329,7 @@ void CPISync::_sendSetElem(const shared_ptr<Communicant> &commSync, list<shared_
 }
 
 void CPISync::_recvSetElem(const shared_ptr<Communicant> &commSync, list<shared_ptr<DataObject>> &otherMinusSelf, ZZ_p element) {
-    Logger::gLog(Logger::METHOD,"Entering CPISync::recvSetElem");
+    Logger::gLog(Logger::METHOD,"Entering GenSync::recvSetElem");
     if (!hashQ || oneWay) // these cases don't require an additional round of string exchanges
         otherMinusSelf.push_back(_invHash(std::move(element)));
     else {
@@ -343,7 +343,7 @@ void CPISync::_recvSetElem(const shared_ptr<Communicant> &commSync, list<shared_
 
 void CPISync::_makeStructures(const shared_ptr<Communicant> &commSync, list<shared_ptr<DataObject>> &selfMinusOther,
 							  list<shared_ptr<DataObject>> &otherMinusSelf, vec_ZZ_p &delta_self, vec_ZZ_p &delta_other) {
-    Logger::gLog(Logger::METHOD,"Entering CPISync::makeStructures");
+    Logger::gLog(Logger::METHOD,"Entering GenSync::makeStructures");
     // Send self minus other
     try {
         for (const ZZ_p& dop : delta_self)
@@ -358,7 +358,7 @@ void CPISync::_makeStructures(const shared_ptr<Communicant> &commSync, list<shar
 }
 
 void CPISync::SendSyncParam(const shared_ptr<Communicant>& commSync, bool oneWay /* = false */) {
-    Logger::gLog(Logger::METHOD,"Entering CPISync::SendSyncParam");
+    Logger::gLog(Logger::METHOD,"Entering GenSync::SendSyncParam");
     // take care of parent sync method
     SyncMethod::SendSyncParam(commSync, oneWay);
 
@@ -373,7 +373,7 @@ void CPISync::SendSyncParam(const shared_ptr<Communicant>& commSync, bool oneWay
 }
 
 void CPISync::RecvSyncParam(const shared_ptr<Communicant>& commSync, bool oneWay /* = false */) {
-    Logger::gLog(Logger::METHOD,"Entering CPISync::RecvSyncParam");
+    Logger::gLog(Logger::METHOD,"Entering GenSync::RecvSyncParam");
     // take care of parent sync method
     SyncMethod::RecvSyncParam(commSync, oneWay);
 
@@ -401,7 +401,7 @@ void CPISync::RecvSyncParam(const shared_ptr<Communicant>& commSync, bool oneWay
 }
 
 bool CPISync::SyncClient(const shared_ptr<Communicant>& commSync, list<shared_ptr<DataObject>> &selfMinusOther, list<shared_ptr<DataObject>> &otherMinusSelf) {
-    Logger::gLog(Logger::METHOD,"Entering CPISync::SyncClient");
+    Logger::gLog(Logger::METHOD,"Entering GenSync::SyncClient");
 
     mySyncStats.timerStart(SyncStats::COMP_TIME);
 	//Reset currDiff to 1 at the start of the sync so that the correct upper bound can be found if the dataset has changed
@@ -455,7 +455,7 @@ bool CPISync::SyncClient(const shared_ptr<Communicant>& commSync, list<shared_pt
             mySyncStats.timerEnd(SyncStats::IDLE_TIME);
 
             if (!probCPI || currDiff == maxDiff) {
-                // CPISync failed
+                // GenSync failed
                 delta_other.kill();
                 delta_self.kill();
                 if (!keepAlive)
@@ -492,7 +492,7 @@ bool CPISync::SyncClient(const shared_ptr<Communicant>& commSync, list<shared_pt
             delta_self = commSync->commRecv_vec_ZZ_p();
             mySyncStats.timerEnd(SyncStats::COMM_TIME);
 
-            Logger::gLog(Logger::METHOD, string("CPISync succeeded.\n")
+            Logger::gLog(Logger::METHOD, string("GenSync succeeded.\n")
                     + "   self - other =  " + toStr<vec_ZZ_p > (delta_self) + "\n"
                     + "   other - self =  " + toStr<vec_ZZ_p > (delta_other) + "\n"
                     + "\n");
@@ -524,7 +524,7 @@ bool CPISync::SyncClient(const shared_ptr<Communicant>& commSync, list<shared_pt
 }
 
 bool CPISync::SyncServer(const shared_ptr<Communicant>& commSync, list<shared_ptr<DataObject>>& selfMinusOther, list<shared_ptr<DataObject>>& otherMinusSelf) {
-    Logger::gLog(Logger::METHOD,"Entering CPISync::SyncServer");
+    Logger::gLog(Logger::METHOD,"Entering GenSync::SyncServer");
     mySyncStats.timerStart(SyncStats::COMP_TIME); //This is total sync time
 
     //Reset currDiff to 1 at the start of the sync so that the correct upper bound can be found if the dataset has changed
@@ -608,7 +608,7 @@ bool CPISync::SyncServer(const shared_ptr<Communicant>& commSync, list<shared_pt
             value_self.kill();
 
             if (succeed) { // only do this if reconciliation has succeeded
-                Logger::gLog(Logger::METHOD, "CPISync succeeded.\n");
+                Logger::gLog(Logger::METHOD, "GenSync succeeded.\n");
 
                 if (!oneWay) {
                     mySyncStats.timerStart(SyncStats::COMM_TIME);
@@ -678,7 +678,7 @@ bool CPISync::SyncServer(const shared_ptr<Communicant>& commSync, list<shared_pt
 }
 
 void CPISync::sendAllElem(const shared_ptr<Communicant>& commSync, list<shared_ptr<DataObject>> &selfMinusOther) {
-    Logger::gLog(Logger::METHOD,"Entering CPISync::sendAllElem");
+    Logger::gLog(Logger::METHOD,"Entering GenSync::sendAllElem");
     commSync->commSend((long) CPI_hash.size()); // first send the size
 
     map< ZZ, shared_ptr<DataObject> >::iterator it;
@@ -692,7 +692,7 @@ void CPISync::sendAllElem(const shared_ptr<Communicant>& commSync, list<shared_p
 }
 
 void CPISync::receiveAllElem(const shared_ptr<Communicant>& commSync, list<shared_ptr<DataObject>> &otherMinusSelf) {
-    Logger::gLog(Logger::METHOD,"Entering CPISync::receiveAllElem");
+    Logger::gLog(Logger::METHOD,"Entering GenSync::receiveAllElem");
     long size = commSync->commRecv_long();
 
     for (int ii = 0; ii < size; ii++) {
@@ -704,7 +704,7 @@ void CPISync::receiveAllElem(const shared_ptr<Communicant>& commSync, list<share
 }
 
 shared_ptr<DataObject> CPISync::_invHash(const ZZ_p& num) const {
-    Logger::gLog(Logger::METHOD,"Entering CPISync::invHash");
+    Logger::gLog(Logger::METHOD,"Entering GenSync::invHash");
     const ZZ &numZZ = rep(num);
     shared_ptr<DataObject> result = make_shared<DataObject>(numZZ);
     return result;
@@ -732,7 +732,7 @@ ZZ_p CPISync::_hash2(const long num) const {
 // update metadata when add an element
 
 bool CPISync::addElem(shared_ptr<DataObject> datum) {
-    Logger::gLog(Logger::METHOD,"Entering CPISync::addElem");
+    Logger::gLog(Logger::METHOD,"Entering GenSync::addElem");
     int ii;
     
     // call the parent class to take care of bookkeeping
@@ -767,14 +767,14 @@ bool CPISync::addElem(shared_ptr<DataObject> datum) {
     for (ii = 0; ii < sampleLoc.length(); ii++)
         CPI_evals[ii] *= (sampleLoc[ii] - hashID);
 
-    Logger::gLog(Logger::METHOD_DETAILS, "... (CPISync) added item " + datum->to_string() + " with hash = " + toStr(hashNum));
+    Logger::gLog(Logger::METHOD_DETAILS, "... (GenSync) added item " + datum->to_string() + " with hash = " + toStr(hashNum));
 
     return result;
 }
 
 // update metadata when delete an element by index
 bool CPISync::delElem(shared_ptr<DataObject> newDatum) {
-    Logger::gLog(Logger::METHOD, "Entering CPISync::delElem");
+    Logger::gLog(Logger::METHOD, "Entering GenSync::delElem");
 
     // call the parent method to take care of bookkeeping
     if(!SyncMethod::delElem(newDatum)) {
@@ -799,7 +799,7 @@ bool CPISync::delElem(shared_ptr<DataObject> newDatum) {
         CPI_evals[ii] /= (sampleLoc[ii] - hashID);
     }
 
-    Logger::gLog(Logger::METHOD_DETAILS, "... (CPISync) removed item " + newDatum->print() + ".");
+    Logger::gLog(Logger::METHOD_DETAILS, "... (GenSync) removed item " + newDatum->print() + ".");
     return true;
 }
 

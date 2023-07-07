@@ -24,7 +24,7 @@ Current Version - 2.0.4
           
      ```cpp
          GenSync::Builder builder = GenSync::Builder().
-            setProtocol(GenSync::SyncProtocol::CPISync).  //CPISync,InterCPISync, ProbCPISync, IBLTSync, FullSync, etc.
+            setProtocol(GenSync::SyncProtocol::CPISync).  //GenSync,InterCPISync, ProbCPISync, IBLTSync, FullSync, etc.
             setComm(GenSync::SyncComm::socket). //CommSocket or CommString
             setPort(8001).
             setHost(localhost).

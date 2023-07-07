@@ -1,4 +1,4 @@
-/* This code is part of the CPISync project developed at Boston University.  Please see the README for use and references. */
+/* This code is part of the GenSync project developed at Boston University.  Please see the README for use and references. */
 
 // This is an implementation of the algorithms found in:
 // Mitzenmacher, Michael, and Tom Morgan. "Reconciling graphs and sets of sets." Proceedings of the 37th ACM SIGMOD-SIGACT-SIGAI Symposium on Principles of Database Systems. ACM, 2018.
@@ -6,9 +6,9 @@
 // Created by Zifan Wang on 7/30/2019.
 //
 
-#include <CPISync/Syncs/IBLT.h>
-#include <CPISync/Aux/Exceptions.h>
-#include <CPISync/Syncs/IBLTSetOfSets.h>
+#include <Gensync/Syncs/IBLT.h>
+#include <Gensync/Aux/Exceptions.h>
+#include <Gensync/Syncs/IBLTSetOfSets.h>
 
 /** 
  * Construct T, the outer IBLT for transmission
