@@ -33,8 +33,6 @@ checksums               rmd160  3565d16a85db37870f3fe9f89a9fd99d80c0ad0a \
                         sha256  23a1d842153d2458cce7639b26e3b5c02b7ee2681a1157c1490b931b83656bd8 \
                         size    198824
 
-depends_build-append    port:cppunit
-
 depends_lib             port:ntl
 
 cmake.out_of_source     yes
