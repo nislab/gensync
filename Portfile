@@ -4,7 +4,7 @@ PortSystem              1.0
 PortGroup               cmake 1.1
 PortGroup               github 1.0
 
-github.setup            nislab gensync 1.0.3 v
+github.setup            nislab gensync 1.0.4 v
 git.branch              vanilla
 
 name                    gensync
@@ -29,9 +29,9 @@ post-fetch {
     system -W ${worksrcpath} "git submodule update --init --recursive"
 }
 
-checksums               rmd160  3565d16a85db37870f3fe9f89a9fd99d80c0ad0a \
-                        sha256  23a1d842153d2458cce7639b26e3b5c02b7ee2681a1157c1490b931b83656bd8 \
-                        size    198824
+checksums               rmd160  83d1555d700fc4a7f1259bf7630f30de43fcade4 \
+                        sha256  5f412ff4c8c09d690631d8b1c9415cd31e4dd17b19dab04365578b4060fd5d13 \
+                        size    201191
 
 depends_lib             port:ntl
 
