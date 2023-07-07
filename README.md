@@ -11,7 +11,7 @@ Current Version - 2.0.4
 - [Usage](#UseInstructions)
 - [Builder Parameters](#BuilderParameters)
 - [Sync Types](#SyncTypes)
-- [Refrences](#Refrences)
+- [References](#References)
 - [Contributors](#Contributors)
 - [Installation/Compilation](#Installation/Compilation)
 
@@ -119,7 +119,7 @@ Current Version - 2.0.4
        * IBLT Set of Sets
             * Sync using the protocol described [here](https://dl.acm.org/doi/abs/10.1145/3196959.3196988). This sync serializes an IBLT containing a child set into a bitstring where it is then treated as an element of a larger IBLT. Each host recovers the IBLT containing the serialized IBLTs and deserializes each one. A matching procedure is then used to determine which child sets should sync with each other and which elements they need. If this sync is two way this info is then sent back to the peer node. The number of differences in each child IBLT may not be larger than the total number of sets being synced
 
-<a name="Refrences"></a>
+<a name="References"></a>
 ## References:
 
  The code, explanation, references, API, and a demo can be found on this
