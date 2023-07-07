@@ -132,10 +132,14 @@ public:
     bool clearData();
 
     /**
+     * @return a list of decoded string representations of the elements stored in the data structure
+     */
+    const list<string> dumpElements();
+
+    /**
      * @return a list of base_64 encoded string representations of the elements stored in the data structure
      */
-     const list<string> dumpElements();
-
+     const list<string> dumpElements64();
 
     // COMMUNICANT MANIPULATION
     /* Communicants are entities that can communicate [and thus sync] with this GenSync object.

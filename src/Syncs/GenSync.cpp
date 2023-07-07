@@ -158,6 +158,14 @@ bool GenSync::clearData(){
 const list<string> GenSync::dumpElements() {
     list<string> dump;
     for(const auto& itr : myData){
+        dump.push_back(base64_decode(itr->print()));
+    }
+    return dump;
+}
+
+const list<string> GenSync::dumpElements64() {
+    list<string> dump;
+    for(const auto& itr : myData){
         dump.push_back(itr->print());
     }
     return dump;
