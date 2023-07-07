@@ -16,7 +16,7 @@ platforms               darwin
 license                 GPL-3
 maintainers             {@trachten bu.edu:trachten} openmaintainer
 
-description             Gensync: a library for network syncing
+description             Gensync: a library for efficient synchronization of data over a network
 long_description        Gensync is a library that uses many different syncing \
                         algorithms to sync data between two nodes in a network. \
                         These algorithms include IBLTs, CPISyncs, HashSyncs, Cuckoo Syncs, and more.
