@@ -213,7 +213,7 @@ Additional algorithms:
 TryMe.cpp
 ```cpp
 #include <iostream>
-#include <GenSync/Syncs/GenSync.h>
+#include <Gensync/Syncs/GenSync.h>
 
 int main() {
   GenSync host1 = GenSync::Builder().
