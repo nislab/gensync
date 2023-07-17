@@ -5,14 +5,9 @@ PortGroup               cmake 1.1
 PortGroup               github 1.0
 
 github.setup            nislab gensync 1.0.4 v
-git.branch              vanilla
-
-name                    gensync
-version                 1.0
 revision                0
 
-categories              network dev
-platforms               darwin
+categories              net devel
 license                 GPL-3
 maintainers             {@trachten bu.edu:trachten} openmaintainer
 
@@ -21,17 +16,11 @@ long_description        Gensync is a library that uses many different syncing \
                         algorithms to sync data between two nodes in a network. \
                         These algorithms include IBLTs, CPISyncs, HashSyncs, Cuckoo Syncs, and more.
 
-homepage                https://github.com/nislab/gensync/
-
 fetch.type              git
 
 post-fetch {
     system -W ${worksrcpath} "git submodule update --init --recursive"
 }
-
-checksums               rmd160  83d1555d700fc4a7f1259bf7630f30de43fcade4 \
-                        sha256  5f412ff4c8c09d690631d8b1c9415cd31e4dd17b19dab04365578b4060fd5d13 \
-                        size    201191
 
 depends_lib             port:ntl
 
