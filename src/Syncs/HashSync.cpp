@@ -4,8 +4,8 @@
 // Created by Ari Trachtenberg on 7/18/18.
 //
 
-#include <Gensync/Aux/Logger.h>
-#include <Gensync/Syncs/HashSync.h>
+#include <GenSync/Aux/Logger.h>
+#include <GenSync/Syncs/HashSync.h>
 
 HashSync::HashSync(shared_ptr<SyncMethod> theSyncObject, int theHashUB) : SyncMethod(),
                                                  hashUB(theHashUB)

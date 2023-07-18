@@ -1,6 +1,6 @@
 /* This code is part of the GenSync project developed at Boston University.  Please see the README for use and references. */
 
-#include <Gensync/Data/DataObject.h>
+#include <GenSync/Data/DataObject.h>
 #include "NTL/ZZ_pXFactoring.h"
 
 // namespaces

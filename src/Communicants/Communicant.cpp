@@ -1,7 +1,7 @@
 /* This code is part of the GenSync project developed at Boston University.  Please see the README for use and references. */
 
 #include <NTL/RR.h>
-#include <Gensync/Communicants/Communicant.h>
+#include <GenSync/Communicants/Communicant.h>
 
 Communicant::Communicant() {
     resetCommCounters();

@@ -7,7 +7,7 @@
  * Created on May 24, 2018, 10:13 AM
  */
 
-#include <Gensync/Communicants/CommDummy.h>
+#include <GenSync/Communicants/CommDummy.h>
 
 CommDummy::CommDummy(queue<char> *intermediate) {
     this->intermediate = intermediate;

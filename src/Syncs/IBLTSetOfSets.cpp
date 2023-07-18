@@ -6,9 +6,9 @@
 // Created by Zifan Wang on 7/30/2019.
 //
 
-#include <Gensync/Syncs/IBLT.h>
-#include <Gensync/Aux/Exceptions.h>
-#include <Gensync/Syncs/IBLTSetOfSets.h>
+#include <GenSync/Syncs/IBLT.h>
+#include <GenSync/Aux/Exceptions.h>
+#include <GenSync/Syncs/IBLTSetOfSets.h>
 
 /** 
  * Construct T, the outer IBLT for transmission

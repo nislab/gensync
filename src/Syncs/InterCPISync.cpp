@@ -7,11 +7,11 @@
  * Created on November 30, 2011, 10:46 PM
  */
 
-#include <Gensync/Aux/Auxiliary.h>
-#include <Gensync/Communicants/Communicant.h>
-#include <Gensync/Aux/Exceptions.h>
-#include <Gensync/Syncs/CPISync.h>
-#include <Gensync/Syncs/InterCPISync.h>
+#include <GenSync/Aux/Auxiliary.h>
+#include <GenSync/Communicants/Communicant.h>
+#include <GenSync/Aux/Exceptions.h>
+#include <GenSync/Syncs/CPISync.h>
+#include <GenSync/Syncs/InterCPISync.h>
 
 bool InterCPISync::serverConnectedBefore = false;
 bool InterCPISync::clientConnectedBefore = false;

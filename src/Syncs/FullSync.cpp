@@ -7,7 +7,7 @@
  * Created on June 27, 2018, 9:37 AM
  */
 
-#include <Gensync/Syncs/FullSync.h>
+#include <GenSync/Syncs/FullSync.h>
 
 FullSync::FullSync() = default;
 

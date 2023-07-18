@@ -6,8 +6,8 @@
  */
 
 #include <chrono>
-#include <Gensync/Aux/Auxiliary.h>
-#include <Gensync/Communicants/CommString.h>
+#include <GenSync/Aux/Auxiliary.h>
+#include <GenSync/Communicants/CommString.h>
 
 CommString::CommString(const string& initial, bool base64) {
     if (base64)

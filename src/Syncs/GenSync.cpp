@@ -3,24 +3,24 @@
 #include <iostream>
 #include <fstream>
 
-#include <Gensync/Syncs/GenSync.h>
-#include <Gensync/Aux/Exceptions.h>
-#include <Gensync/Syncs/CPISync.h>
-#include <Gensync/Communicants/CommSocket.h>
-#include <Gensync/Communicants/CommString.h>
-#include <Gensync/Syncs/ProbCPISync.h>
-#include <Gensync/Syncs/InterCPISync.h>
-#include <Gensync/Syncs/FullSync.h>
-#include <Gensync/Syncs/IBLTSync.h>
-#include <Gensync/Syncs/IBLTSync_HalfRound.h>
-#include <Gensync/Syncs/IBLTSync_Multiset.h>
-#include <Gensync/Syncs/CPISync_HalfRound.h>
-#include <Gensync/Syncs/IBLTSetOfSets.h>
-#include <Gensync/Syncs/CuckooSync.h>
+#include <GenSync/Syncs/GenSync.h>
+#include <GenSync/Aux/Exceptions.h>
+#include <GenSync/Syncs/CPISync.h>
+#include <GenSync/Communicants/CommSocket.h>
+#include <GenSync/Communicants/CommString.h>
+#include <GenSync/Syncs/ProbCPISync.h>
+#include <GenSync/Syncs/InterCPISync.h>
+#include <GenSync/Syncs/FullSync.h>
+#include <GenSync/Syncs/IBLTSync.h>
+#include <GenSync/Syncs/IBLTSync_HalfRound.h>
+#include <GenSync/Syncs/IBLTSync_Multiset.h>
+#include <GenSync/Syncs/CPISync_HalfRound.h>
+#include <GenSync/Syncs/IBLTSetOfSets.h>
+#include <GenSync/Syncs/CuckooSync.h>
 
 #if defined (RECORD)
-#include <Gensync/Benchmarks/BenchParams.h>
-#include <Gensync/Benchmarks/BenchObserv.h>
+#include <GenSync/Benchmarks/BenchParams.h>
+#include <GenSync/Benchmarks/BenchObserv.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <iomanip>

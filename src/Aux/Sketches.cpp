@@ -6,7 +6,7 @@
  * Created on October, 2020.
  */
 
-#include <Gensync/Aux/Sketches.h>
+#include <GenSync/Aux/Sketches.h>
 
 const string Sketches::PRINT_KEY = "Sketches";
 const uint Sketches::HLL_LOG_K = 14;

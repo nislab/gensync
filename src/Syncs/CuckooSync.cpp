@@ -9,8 +9,8 @@
  * https://www.cs.cmu.edu/~dga/papers/cuckoo-conext2014.pdf
  */
 
-#include <Gensync/Aux/Exceptions.h>
-#include <Gensync/Syncs/CuckooSync.h>
+#include <GenSync/Aux/Exceptions.h>
+#include <GenSync/Syncs/CuckooSync.h>
 
 CuckooSync::CuckooSync(size_t fngprtSize, size_t bucketSize,
                        size_t filterSize, size_t maxKicks) {

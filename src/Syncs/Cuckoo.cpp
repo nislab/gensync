@@ -9,7 +9,7 @@
  * https://www.cs.cmu.edu/~dga/papers/cuckoo-conext2014.pdf
  */
 
-#include <Gensync/Syncs/Cuckoo.h>
+#include <GenSync/Syncs/Cuckoo.h>
 
 std::random_device Cuckoo::rd;
 

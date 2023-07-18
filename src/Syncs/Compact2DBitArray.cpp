@@ -6,7 +6,7 @@
  * Created on April, 2020.
  */
 
-#include <Gensync/Syncs/Compact2DBitArray.h>
+#include <GenSync/Syncs/Compact2DBitArray.h>
 
 /**
  * To discern endianness in runtime but only once when the constructor

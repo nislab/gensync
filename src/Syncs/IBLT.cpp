@@ -7,7 +7,7 @@
 // * Eppstein, David, et al. "What's the difference?: efficient set reconciliation without prior context." ACM SIGCOMM Computer Communication Review 41.4 (2011): 218-229.
 //
 
-#include <Gensync/Syncs/IBLT.h>
+#include <GenSync/Syncs/IBLT.h>
 
 IBLT::IBLT() = default;
 IBLT::~IBLT() = default;

@@ -2,7 +2,7 @@
 // Created by Shubham Arora on 7/20/20.
 //
 
-#include <Gensync/Syncs/IBLTMultiset.h>
+#include <GenSync/Syncs/IBLTMultiset.h>
 
 
 IBLTMultiset::IBLTMultiset()

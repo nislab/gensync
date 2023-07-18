@@ -1,8 +1,8 @@
 /* This code is part of the GenSync project developed at Boston University.  Please see the README for use and references. */
 
-#include <Gensync/Communicants/Communicant.h>
-#include <Gensync/Aux/SyncMethod.h>
-#include <Gensync/Aux/Exceptions.h>
+#include <GenSync/Communicants/Communicant.h>
+#include <GenSync/Aux/SyncMethod.h>
+#include <GenSync/Aux/Exceptions.h>
 
 SyncMethod::SyncMethod() {
     SyncID = SYNC_TYPE::GenericSync; // synchronization type

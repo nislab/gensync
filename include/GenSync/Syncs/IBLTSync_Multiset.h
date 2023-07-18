@@ -5,8 +5,8 @@
 #ifndef GENSYNC_IBLTSYNC_MULTISET_H
 #define GENSYNC_IBLTSYNC_MULTISET_H
 
-#include <Gensync/Syncs/IBLTMultiset.h>
-#include <Gensync/Aux/SyncMethod.h>
+#include <GenSync/Syncs/IBLTMultiset.h>
+#include <GenSync/Aux/SyncMethod.h>
 
 class IBLTSync_Multiset : public SyncMethod {
 public:
