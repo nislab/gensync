@@ -1,4 +1,4 @@
-/* This code is part of the CPISync project developed at Boston University.  Please see the README for use and references. */
+/* This code is part of the GenSync project developed at Boston University.  Please see the README for use and references. */
 
 /* 
  * File:   FullSync.cpp
@@ -7,7 +7,7 @@
  * Created on June 27, 2018, 9:37 AM
  */
 
-#include <CPISync/Syncs/FullSync.h>
+#include <GenSync/Syncs/FullSync.h>
 
 FullSync::FullSync() = default;
 

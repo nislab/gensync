@@ -6,8 +6,8 @@
  * Created on January, 2021.
  */
 
-#include <CPISync/Aux/Auxiliary.h>
-#include <CPISync/Benchmarks/FromFileGen.h>
+#include <GenSync/Aux/Auxiliary.h>
+#include <GenSync/Benchmarks/FromFileGen.h>
 #include <fstream>
 #include <iostream>
 

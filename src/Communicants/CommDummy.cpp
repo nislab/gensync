@@ -1,4 +1,4 @@
-/* This code is part of the CPISync project developed at Boston University. Please see the README for use and references. */
+/* This code is part of the GenSync project developed at Boston University. Please see the README for use and references. */
 
 /*
  * File:   CommDummy.cpp
@@ -7,7 +7,7 @@
  * Created on May 24, 2018, 10:13 AM
  */
 
-#include <CPISync/Communicants/CommDummy.h>
+#include <GenSync/Communicants/CommDummy.h>
 
 CommDummy::CommDummy(queue<char> *intermediate) {
     this->intermediate = intermediate;

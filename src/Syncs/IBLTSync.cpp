@@ -1,11 +1,11 @@
-/* This code is part of the CPISync project developed at Boston University.  Please see the README for use and references. */
+/* This code is part of the GenSync project developed at Boston University.  Please see the README for use and references. */
 
 //
 // Created by Eliezer Pearl on 8/3/2018.
 //
 
-#include <CPISync/Aux/Exceptions.h>
-#include <CPISync/Syncs/IBLTSync.h>
+#include <GenSync/Aux/Exceptions.h>
+#include <GenSync/Syncs/IBLTSync.h>
 
 IBLTSync::IBLTSync(size_t expected, size_t eltSize) : myIBLT(expected, eltSize) {
     expNumElems = expected;

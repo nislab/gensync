@@ -1,8 +1,8 @@
-/* This code is part of the CPISync project developed at Boston University.  Please see the README for use and references. */
+/* This code is part of the GenSync project developed at Boston University.  Please see the README for use and references. */
 
 #include <iostream>
-#include <CPISync/Aux/ConstantsAndTypes.h>
-#include <CPISync/Aux/Auxiliary.h>
+#include <GenSync/Aux/ConstantsAndTypes.h>
+#include <GenSync/Aux/Auxiliary.h>
 
 void Logger::error(const string& msg) {
     perror(msg.c_str());

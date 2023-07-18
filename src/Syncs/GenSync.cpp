@@ -1,26 +1,26 @@
-/* This code is part of the CPISync project developed at Boston University.  Please see the README for use and references. */
+/* This code is part of the GenSync project developed at Boston University.  Please see the README for use and references. */
 
 #include <iostream>
 #include <fstream>
 
-#include <CPISync/Syncs/GenSync.h>
-#include <CPISync/Aux/Exceptions.h>
-#include <CPISync/Syncs/CPISync.h>
-#include <CPISync/Communicants/CommSocket.h>
-#include <CPISync/Communicants/CommString.h>
-#include <CPISync/Syncs/ProbCPISync.h>
-#include <CPISync/Syncs/InterCPISync.h>
-#include <CPISync/Syncs/FullSync.h>
-#include <CPISync/Syncs/IBLTSync.h>
-#include <CPISync/Syncs/IBLTSync_HalfRound.h>
-#include <CPISync/Syncs/IBLTSync_Multiset.h>
-#include <CPISync/Syncs/CPISync_HalfRound.h>
-#include <CPISync/Syncs/IBLTSetOfSets.h>
-#include <CPISync/Syncs/CuckooSync.h>
+#include <GenSync/Syncs/GenSync.h>
+#include <GenSync/Aux/Exceptions.h>
+#include <GenSync/Syncs/CPISync.h>
+#include <GenSync/Communicants/CommSocket.h>
+#include <GenSync/Communicants/CommString.h>
+#include <GenSync/Syncs/ProbCPISync.h>
+#include <GenSync/Syncs/InterCPISync.h>
+#include <GenSync/Syncs/FullSync.h>
+#include <GenSync/Syncs/IBLTSync.h>
+#include <GenSync/Syncs/IBLTSync_HalfRound.h>
+#include <GenSync/Syncs/IBLTSync_Multiset.h>
+#include <GenSync/Syncs/CPISync_HalfRound.h>
+#include <GenSync/Syncs/IBLTSetOfSets.h>
+#include <GenSync/Syncs/CuckooSync.h>
 
 #if defined (RECORD)
-#include <CPISync/Benchmarks/BenchParams.h>
-#include <CPISync/Benchmarks/BenchObserv.h>
+#include <GenSync/Benchmarks/BenchParams.h>
+#include <GenSync/Benchmarks/BenchObserv.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <iomanip>
@@ -156,6 +156,14 @@ bool GenSync::clearData(){
 }
 
 const list<string> GenSync::dumpElements() {
+    list<string> dump;
+    for(const auto& itr : myData){
+        dump.push_back(base64_decode(itr->print()));
+    }
+    return dump;
+}
+
+const list<string> GenSync::dumpElements64() {
     list<string> dump;
     for(const auto& itr : myData){
         dump.push_back(itr->print());

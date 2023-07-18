@@ -1,4 +1,4 @@
-/* This code is part of the CPISync project developed at Boston
+/* This code is part of the GenSync project developed at Boston
  * University. Please see the README for use and references.
  *
  * @author Novak Boškov <boskov@bu.edu>
@@ -9,8 +9,8 @@
  * https://www.cs.cmu.edu/~dga/papers/cuckoo-conext2014.pdf
  */
 
-#include <CPISync/Aux/Exceptions.h>
-#include <CPISync/Syncs/CuckooSync.h>
+#include <GenSync/Aux/Exceptions.h>
+#include <GenSync/Syncs/CuckooSync.h>
 
 CuckooSync::CuckooSync(size_t fngprtSize, size_t bucketSize,
                        size_t filterSize, size_t maxKicks) {

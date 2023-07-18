@@ -1,10 +1,10 @@
-/* This code is part of the CPISync project developed at Boston University. Please see the README for use and references. */
+/* This code is part of the GenSync project developed at Boston University. Please see the README for use and references. */
 
 #include <sys/socket.h>
 #include <sstream>
 #include <thread>
-#include <CPISync/Aux/Auxiliary.h>
-#include <CPISync/Communicants/CommSocket.h>
+#include <GenSync/Aux/Auxiliary.h>
+#include <GenSync/Communicants/CommSocket.h>
 
 CommSocket::CommSocket() = default;
 

@@ -1,4 +1,4 @@
-/* This code is part of the CPISync project developed at Boston
+/* This code is part of the GenSync project developed at Boston
  * University. Please see the README for use and references.
  *
  * @author Novak Boškov <boskov@bu.edu>
@@ -6,7 +6,7 @@
  * Created on April, 2020.
  */
 
-#include <CPISync/Syncs/Compact2DBitArray.h>
+#include <GenSync/Syncs/Compact2DBitArray.h>
 
 /**
  * To discern endianness in runtime but only once when the constructor

@@ -1,4 +1,4 @@
-#include <CPISync/Benchmarks/FromFileGen.h>
+#include <GenSync/Benchmarks/FromFileGen.h>
 
 const string FromFileGen::DELIM_LINE = string(80, '-');
 const string FromFileGen::REFERENCE = "Reference:";

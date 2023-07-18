@@ -1,11 +1,11 @@
-/* This code is part of the CPISync project developed at Boston University.  Please see the README for use and references. */
+/* This code is part of the GenSync project developed at Boston University.  Please see the README for use and references. */
 
 //
 // Created by Ari Trachtenberg on 7/18/18.
 //
 
-#include <CPISync/Aux/Logger.h>
-#include <CPISync/Syncs/HashSync.h>
+#include <GenSync/Aux/Logger.h>
+#include <GenSync/Syncs/HashSync.h>
 
 HashSync::HashSync(shared_ptr<SyncMethod> theSyncObject, int theHashUB) : SyncMethod(),
                                                  hashUB(theHashUB)

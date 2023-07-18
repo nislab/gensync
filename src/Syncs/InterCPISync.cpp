@@ -1,4 +1,4 @@
-/* This code is part of the CPISync project developed at Boston University.  Please see the README for use and references. */
+/* This code is part of the GenSync project developed at Boston University.  Please see the README for use and references. */
 
 /* 
  * File:   InterCPI.cpp
@@ -7,11 +7,11 @@
  * Created on November 30, 2011, 10:46 PM
  */
 
-#include <CPISync/Aux/Auxiliary.h>
-#include <CPISync/Communicants/Communicant.h>
-#include <CPISync/Aux/Exceptions.h>
-#include <CPISync/Syncs/CPISync.h>
-#include <CPISync/Syncs/InterCPISync.h>
+#include <GenSync/Aux/Auxiliary.h>
+#include <GenSync/Communicants/Communicant.h>
+#include <GenSync/Aux/Exceptions.h>
+#include <GenSync/Syncs/CPISync.h>
+#include <GenSync/Syncs/InterCPISync.h>
 
 bool InterCPISync::serverConnectedBefore = false;
 bool InterCPISync::clientConnectedBefore = false;
@@ -23,11 +23,11 @@ InterCPISync::InterCPISync(long m_bar, long bits, int epsilon, int partition,boo
 
 	/**
 	 * ProbEps: Derivation
-	 * Probability of failure for each CPISync node = 2^-Epsilon
+	 * Probability of failure for each GenSync node = 2^-Epsilon
 	 * 1-(1-P[error per node])^maxNodes <= 2^-Epsilon //Probability of 1 or more errors occuring:
 	 * max nodes for InterCPISync = 1 + (symDifs*partition/m_bar)*ceil(bits* log_p(2))
-	 * Then solve for P[error per node] to find the epsilon_0(Epsilon for each CPISync node) needed
-	 * for each CPISync in order to bound the total error by the given epsilon
+	 * Then solve for P[error per node] to find the epsilon_0(Epsilon for each GenSync node) needed
+	 * for each GenSync in order to bound the total error by the given epsilon
 	 */
 
 	Logger::gLog(Logger::METHOD,"Entering InterCPISync::InterCPISync");
@@ -48,7 +48,7 @@ InterCPISync::InterCPISync(long m_bar, long bits, int epsilon, int partition,boo
 }
 
 InterCPISync::~InterCPISync() {
-	// clean out the CPISync tree
+	// clean out the GenSync tree
 	_deleteTree(treeNode);
 }
 
@@ -122,7 +122,7 @@ bool InterCPISync::SyncClient(const shared_ptr<Communicant>& commSync, list<shar
 
     // 1. Do the sync
     pTree *parentNode = treeNode;//Create a copy of the root node - Just to make sure that it is not deleted
-    commSync->hardResetCommCounters(); //Because each CPISync will reset the communicant stats need to reset and use the "total" fields
+    commSync->hardResetCommCounters(); //Because each GenSync will reset the communicant stats need to reset and use the "total" fields
     bool result = SyncMethod::SyncClient(commSync, selfMinusOther, otherMinusSelf) // also call the parent to establish bookkeeping variables
                   && _SyncClient(commSync, selfMinusOther, otherMinusSelf, parentNode, ZZ_ZERO, DATA_MAX);//Call the modified Sync with data Ranges
 
@@ -211,7 +211,7 @@ bool InterCPISync::SyncServer(const shared_ptr<Communicant>& commSync, list<shar
 
     // 1. Do the sync
     pTree * parentNode = treeNode;
-    commSync->hardResetCommCounters(); //Because each CPISync will reset the communicant stats need to reset and use the "total" fields
+    commSync->hardResetCommCounters(); //Because each GenSync will reset the communicant stats need to reset and use the "total" fields
     result &= _SyncServer(commSync, selfMinusOther, otherMinusSelf, parentNode, ZZ_ZERO, DATA_MAX);
     if (result) { // Sync succeeded
         Logger::gLog(Logger::METHOD, string("Interactive sync succeeded.\n")
@@ -499,7 +499,7 @@ bool InterCPISync::_SyncServer(const shared_ptr<Communicant> &commSync, list<sha
             if (!node->SyncServer(commSync, selfMinusOther,
                                   otherMinusSelf)) { // sync failure - create Children and go try to sync
 
-                // Accumulate stats from each CPISync in InterCPISyncs mySyncStats object
+                // Accumulate stats from each GenSync in InterCPISyncs mySyncStats object
                 mySyncStats.increment(SyncStats::XMIT, node->mySyncStats.getStat(SyncStats::XMIT));
                 mySyncStats.increment(SyncStats::RECV, node->mySyncStats.getStat(SyncStats::RECV));
                 mySyncStats.increment(SyncStats::COMM_TIME, node->mySyncStats.getStat(SyncStats::COMM_TIME));
@@ -614,7 +614,7 @@ bool InterCPISync::_SyncClient(const shared_ptr<Communicant> &commSync, list<sha
                 mySyncStats.timerEnd(SyncStats::COMM_TIME);
                 node->SyncClient(commSync, selfMinusOther, otherMinusSelf); // attempt synchroniztion
 
-                // Accumulate stats from each CPISync in InterCPISyncs mySyncStats object
+                // Accumulate stats from each GenSync in InterCPISyncs mySyncStats object
                 mySyncStats.increment(SyncStats::XMIT,node->mySyncStats.getStat(SyncStats::XMIT));
                 mySyncStats.increment(SyncStats::RECV,node->mySyncStats.getStat(SyncStats::RECV));
                 mySyncStats.increment(SyncStats::COMM_TIME,node->mySyncStats.getStat(SyncStats::COMM_TIME));

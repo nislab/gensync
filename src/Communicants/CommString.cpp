@@ -1,4 +1,4 @@
-/* This code is part of the CPISync project developed at Boston University.  Please see the README for use and references. */
+/* This code is part of the GenSync project developed at Boston University.  Please see the README for use and references. */
 
 /*
  * File:   CommString.cpp
@@ -6,8 +6,8 @@
  */
 
 #include <chrono>
-#include <CPISync/Aux/Auxiliary.h>
-#include <CPISync/Communicants/CommString.h>
+#include <GenSync/Aux/Auxiliary.h>
+#include <GenSync/Communicants/CommString.h>
 
 CommString::CommString(const string& initial, bool base64) {
     if (base64)

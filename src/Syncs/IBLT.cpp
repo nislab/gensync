@@ -1,4 +1,4 @@
-/* This code is part of the CPISync project developed at Boston University.  Please see the README for use and references. */
+/* This code is part of the GenSync project developed at Boston University.  Please see the README for use and references. */
 
 //
 // Created by Eliezer Pearl on 7/9/18.
@@ -7,7 +7,7 @@
 // * Eppstein, David, et al. "What's the difference?: efficient set reconciliation without prior context." ACM SIGCOMM Computer Communication Review 41.4 (2011): 218-229.
 //
 
-#include <CPISync/Syncs/IBLT.h>
+#include <GenSync/Syncs/IBLT.h>
 
 IBLT::IBLT() = default;
 IBLT::~IBLT() = default;
