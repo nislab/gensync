@@ -1,6 +1,8 @@
 # GenSync
 
-GenSync is a tool for benchmarking and optimizing reconciliation of data. It implements multiple synchronization protocols including: CPISync, FullSync, IBLTSync and CuckooSync. It can be compiled to a shared library and integrated into other applications, or can be built as a standalone application and used to benchmark the implemented algorithms under a broad range of practical compute and network conditions.
+<a name="Introduction"></a>
+## Introduction
+GenSync is a tool for benchmarking and optimizing reconciliation of data. It implements multiple synchronization protocols including: CPISync, FullSync, IBLTSync and CuckooSync(see [here](#SyncTypes)). It can be compiled to a shared library and integrated into other applications, or can be built as a standalone application and used to benchmark the implemented algorithms under a broad range of practical compute and network conditions.
 
 We provide different versions for Linux and MacOS with different usage.
 | Version | Discription | Platform |
@@ -12,19 +14,46 @@ We provide different versions for Linux and MacOS with different usage.
 
 The current version is 2.0.4
 
+<a name="SyncTypes"></a>
+## Sync Types:
+* **Included Sync Protocols (Sets and Multisets):**
+    * CPISync
+        * Sync using the protocol described [here](http://ipsit.bu.edu/documents/ieee-it3-web.pdf). The maximum number of differences that can be reconciled must be bounded by setting mBar. The server does the necessary computations while the client waits, and returns the required values to the client
+    * CPISync_OneLessRound
+        * Perform CPISync with set elements represented in full in order to reduce the amount of rounds of communication by one (No hash inverse round of communication). The server does the necessary computations while the client waits, and returns the required values to the client
+    * OneWayCPISync
+        * Perform CPISync in one direction, only adding new elements from the client to the server. The client's elements are not updated. The server does the necessary computations and determines what elements they need to add to their set. The client does not receive a return message and does not have their elements updated
+    * ProbCPISync
+        * Perform CPISync with a given mBar but if the amount of differences is larger than that, double mBar until the sync is successful. The server does the necessary computations while the client waits, and returns the required values to the client
+    * InteractiveCPISync
+        * Perform CPISync but if there are more than mBar differences, divide the set into `numPartitions` subsets and attempt to CPISync again. This recurses until the sync is successful. The server does the necessary computations while the client waits, and returns the required values to the client
+    * FullSync
+        * The client sends the server its set contents and the server determines what elements it needs from the clients set. The server also determines what elements the client needs and sends them back.
+    * IBLTSync
+        * Each peer encodes their set into an [Invertible Bloom Lookup Table](https://arxiv.org/pdf/1101.2245.pdf) with a size determined by NumExpElements and the client sends their IBLT to their per. The differences are determined by "subtracting" the IBLT's from each other and attempting to peel the resulting IBLT. The server peer then returns the elements that the client peer needs to update their set
+    * OneWayIBLTSync
+        * The client sends their IBLT to their server peer and the server determines what elements they need to add to their set. The client does not receive a return message and does not update their set
+    * CuckooSync
+        * Each peer encodes their set into a [cuckoo filter](https://www.cs.cmu.edu/~dga/papers/cuckoo-conext2014.pdf). Peers exchange their cuckoo filters. Each host infers the elements that are not in its peer by looking them up in the peer's cuckoo filter. Any elements that are not found in the peer's cuckoo filter are sent to it.
+* **Included Sync Protocols (Set of Sets):**
+    * IBLT Set of Sets
+        * Sync using the protocol described [here](https://dl.acm.org/doi/abs/10.1145/3196959.3196988). This sync serializes an IBLT containing a child set into a bitstring where it is then treated as an element of a larger IBLT. Each host recovers the IBLT containing the serialized IBLTs and deserializes each one. A matching procedure is then used to determine which child sets should sync with each other and which elements they need. If this sync is two way this info is then sent back to the peer node. The number of differences in each child IBLT may not be larger than the total number of sets being synced
+
+<a name="References"></a>
+## Reference:
 If you use this software, please cite the following paper (pdf,
 [DOI](http://doi.org/10.1109/TNSM.2022.3164369)):
 
 ``` bibtex
-@ARTICLE{gensync,
-  author={Boškov, Novak and Trachtenberg, Ari and Starobinski, David},
+@article{bovskov2022gensync,
+  title={Gensync: A new framework for benchmarking and optimizing reconciliation of data},
+  author={Bo{\v{s}}kov, Novak and Trachtenberg, Ari and Starobinski, David},
   journal={IEEE Transactions on Network and Service Management},
-  title={GenSync: A New Framework for Benchmarking and Optimizing Reconciliation of Data},
+  volume={19},
+  number={4},
+  pages={4408--4423},
   year={2022},
-  volume={},
-  number={},
-  pages={1-1},
-  doi={10.1109/TNSM.2022.3164369}
+  publisher={IEEE}
 }
 ```
 ### Additional literature
@@ -70,7 +99,7 @@ If you use this work, please cite any relevant papers below.
   Systems. ACM, 2018.
 
 <a name="Contributors"></a>
-### Contributors:
+## Contributors:
 
 Elements of the GenSync project code have been worked on, at various points, by:
 
@@ -86,8 +115,9 @@ Elements of the GenSync project code have been worked on, at various points, by:
 * Novak Boškov
 * Xingyu Chen
 * Nathan Strahs
-
-# Acknowledgments:
+  
+<a name="Acknowledgments"></a>
+## Acknowledgments:
 * NSF
 * Professors:
     * Ari Trachtenberg, trachten@bu.edu, Boston University
