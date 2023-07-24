@@ -1,22 +1,45 @@
-# GenSync
+# GenSync - 2.0.4
+
+GenSync is a framework for _efficiently_ synchronizing similar data across multiple devices.
+
+## Motivating example
+Suppose that laptop `A` has a list of contacts:
+
+> Alice, Jim, Jane, Rick, Bob
+
+
+and cellphone `B` has the contacts:
+> Alice, Jim, Suzie, Jane, Rick
+
+Then an efficient synchronization protocol might quickly idenfity the differences (`Rick` on the laptop, and `Suzie` on the cellphone)
+and exchange only these contacts, rather than sending the entire contact list from one device to another.
+
+
 
 <a name="Introduction"></a>
 ## Introduction
-GenSync is a tool for benchmarking and optimizing reconciliation of data. It implements multiple synchronization protocols including: CPISync, FullSync, IBLTSync and CuckooSync(see [here](#SyncTypes)). It can be compiled to a shared library and integrated into other applications, or can be built as a standalone application and used to benchmark the implemented algorithms under a broad range of practical compute and network conditions.
+The GenSync framework provides a shared library for benchmarking and optimizing a variety of state-of-the-art data synchronization protocols, either offline or directly embedded within application code.  In one typical use-case, an application would use GenSync for its core data synchronization needs, and developers can compare and optimize the performance of different synchronization protocols to suit their needs.  Alternatively, users could utilize the GenSync library to profile synchronization usage for their application, and then experiment with synchronization protocols offline to improve perfromance.
 
-We provide different versions for Linux and MacOS with different usage.
-| Version | Discription | Platform |
-| --------------- | --------------- | --------------- |
-| [gensync-core](https://github.com/nislab/gensync-core) | Includes only source code and tests for development | NA |
-| [gensync-lib-linux](https://github.com/nislab/gensync-lib-linux) | Linux library providing synchronization protocols | Linux |
-| [gensync-macports](https://github.com/nislab/gensync-macports) | MacOS library providing synchronization protocols(also available on [macports](https://ports.macports.org/port/gensync/details/)) | MacOS |
-| [gensync-benchmarking](https://github.com/nislab/gensync-benchmarking) | Provides both library and benchmarking modes for syncing interactively | Linux |
+The current implementation of the framework includes four families of data synchronization protocols (and [their variants](#SyncTypes))):
+- _FullSync_ - a trivial protocol that transfers all data from one device to another for a local comparison
+- _CPISync_ - based on Characteristic Polynomial Interpolation
+- _IBLTSync_ - based on Invertible Bloom Lookup Tables
+- _CuckooSync_ - based on Cuckoo tables
 
-The current version is 2.0.4
+## Code
+The source code for this library is divided among several repositories.
+
+- [gensync-core](https://github.com/nislab/gensync-core) - the core framework code that is used by other repositories.
+- [gensync-lib-linux](https://github.com/nislab/gensync-lib) - used to produce the GenSync library and associated headers.
+- [gensync-macports](https://github.com/nislab/gensync-macports) | - used to produce the [macports](https://ports.macports.org/port/gensync/details/) version of the GenSync library for MacOS.
+- [gensync-benchmarking](https://github.com/nislab/gensync-benchmarking) - used for including benchmarking capabilities.
+
 
 <a name="SyncTypes"></a>
-## Sync Types:
-* **Included Sync Protocols (Sets and Multisets):**
+## Supporte protocols:
+* _FullSync family_
+  * One device sends all its data to the second device, which determines what differs between the two devices and notifies the first device of the differences.
+* _CPISync family_
     * CPISync
         * Sync using the protocol described [here](http://ipsit.bu.edu/documents/ieee-it3-web.pdf). The maximum number of differences that can be reconciled must be bounded by setting mBar. The server does the necessary computations while the client waits, and returns the required values to the client
     * CPISync_OneLessRound
@@ -27,8 +50,7 @@ The current version is 2.0.4
         * Perform CPISync with a given mBar but if the amount of differences is larger than that, double mBar until the sync is successful. The server does the necessary computations while the client waits, and returns the required values to the client
     * InteractiveCPISync
         * Perform CPISync but if there are more than mBar differences, divide the set into `numPartitions` subsets and attempt to CPISync again. This recurses until the sync is successful. The server does the necessary computations while the client waits, and returns the required values to the client
-    * FullSync
-        * The client sends the server its set contents and the server determines what elements it needs from the clients set. The server also determines what elements the client needs and sends them back.
+
     * IBLTSync
         * Each peer encodes their set into an [Invertible Bloom Lookup Table](https://arxiv.org/pdf/1101.2245.pdf) with a size determined by NumExpElements and the client sends their IBLT to their per. The differences are determined by "subtracting" the IBLT's from each other and attempting to peel the resulting IBLT. The server peer then returns the elements that the client peer needs to update their set
     * OneWayIBLTSync
