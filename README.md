@@ -1,6 +1,25 @@
 # GenSync - 2.0.4
 GenSync is a framework for _efficiently_ synchronizing similar data across multiple devices.
 
+The framework provides a shared library for benchmarking and optimizing a variety of state-of-the-art data synchronization protocols, either offline or directly embedded within application code.  In one typical use-case, an application would use GenSync for its core data synchronization needs, and developers can compare and optimize the performance of different synchronization protocols to suit their needs.  Alternatively, users could utilize the GenSync library to profile synchronization usage for their application, and then experiment with synchronization protocols offline to improve perfromance.
+
+The current implementation of the framework includes four families of data synchronization protocols (and [their variants](#SyncTypes))):
+- _FullSync_ - a trivial protocol that transfers all data from one device to another for a local comparison
+- _CPISync_ - based on Characteristic Polynomial Interpolation
+- _IBLTSync_ - based on Invertible Bloom Lookup Tables
+- _CuckooSync_ - based on Cuckoo tables
+
+---
+## Contents:
+   * [Motivating example](README.md#Motivation)
+   * [Code](README.md#Code)
+   * [Supported protocols](README.md#SyncTypes)
+   * [References](README.md#References)
+   * [Contributors](README.md#Contributors)
+   * [Acknowledgments](README.md#Acknowledgments)
+
+---
+<a name="Motivation"></a>
 ## Motivating example
 Suppose that laptop `A` has a list of contacts:
 
@@ -13,18 +32,8 @@ and cellphone `B` has the contacts:
 Then an efficient synchronization protocol might quickly idenfity the differences (`Rick` on the laptop, and `Suzie` on the cellphone)
 and exchange only these contacts, rather than sending the entire contact list from one device to another.
 
-
-
-<a name="Introduction"></a>
-## Introduction
-The GenSync framework provides a shared library for benchmarking and optimizing a variety of state-of-the-art data synchronization protocols, either offline or directly embedded within application code.  In one typical use-case, an application would use GenSync for its core data synchronization needs, and developers can compare and optimize the performance of different synchronization protocols to suit their needs.  Alternatively, users could utilize the GenSync library to profile synchronization usage for their application, and then experiment with synchronization protocols offline to improve perfromance.
-
-The current implementation of the framework includes four families of data synchronization protocols (and [their variants](#SyncTypes))):
-- _FullSync_ - a trivial protocol that transfers all data from one device to another for a local comparison
-- _CPISync_ - based on Characteristic Polynomial Interpolation
-- _IBLTSync_ - based on Invertible Bloom Lookup Tables
-- _CuckooSync_ - based on Cuckoo tables
-
+---
+<a name="Code"></a>
 ## Code
 The source code for this library is divided among several repositories.
 
@@ -33,7 +42,7 @@ The source code for this library is divided among several repositories.
 - [gensync-macports](https://github.com/nislab/gensync-macports) | - used to produce the [macports](https://ports.macports.org/port/gensync/details/) version of the GenSync library for MacOS.
 - [gensync-benchmarking](https://github.com/nislab/gensync-benchmarking) - used for including benchmarking capabilities.
 
-
+---
 <a name="SyncTypes"></a>
 ## Supported protocols:
 Each of these protocols is implemented as a peer-to-peer protocol.  For purposes of explanation, one peer is called a _client_ and the other a _server_ .
@@ -62,6 +71,7 @@ Each of these protocols is implemented as a peer-to-peer protocol.  For purposes
     * CuckooSync
         *  Client and server encode and exchange their data within a [cuckoo filter](https://www.cs.cmu.edu/~dga/papers/cuckoo-conext2014.pdf).  A comparison of the filters yields the differences between client and server
 
+---
 <a name="References"></a>
 ## References:
 If you use this software, please cite _at least_ the following paper (pdf,
@@ -120,6 +130,7 @@ The following works are also significant to this software implementation:
 
 * More at <https://people.bu.edu/trachten>.
 
+---
 <a name="Contributors"></a>
 ## Contributors:
 
@@ -137,7 +148,8 @@ Elements of the GenSync project code have been worked on, at various points, by:
 * Novak Boškov
 * Xingyu Chen
 * Nathan Strahs
-  
+
+---
 <a name="Acknowledgments"></a>
 ## Acknowledgments:
 * NSF
