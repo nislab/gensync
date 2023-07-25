@@ -39,7 +39,7 @@ The source code for this library is divided among several repositories.
 
 - [gensync-core](https://github.com/nislab/gensync-core) - the core framework code that is used by other repositories.
 - [gensync-lib-linux](https://github.com/nislab/gensync-lib) - used to produce the GenSync library and associated headers.
-- [gensync-macports](https://github.com/nislab/gensync-macports) | - used to produce the [macports](https://ports.macports.org/port/gensync/details/) version of the GenSync library for MacOS.
+- [gensync-macports](https://github.com/nislab/gensync-macports) - used to produce the [macports](https://ports.macports.org/port/gensync/details/) version of the GenSync library for MacOS.
 - [gensync-benchmarking](https://github.com/nislab/gensync-benchmarking) - used for including benchmarking capabilities.
 
 ---
