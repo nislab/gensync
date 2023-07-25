@@ -1,5 +1,4 @@
 # GenSync - 2.0.4
-
 GenSync is a framework for _efficiently_ synchronizing similar data across multiple devices.
 
 ## Motivating example
@@ -36,34 +35,36 @@ The source code for this library is divided among several repositories.
 
 
 <a name="SyncTypes"></a>
-## Supporte protocols:
-* _FullSync family_
-  * One device sends all its data to the second device, which determines what differs between the two devices and notifies the first device of the differences.
-* _CPISync family_
-    * CPISync
-        * Sync using the protocol described [here](http://ipsit.bu.edu/documents/ieee-it3-web.pdf). The maximum number of differences that can be reconciled must be bounded by setting mBar. The server does the necessary computations while the client waits, and returns the required values to the client
-    * CPISync_OneLessRound
-        * Perform CPISync with set elements represented in full in order to reduce the amount of rounds of communication by one (No hash inverse round of communication). The server does the necessary computations while the client waits, and returns the required values to the client
-    * OneWayCPISync
-        * Perform CPISync in one direction, only adding new elements from the client to the server. The client's elements are not updated. The server does the necessary computations and determines what elements they need to add to their set. The client does not receive a return message and does not have their elements updated
-    * ProbCPISync
-        * Perform CPISync with a given mBar but if the amount of differences is larger than that, double mBar until the sync is successful. The server does the necessary computations while the client waits, and returns the required values to the client
-    * InteractiveCPISync
-        * Perform CPISync but if there are more than mBar differences, divide the set into `numPartitions` subsets and attempt to CPISync again. This recurses until the sync is successful. The server does the necessary computations while the client waits, and returns the required values to the client
-
-    * IBLTSync
-        * Each peer encodes their set into an [Invertible Bloom Lookup Table](https://arxiv.org/pdf/1101.2245.pdf) with a size determined by NumExpElements and the client sends their IBLT to their per. The differences are determined by "subtracting" the IBLT's from each other and attempting to peel the resulting IBLT. The server peer then returns the elements that the client peer needs to update their set
-    * OneWayIBLTSync
-        * The client sends their IBLT to their server peer and the server determines what elements they need to add to their set. The client does not receive a return message and does not update their set
+## Supported protocols:
+Each of these protocols is implemented as a peer-to-peer protocol.  For purposes of explanation, one peer is called a _client_ and the other a _server_ .
+* __FullSync family__
+  * *FullSync*
+     * The client sends all its data to the server, which determines what differs between the two devices and notifies the client of the differences.
+* __CPISync family__
+    * *CPISync*
+        * Implements the Characteristic Polynomial Interpolation protocol from [MTZ03](http://ipsit.bu.edu/documents/ieee-it3-web.pdf) _with a known bound_ on the number of differences between client and server. The client sends evaluations of the characteristic polynomial of _hashes_ of its data to the server.  The server interpolates (and factors) a rational function that identifies the differences between client and server, and then reports the hashes of these differences back to the client.  A final communication round exchanges the actual data corresponding to the identified hashes.
+    * *ProbCPISync*
+        * Perform CPISync _without a known bound_ on the number of differences between client and server.  Client and server start with a guess on the difference bound.  If the guess is wrong, it is doubled and the process is repeated, until a correct bound is identified, whereupon CPISync is run.
+    * *InteractiveCPISync*
+        * Performs CPISync interactively according to the protocol of [MT02](http://ipsit.bu.edu/documents/BUTR2002-01.pdf).  No bound on differences is needed, and both computation and communication are efficient.
+    * *CPISync_OneLessRound*
+        * A variant of CPISync that does not using hashes ( _i.e.,_ it operates directly on the data ).  This avoides the final communication round where hash inverses are exchanged between client and server.
+    * *OneWayCPISync*
+        * A variant of CPISync that communications only in one direction, providing the server with information about the clients data (but not vice versa). This requires no feedback from server to client, and the transmitted data can be stored as a string for subsequent synchronization.
+* __IBLTSync family__
+    * *IBLTSync*
+        * Client and server encode and exchange their data within an [Invertible Bloom Lookup Table](https://arxiv.org/pdf/1101.2245.pdf).  Subtracting these tables and deecoding the result provides the differences between client and server
+    * *OneWayIBLTSync*
+      A variant of IBLTSync that communications only in one direction, providing the server with information about the clients data (but not vice versa). This requires no feedback from server to client, and the transmitted data can be stored as a string for subsequent synchronization.
+   * Set of Sets Sync*
+        * This implements an IBLT-based synchronization of sets of sets described in [MM18](https://dl.acm.org/doi/abs/10.1145/3196959.3196988).
+* __CuckooSync family__
     * CuckooSync
-        * Each peer encodes their set into a [cuckoo filter](https://www.cs.cmu.edu/~dga/papers/cuckoo-conext2014.pdf). Peers exchange their cuckoo filters. Each host infers the elements that are not in its peer by looking them up in the peer's cuckoo filter. Any elements that are not found in the peer's cuckoo filter are sent to it.
-* **Included Sync Protocols (Set of Sets):**
-    * IBLT Set of Sets
-        * Sync using the protocol described [here](https://dl.acm.org/doi/abs/10.1145/3196959.3196988). This sync serializes an IBLT containing a child set into a bitstring where it is then treated as an element of a larger IBLT. Each host recovers the IBLT containing the serialized IBLTs and deserializes each one. A matching procedure is then used to determine which child sets should sync with each other and which elements they need. If this sync is two way this info is then sent back to the peer node. The number of differences in each child IBLT may not be larger than the total number of sets being synced
+        *  Client and server encode and exchange their data within a [cuckoo filter](https://www.cs.cmu.edu/~dga/papers/cuckoo-conext2014.pdf).  A comparison of the filters yields the differences between client and server
 
 <a name="References"></a>
-## Reference:
-If you use this software, please cite the following paper (pdf,
+## References:
+If you use this software, please cite _at least_ the following paper (pdf,
 [DOI](http://doi.org/10.1109/TNSM.2022.3164369)):
 
 ``` bibtex
@@ -78,47 +79,46 @@ If you use this software, please cite the following paper (pdf,
   publisher={IEEE}
 }
 ```
-### Additional literature
-If you use this work, please cite any relevant papers below.
+The following works are also significant to this software implementation:
 
-#### The main theoretical bases for the approaches in this work are:
-* Y. Minsky, A. Trachtenberg, and R. Zippel,
+#### Theoretical foundations
+* [MTZ03] Y. Minsky, A. Trachtenberg, and R. Zippel,
   "Set Reconciliation with Nearly Optimal Communication Complexity",
   IEEE Transactions on Information Theory, 49:9.
   <http://ipsit.bu.edu/documents/ieee-it3-web.pdf>
 
-* Y. Minsky and A. Trachtenberg,
+* [MT02] Y. Minsky and A. Trachtenberg,
   "Scalable set reconciliation"
   40th Annual Allerton Conference on Communication, Control, and Computing, 2002.
   <http://ipsit.bu.edu/documents/BUTR2002-01.pdf>
 
-#### Relevant applications and extensions can be found at:
-* D. Starobinski, A. Trachtenberg and S. Agarwal,
+#### Applications and extensions
+* [DTA03] D. Starobinski, A. Trachtenberg and S. Agarwal,
   "Efficient PDA synchronization"
   IEEE Transactions on Mobile Computing 2:1, pp. 40-51 (2003).
   <http://ipsit.bu.edu/documents/efficient_pda_web.pdf>
 
-* S. Agarwal, V. Chauhan and A. Trachtenberg,
+* [SCT06] S. Agarwal, V. Chauhan and A. Trachtenberg,
   "Bandwidth efficient string reconciliation using puzzles"
   IEEE Transactions on Parallel and Distributed Systems 17:11,pp. 1217-1225 (2006).
   <http://ipsit.bu.edu/documents/puzzles_journal.pdf>
 
-*  M.G. Karpovsky, L.B. Levitin. and A. Trachtenberg,
+* [KLT03] M.G. Karpovsky, L.B. Levitin. and A. Trachtenberg,
    "Data verification and reconciliation with generalized error-control codes"
    IEEE Transactions on Information Theory 49:7, pp. 1788-1793 (2003).
+  
+* [EGUV11] D. Eppstein, M.T. Goodrich, F. Uyeda, and G. Varghese.
+  "What's the difference?: efficient set reconciliation without prior context."
+  ACM SIGCOMM Computer Communication Review 41.4 (2011): 218-229.
 
-* More at <http://people.bu.edu/trachten>.
-
-#### Additional algorithms:
-* Eppstein, David, et al. "What's the difference?: efficient set reconciliation without
-  prior context." ACM SIGCOMM Computer Communication Review 41.4 (2011): 218-229.
-
-* Goodrich, Michael T., and Michael Mitzenmacher. "Invertible bloom lookup tables."
+* [GM11] M.T. Goodrich and M. Mitzenmacher. "Invertible bloom lookup tables."
   49th Annual Allerton Conference on Communication, Control, and Computing (Allerton), 2011.
 
-* Mitzenmacher, Michael, and Tom Morgan. "Reconciling graphs and sets of sets."
+* [MM18] M. Mitzenmacher and T. Morgan. "Reconciling graphs and sets of sets."
   Proceedings of the 37th ACM SIGMOD-SIGACT-SIGAI Symposium on Principles of Database
   Systems. ACM, 2018.
+
+* More at <https://people.bu.edu/trachten>.
 
 <a name="Contributors"></a>
 ## Contributors:
