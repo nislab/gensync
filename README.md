@@ -153,6 +153,7 @@ Elements of the GenSync project code have been worked on, at various points, by:
 <a name="Acknowledgments"></a>
 ## Acknowledgments:
 * NSF
+* Red Hat Collaboratory
 * Professors:
     * Ari Trachtenberg, trachten@bu.edu, Boston University
     * David Starobinski, staro@bu.edu, Boston University
