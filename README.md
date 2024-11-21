@@ -148,6 +148,8 @@ Elements of the GenSync project code have been worked on, at various points, by:
 * Novak Boškov
 * Xingyu Chen
 * Nathan Strahs
+* Anish Sinha
+* Thomas Poimenidis
 
 ---
 <a name="Acknowledgments"></a>
