@@ -64,9 +64,13 @@ Each of these protocols is implemented as a peer-to-peer protocol.  For purposes
     * *IBLTSync*
         * Client and server encode and exchange their data within an [Invertible Bloom Lookup Table](https://arxiv.org/pdf/1101.2245.pdf).  Subtracting these tables and deecoding the result provides the differences between client and server
     * *OneWayIBLTSync*
-      A variant of IBLTSync that communications only in one direction, providing the server with information about the clients data (but not vice versa). This requires no feedback from server to client, and the transmitted data can be stored as a string for subsequent synchronization.
-   * Set of Sets Sync*
+        * A variant of IBLTSync that communications only in one direction, providing the server with information about the clients data (but not vice versa). This requires no feedback from server to client, and the transmitted data can be stored as a string for subsequent synchronization.
+   * *Set of Sets Sync*
         * This implements an IBLT-based synchronization of sets of sets described in [MM18](https://dl.acm.org/doi/abs/10.1145/3196959.3196988).
+   * *MET-IBLT Sync*
+        * The [Multi-Edge-Type IBLT](https://arxiv.org/pdf/2211.05472) is an IBLT-based set reconciliation protocol that does not require estimation of the size of the set-difference. This is due to the scalable nature of the MET-IBLT data structure.
+   * *Bloom Filter Sync*
+        * The [Bloom Filter](https://dl.acm.org/doi/pdf/10.1145/362686.362692) is a space-efficient probabilistic data structure for testing set membership, and its protocol enables set reconciliation by exchanging filters and transferring only elements likely missing from the other party's set.
 * __CuckooSync family__
     * CuckooSync
         *  Client and server encode and exchange their data within a [cuckoo filter](https://www.cs.cmu.edu/~dga/papers/cuckoo-conext2014.pdf).  A comparison of the filters yields the differences between client and server
