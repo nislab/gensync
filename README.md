@@ -3,7 +3,7 @@ GenSync is a framework for _efficiently_ synchronizing similar data across multi
 
 The framework provides a shared library for benchmarking and optimizing a variety of state-of-the-art data synchronization protocols, either offline or directly embedded within application code.  In one typical use-case, an application would use GenSync for its core data synchronization needs, and developers can compare and optimize the performance of different synchronization protocols to suit their needs.  Alternatively, users could utilize the GenSync library to profile synchronization usage for their application, and then experiment with synchronization protocols offline to improve perfromance.
 
-The current implementation of the framework includes four families of data synchronization protocols (and [their variants](#SyncTypes))):
+The current implementation of the framework includes four families of data synchronization protocols (and [their variants](#SyncTypes)):
 - _FullSync_ - a trivial protocol that transfers all data from one device to another for a local comparison
 - _CPISync_ - based on Characteristic Polynomial Interpolation
 - _IBLTSync_ - based on Invertible Bloom Lookup Tables
@@ -29,7 +29,7 @@ Suppose that laptop `A` has a list of contacts:
 and cellphone `B` has the contacts:
 > Alice, Jim, Suzie, Jane, Rick
 
-Then an efficient synchronization protocol might quickly idenfity the differences (`Rick` on the laptop, and `Suzie` on the cellphone)
+Then an efficient synchronization protocol might quickly idenfity the differences (`Bob` on the laptop, and `Suzie` on the cellphone)
 and exchange only these contacts, rather than sending the entire contact list from one device to another.
 
 ---
